@@ -624,8 +624,8 @@ const DAY_ORDINALS = ['первый','второй','третий','четвёр
 // 1. Создайте аккаунт → получите Master Key (вкладка "API Keys")
 // 2. Нажмите "+ Create Bin" → введите {} → сохраните, скопируйте BIN ID из URL
 const CLOUD_CONFIG = {
-  apiKey: '$2a$10$UuZHVV.aNcrB1l9n3ec7YOLOPnGOKFC5dpcjrdHrwItPpyxOGqMzC',   // ← вставьте ваш JSONbin Master Key, например: '$2a$10$abc...'
-  binId:  '69b1bcefb7ec241ddc5e554f',   // ← вставьте ваш Bin ID, например: '6643f1e0acd3cb34a83b1234'
+  apiKey: '',   // ← вставьте ваш JSONbin Master Key, например: '$2a$10$abc...'
+  binId:  '',   // ← вставьте ваш Bin ID, например: '6643f1e0acd3cb34a83b1234'
 };
 // При пустых полях данные по-прежнему сохраняются в localStorage (офлайн-режим).
 
@@ -794,6 +794,8 @@ async function loadState() {
   setSyncStatus('☁ загрузка…', 'var(--amber)');
   try {
     const saved = await fetchCloudData();
+    const json = JSON.stringify(saved);
+    _lastCloudHash = strHash(json);
     applyPayload(saved);
     // Обновляем UI после загрузки облачных данных
     dayKeys().forEach(d => redrawDay(d));
@@ -842,6 +844,56 @@ function saveData() {
   } catch(e) { console.error('saveData error', e); }
   showToast();
   updateProgress();
+}
+
+// ── AUTO-POLL (тихое обновление раз в 30с) ───────────────────────────────────
+let _lastCloudHash = null;   // хэш последних известных данных
+let _userIsTyping  = false;  // не перебиваем пользователя во время ввода
+let _typingTimer   = null;
+
+// Простой хэш строки — чтобы не обновлять UI когда данные не изменились
+function strHash(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) { h = (Math.imul(31, h) + s.charCodeAt(i)) | 0; }
+  return h;
+}
+
+// Слушаем любой ввод — пауза 5с после последнего нажатия считается "не печатает"
+document.addEventListener('input', () => {
+  _userIsTyping = true;
+  clearTimeout(_typingTimer);
+  _typingTimer = setTimeout(() => { _userIsTyping = false; }, 5000);
+});
+
+async function pollCloud() {
+  if (!cloudEnabled()) return;
+  if (_userIsTyping) return;            // пользователь сейчас вводит — пропускаем
+  if (_saveCloudTimer) return;          // идёт сохранение — пропускаем
+
+  try {
+    const saved = await fetchCloudData();
+    const json  = JSON.stringify(saved);
+    const hash  = strHash(json);
+    if (hash === _lastCloudHash) return; // данные не изменились — ничего не делаем
+    _lastCloudHash = hash;
+
+    applyPayload(saved);
+    localStorage.setItem('travel_tracker_v3', json);
+
+    dayKeys().forEach(d => redrawDay(d));
+    renderTabs();
+    renderAllDays();
+    updateProgress();
+    showToast('🔄 Данные обновлены');
+  } catch(e) {
+    // тихая ошибка — не мешаем пользователю
+    console.warn('poll error', e);
+  }
+}
+
+function startPolling(intervalMs = 30000) {
+  if (!cloudEnabled()) return;
+  setInterval(pollCloud, intervalMs);
 }
 
 // ── TIME MASK ─────────────────────────────────────────────────────────────────
@@ -1808,7 +1860,7 @@ renderTabs();
 renderAllDays();
 updateProgress();
 // loadState — async: сначала localStorage (мгновенно), потом облако
-loadState();
+loadState().then(() => startPolling(30000));
 setTimeout(() => {
   const d = DAYS_DATA[1];
   if (d) {
