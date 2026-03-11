@@ -442,6 +442,7 @@
   <div class="header-right">
     <div class="day-tabs" id="dayTabs"></div>
     <button class="undo-btn" id="undoBtn" onclick="undoAction()" disabled title="Отменить последнее действие">↩ отмена</button>
+    <span id="syncStatus" title="Статус облачного сохранения" style="font-size:10px;color:var(--muted);white-space:nowrap;flex-shrink:0;cursor:default;">☁ —</span>
     <button class="sidebar-toggle" id="toggleBtn" onclick="toggleSidebar()">☰</button>
   </div>
 </header>
@@ -618,6 +619,16 @@
 const DAY_COLORS = ['#f5a623','#60a5fa','#a78bfa','#34d399','#f472b6','#fb923c'];
 const DAY_ORDINALS = ['первый','второй','третий','четвёртый','пятый','шестой'];
 
+// ── CLOUD CONFIG ──────────────────────────────────────────────────────────────
+// Зарегистрируйтесь на https://jsonbin.io (бесплатно) и заполните поля ниже.
+// 1. Создайте аккаунт → получите Master Key (вкладка "API Keys")
+// 2. Нажмите "+ Create Bin" → введите {} → сохраните, скопируйте BIN ID из URL
+const CLOUD_CONFIG = {
+  apiKey: '$2a$10$UuZHVV.aNcrB1l9n3ec7YOLOPnGOKFC5dpcjrdHrwItPpyxOGqMzC',   // ← вставьте ваш JSONbin Master Key, например: '$2a$10$abc...'
+  binId:  '69b1bcefb7ec241ddc5e554f',   // ← вставьте ваш Bin ID, например: '6643f1e0acd3cb34a83b1234'
+};
+// При пустых полях данные по-прежнему сохраняются в localStorage (офлайн-режим).
+
 // Базовые дни 1 и 2 (могут быть перезаписаны при загрузке)
 const DAYS_DATA = {
   1: {
@@ -663,71 +674,141 @@ let state = { actuals:{} };
 
 function dayKeys() { return Object.keys(DAYS_DATA).map(Number); }
 
-function loadState() {
+// ── CLOUD STORAGE HELPERS ─────────────────────────────────────────────────────
+const JSONBIN_URL = 'https://api.jsonbin.io/v3/b';
+
+function cloudEnabled() {
+  return CLOUD_CONFIG.apiKey && CLOUD_CONFIG.binId;
+}
+
+function setSyncStatus(text, color) {
+  const el = document.getElementById('syncStatus');
+  if (!el) return;
+  el.textContent = text;
+  el.style.color = color || 'var(--muted)';
+}
+
+async function fetchCloudData() {
+  const r = await fetch(`${JSONBIN_URL}/${CLOUD_CONFIG.binId}/latest`, {
+    headers: { 'X-Master-Key': CLOUD_CONFIG.apiKey }
+  });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const json = await r.json();
+  return json.record;
+}
+
+async function pushCloudData(payload) {
+  const r = await fetch(`${JSONBIN_URL}/${CLOUD_CONFIG.binId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Master-Key': CLOUD_CONFIG.apiKey,
+      'X-Bin-Versioning': 'false',
+    },
+    body: JSON.stringify(payload)
+  });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+}
+
+// Debounce: откладывает облачное сохранение на 1.5с после последнего изменения
+let _saveCloudTimer = null;
+function scheduleCloudSave(payload) {
+  clearTimeout(_saveCloudTimer);
+  _saveCloudTimer = setTimeout(async () => {
+    setSyncStatus('☁ сохранение…', 'var(--amber)');
+    try {
+      await pushCloudData(payload);
+      setSyncStatus('☁ сохранено', 'var(--green)');
+      setTimeout(() => setSyncStatus('☁ ок', 'var(--muted)'), 2000);
+    } catch(e) {
+      console.error('Cloud save error', e);
+      setSyncStatus('☁ ошибка', '#f87171');
+    }
+  }, 1500);
+}
+
+// ── APPLY SAVED PAYLOAD ───────────────────────────────────────────────────────
+function applyPayload(saved) {
+  state.actuals = saved.actuals || {};
+
+  if (saved.daysData) {
+    Object.keys(DAYS_DATA).forEach(k => delete DAYS_DATA[k]);
+    Object.entries(saved.daysData).forEach(([dayStr, dayData]) => {
+      DAYS_DATA[Number(dayStr)] = dayData;
+    });
+  } else {
+    // старый формат (обратная совместимость)
+    if (saved.stopsData) {
+      Object.entries(saved.stopsData).forEach(([dayStr, stops]) => {
+        const day = Number(dayStr);
+        if (DAYS_DATA[day]) DAYS_DATA[day].stops = stops.map(s => ({ ...s }));
+      });
+    }
+    if (saved.extraDays) {
+      saved.extraDays.forEach(ed => {
+        if (!DAYS_DATA[ed.day]) {
+          DAYS_DATA[ed.day] = {
+            color: ed.color, date: ed.date,
+            departP: ed.departP, departA: ed.departA || '',
+            start: ed.start, stops: ed.stops
+          };
+        }
+      });
+    }
+    if (saved.dates) {
+      dayKeys().forEach(day => {
+        if (saved.dates[day]) DAYS_DATA[day].date = saved.dates[day];
+      });
+    }
+  }
+
+  Object.entries(state.actuals).forEach(([id, a]) => {
+    dayKeys().forEach(day => {
+      DAYS_DATA[day].stops.forEach(s => {
+        if (s.id !== id) return;
+        if (a.arrA !== undefined) s.arrA = a.arrA;
+        if (a.depA !== undefined) s.depA = a.depA;
+      });
+    });
+  });
+
+  dayKeys().forEach(day => {
+    if (saved['dep'+day]) DAYS_DATA[day].departA = saved['dep'+day];
+  });
+}
+
+// ── LOAD STATE ────────────────────────────────────────────────────────────────
+async function loadState() {
+  // 1. Сначала грузим из localStorage (мгновенно — UI не ждёт)
   try {
     const raw = localStorage.getItem('travel_tracker_v3');
-    if (!raw) return;
-    const saved = JSON.parse(raw);
+    if (raw) applyPayload(JSON.parse(raw));
+  } catch(e) { console.error('loadState localStorage error', e); }
 
-    state.actuals = saved.actuals || {};
+  // 2. Затем пробуем облако (перезаписывает локальный кэш)
+  if (!cloudEnabled()) {
+    setSyncStatus('☁ офлайн', 'var(--muted)');
+    return;
+  }
 
-    if (saved.daysData) {
-      Object.keys(DAYS_DATA).forEach(k => delete DAYS_DATA[k]);
-      Object.entries(saved.daysData).forEach(([dayStr, dayData]) => {
-        const day = Number(dayStr);
-        DAYS_DATA[day] = dayData;
-      });
-    } else {
-      // старый формат (обратная совместимость)
-      if (saved.stopsData) {
-        Object.entries(saved.stopsData).forEach(([dayStr, stops]) => {
-          const day = Number(dayStr);
-          if (DAYS_DATA[day]) {
-            DAYS_DATA[day].stops = stops.map(s => ({ ...s }));
-          }
-        });
-      }
-      if (saved.extraDays) {
-        saved.extraDays.forEach(ed => {
-          if (!DAYS_DATA[ed.day]) {
-            DAYS_DATA[ed.day] = {
-              color: ed.color,
-              date: ed.date,
-              departP: ed.departP,
-              departA: ed.departA || '',
-              start: ed.start,
-              stops: ed.stops
-            };
-          }
-        });
-      }
-      if (saved.dates) {
-        dayKeys().forEach(day => {
-          if (saved.dates[day]) DAYS_DATA[day].date = saved.dates[day];
-        });
-      }
-    }
-
-    Object.entries(state.actuals).forEach(([id, a]) => {
-      dayKeys().forEach(day => {
-        DAYS_DATA[day].stops.forEach(s => {
-          if (s.id !== id) return;
-          if (a.arrA !== undefined) s.arrA = a.arrA;
-          if (a.depA !== undefined) s.depA = a.depA;
-        });
-      });
-    });
-
-    dayKeys().forEach(day => {
-      if (saved['dep'+day]) {
-        DAYS_DATA[day].departA = saved['dep'+day];
-      }
-    });
+  setSyncStatus('☁ загрузка…', 'var(--amber)');
+  try {
+    const saved = await fetchCloudData();
+    applyPayload(saved);
+    // Обновляем UI после загрузки облачных данных
+    dayKeys().forEach(d => redrawDay(d));
+    renderTabs();
+    renderAllDays();
+    updateProgress();
+    setSyncStatus('☁ загружено', 'var(--green)');
+    setTimeout(() => setSyncStatus('☁ ок', 'var(--muted)'), 2000);
   } catch(e) {
-    console.error('loadState error', e);
+    console.error('loadState cloud error', e);
+    setSyncStatus('☁ ошибка загрузки', '#f87171');
   }
 }
 
+// ── SAVE DATA ─────────────────────────────────────────────────────────────────
 function saveData() {
   try {
     dayKeys().forEach(day => DAYS_DATA[day].stops.forEach(s => {
@@ -750,12 +831,15 @@ function saveData() {
       daysData[day] = JSON.parse(JSON.stringify(DAYS_DATA[day]));
     });
 
-    localStorage.setItem('travel_tracker_v3', JSON.stringify({
-      actuals: state.actuals,
-      daysData,
-      ...deps
-    }));
-  } catch(e) {}
+    const payload = { actuals: state.actuals, daysData, ...deps };
+
+    // Всегда сохраняем в localStorage как кэш
+    localStorage.setItem('travel_tracker_v3', JSON.stringify(payload));
+
+    // Дополнительно — в облако (с дебаунсом)
+    if (cloudEnabled()) scheduleCloudSave(payload);
+
+  } catch(e) { console.error('saveData error', e); }
   showToast();
   updateProgress();
 }
@@ -1718,12 +1802,13 @@ function undoAction() {
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
 initMap();
-loadState();
 dayKeys().forEach(d => redrawDay(d));
 layers[currentDay].addTo(map);
 renderTabs();
 renderAllDays();
 updateProgress();
+// loadState — async: сначала localStorage (мгновенно), потом облако
+loadState();
 setTimeout(() => {
   const d = DAYS_DATA[1];
   if (d) {
