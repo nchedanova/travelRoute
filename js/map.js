@@ -3,6 +3,28 @@ let map;
 const layers        = {};
 const segmentLayers = {};
 
+// ── OSRM ROUTING ──────────────────────────────────────────────────────────────
+// Кэш маршрутов: ключ = "lat1,lng1|lat2,lng2" → массив [lat,lng]
+const _routeCache = {};
+
+async function fetchRoadSegment(from, to) {
+  const key = `${from.lat},${from.lng}|${to.lat},${to.lng}`;
+  if (_routeCache[key]) return _routeCache[key];
+
+  const url = `https://router.project-osrm.org/route/v1/driving/` +
+    `${from.lng},${from.lat};${to.lng},${to.lat}` +
+    `?overview=full&geometries=geojson`;
+
+  const r = await fetch(url);
+  if (!r.ok) return null;
+  const data = await r.json();
+  if (data.code !== 'Ok' || !data.routes?.length) return null;
+
+  const coords = data.routes[0].geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+  _routeCache[key] = coords;
+  return coords;
+}
+
 function initMap() {
   map = L.map('map', { center:[51.5, 39.5], zoom:5, zoomControl:true, attributionControl:false });
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19 }).addTo(map);
@@ -62,20 +84,28 @@ function drawDay(d) {
   </div>`);
   group.addLayer(startM);
 
-  // Сегменты маршрута
+  // Сегменты маршрута по дорогам (OSRM)
   const allPoints = [
     { lat: data.start.lat, lng: data.start.lng, done: true },
     ...data.stops.map(s => ({ lat: s.lat, lng: s.lng, id: s.id, done: false }))
   ];
+  if (!segmentLayers[d]) segmentLayers[d] = [];
+
   for (let i = 0; i < allPoints.length - 1; i++) {
     const from = allPoints[i], to = allPoints[i + 1];
+    // Сразу добавляем прямую линию как placeholder
     const seg = L.polyline(
       [[from.lat, from.lng], [to.lat, to.lng]],
       { color, weight:3, opacity:0.2, lineCap:'round', lineJoin:'round', dashArray:'6 6' }
     );
     group.addLayer(seg);
-    if (!segmentLayers[d]) segmentLayers[d] = [];
     segmentLayers[d].push({ seg, fromId: from.id || null, toId: to.id });
+
+    // Асинхронно заменяем на маршрут по дорогам
+    fetchRoadSegment(from, to).then(coords => {
+      if (!coords) return;
+      seg.setLatLngs(coords);
+    }).catch(() => { /* оставляем прямую линию */ });
   }
 
   // Маркеры остановок
