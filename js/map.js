@@ -10,7 +10,7 @@ const _routeCache = {};
 // Очередь запросов: предотвращает rate-limit на публичном OSRM (1 req/s)
 const _fetchQueue  = [];
 let   _queueBusy   = false;
-const OSRM_DELAY_MS = 1000; // задержка между запросами
+const OSRM_DELAY_MS = 650; // задержка между запросами
 
 async function _drainQueue() {
   if (_queueBusy) return;
