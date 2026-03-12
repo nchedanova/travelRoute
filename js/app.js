@@ -32,7 +32,8 @@ function highlightStop(id, d) {
 function toggleSidebar() {
   const sb = document.getElementById('sidebar');
   sb.classList.toggle('open');
-  document.getElementById('toggleBtn').textContent = sb.classList.contains('open') ? '✕' : '☰';
+  const btn = document.getElementById('toggleBtn');
+  if (btn) btn.textContent = sb.classList.contains('open') ? '✕' : '☰';
   setTimeout(() => map && map.invalidateSize(), 340);
 }
 
