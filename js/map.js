@@ -7,7 +7,26 @@ const segmentLayers = {};
 // Кэш маршрутов: ключ = "lat1,lng1|lat2,lng2" → массив [lat,lng]
 const _routeCache = {};
 
-async function fetchRoadSegment(from, to) {
+// Очередь запросов: предотвращает rate-limit на публичном OSRM (1 req/s)
+const _fetchQueue  = [];
+let   _queueBusy   = false;
+const OSRM_DELAY_MS = 350; // задержка между запросами
+
+async function _drainQueue() {
+  if (_queueBusy) return;
+  _queueBusy = true;
+  while (_fetchQueue.length > 0) {
+    const { from, to, resolve, reject } = _fetchQueue.shift();
+    try { resolve(await _osrmFetch(from, to)); }
+    catch (e) { reject(e); }
+    if (_fetchQueue.length > 0) {
+      await new Promise(r => setTimeout(r, OSRM_DELAY_MS));
+    }
+  }
+  _queueBusy = false;
+}
+
+async function _osrmFetch(from, to) {
   const key = `${from.lat},${from.lng}|${to.lat},${to.lng}`;
   if (_routeCache[key]) return _routeCache[key];
 
@@ -15,14 +34,37 @@ async function fetchRoadSegment(from, to) {
     `${from.lng},${from.lat};${to.lng},${to.lat}` +
     `?overview=full&geometries=geojson`;
 
-  const r = await fetch(url);
-  if (!r.ok) return null;
-  const data = await r.json();
-  if (data.code !== 'Ok' || !data.routes?.length) return null;
+  // До 3 попыток при ошибке / rate-limit
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const r = await fetch(url);
+      if (r.status === 429) {
+        await new Promise(res => setTimeout(res, 1000 * (attempt + 1)));
+        continue;
+      }
+      if (!r.ok) return null;
+      const data = await r.json();
+      if (data.code !== 'Ok' || !data.routes?.length) return null;
+      const coords = data.routes[0].geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+      _routeCache[key] = coords;
+      return coords;
+    } catch (_) {
+      if (attempt === 2) return null;
+      await new Promise(res => setTimeout(res, 600));
+    }
+  }
+  return null;
+}
 
-  const coords = data.routes[0].geometry.coordinates.map(([lng, lat]) => [lat, lng]);
-  _routeCache[key] = coords;
-  return coords;
+function fetchRoadSegment(from, to) {
+  const key = `${from.lat},${from.lng}|${to.lat},${to.lng}`;
+  // Мгновенный ответ из кэша — без добавления в очередь
+  if (_routeCache[key]) return Promise.resolve(_routeCache[key]);
+
+  return new Promise((resolve, reject) => {
+    _fetchQueue.push({ from, to, resolve, reject });
+    _drainQueue();
+  });
 }
 
 function initMap() {
@@ -101,9 +143,11 @@ function drawDay(d) {
     group.addLayer(seg);
     segmentLayers[d].push({ seg, fromId: from.id || null, toId: to.id });
 
-    // Асинхронно заменяем на маршрут по дорогам
+    // Асинхронно заменяем на маршрут по дорогам.
+    // Проверяем group.hasLayer(seg): если до ответа вызвали redrawDay()
+    // и clearLayers(), seg уже отвязан от карты — обновлять его бессмысленно.
     fetchRoadSegment(from, to).then(coords => {
-      if (!coords) return;
+      if (!coords || !group.hasLayer(seg)) return;
       seg.setLatLngs(coords);
     }).catch(() => { /* оставляем прямую линию */ });
   }
