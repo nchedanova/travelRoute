@@ -5,435 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Дорожный журнал</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --bg: #0e0f13;
-    --surface: #161820;
-    --surface2: #1e2029;
-    --border: #2a2d3a;
-    --amber: #f5a623;
-    --amber-dim: #b87716;
-    --green: #4ade80;
-    --text: #e8e4d8;
-    --muted: #6b7280;
-    --d2: #60a5fa;
-  }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  html, body { height:100%; overflow:hidden; }
-  body {
-    font-family:'JetBrains Mono',monospace;
-    background:var(--bg); color:var(--text);
-    display:flex; flex-direction:column;
-  }
-
-  /* ── HEADER ──────────────────────────────────────────── */
-  header {
-    background:var(--surface);
-    border-bottom:1px solid var(--border);
-    padding:8px 16px;
-    display:flex; align-items:center; gap:10px;
-    flex-shrink:0; z-index:200; overflow:visible;
-  }
-  .logo { font-family:'Unbounded',sans-serif; font-size:14px; letter-spacing:0.02em; color:var(--amber); white-space:nowrap; flex-shrink:0; }
-  .logo span { color:var(--muted); font-size:11px; font-family:'JetBrains Mono'; margin-left:6px; }
-  .header-right { display:flex; align-items:center; gap:8px; margin-left:auto; min-width:0; }
-  .day-tabs { display:flex; gap:6px; }
-  .day-tab {
-    padding:5px 12px; border-radius:4px;
-    border:1px solid var(--border); background:transparent;
-    color:var(--muted); font-family:'JetBrains Mono',monospace;
-    font-size:11px; cursor:pointer; transition:all 0.2s; white-space:nowrap; flex-shrink:0;
-  }
-  .day-tab.active { background:var(--amber); color:#000; border-color:var(--amber); font-weight:500; }
-  .day-tab:hover:not(.active) { border-color:var(--amber-dim); color:var(--text); }
-  /* Mobile hamburger — hidden on desktop */
-  .sidebar-toggle {
-    display:none;
-    background:var(--surface2); border:1px solid var(--border);
-    border-radius:4px; color:var(--text);
-    font-size:18px; padding:5px 11px; cursor:pointer; line-height:1; flex-shrink:0;
-  }
-
-  /* ── LAYOUT ──────────────────────────────────────────── */
-  .main { display:flex; flex:1; overflow:hidden; position:relative; }
-
-  /* ── SIDEBAR ─────────────────────────────────────────── */
-  .sidebar {
-    width:370px; background:var(--surface);
-    border-right:1px solid var(--border);
-    overflow-y:auto; flex-shrink:0;
-    scrollbar-width:thin; scrollbar-color:var(--border) transparent;
-    z-index:100;
-    transition:transform 0.28s ease;
-  }
-  .day-section { display:none; }
-  .day-section.visible { display:block; }
-
-  .day-header {
-    padding:14px 18px 10px; border-bottom:1px solid var(--border);
-    position:sticky; top:0; background:var(--surface); z-index:10;
-  }
-  .day-label {
-    font-family:'Unbounded',sans-serif;
-    font-size:11px;
-    letter-spacing:0.02em;
-    margin-bottom:3px;
-    /* цвет будет установлен инлайн-стилем */
-  }
-  .day-route { font-size:10px; color:var(--muted); letter-spacing:0.04em; }
-
-  .depart-row {
-    display:flex; align-items:center; gap:10px;
-    padding:9px 18px; background:var(--surface2);
-    border-bottom:1px solid var(--border);
-  }
-  .depart-icon { font-size:15px; }
-  .depart-label { font-size:10px; color:var(--muted); flex:1; letter-spacing:0.08em; }
-  .depart-times { display:flex; gap:10px; align-items:center; }
-  .time-pair { display:flex; flex-direction:column; gap:2px; align-items:flex-end; }
-  .time-label { font-size:8px; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase; }
-  .time-val { font-size:13px; font-weight:500; color:var(--muted); }
-  .time-sep { color:var(--border); font-size:9px; padding-top:8px; }
-
-  .day-progress { padding:9px 18px; border-bottom:1px solid var(--border); }
-  .progress-label { display:flex; justify-content:space-between; font-size:9px; color:var(--muted); margin-bottom:5px; }
-  .progress-bar { height:2px; background:var(--border); border-radius:2px; overflow:hidden; }
-  .progress-fill {
-    height:100%; width:0%;
-    background:linear-gradient(90deg,var(--amber),var(--amber-dim));
-    border-radius:2px; transition:width 0.5s;
-  }
-  .day-section[data-day="2"] .progress-fill { background:linear-gradient(90deg,var(--d2),#3b82f6); }
-
-  .stats-row { display:flex; border-bottom:1px solid var(--border); }
-  .stat-box { flex:1; text-align:center; padding:8px 0; border-right:1px solid var(--border); }
-  .stat-box:last-child { border-right:none; }
-  .stat-val { font-size:13px; font-weight:500; color:var(--text); }
-  .stat-key { font-size:8px; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase; margin-top:1px; }
-
-  /* ── STOP CARDS ──────────────────────────────────────── */
-  .stop-card {
-    border-bottom:1px solid var(--border);
-    border-left:3px solid transparent;
-    transition:background 0.15s; cursor:pointer;
-    position:relative;
-  }
-  .stop-card:hover { background:var(--surface2); }
-  .stop-card.selected { background:var(--surface2); border-left-color:var(--amber); }
-  .day-section[data-day="2"] .stop-card.selected { border-left-color:var(--d2); }
-
-  .stop-main {
-    padding:10px 42px 6px 18px; /* увеличен правый отступ, чтобы не перекрывать крестик */
-    display:flex; align-items:flex-start; gap:10px;
-  }
-  .stop-num {
-    width:22px; height:22px; border-radius:50%;
-    background:var(--border); display:flex; align-items:center;
-    justify-content:center; font-size:10px; color:var(--muted);
-    flex-shrink:0; margin-top:1px;
-  }
-  .stop-card.selected .stop-num { background:var(--amber); color:#000; }
-  .day-section[data-day="2"] .stop-card.selected .stop-num { background:var(--d2); }
-  .stop-info { flex:1; min-width:0; }
-  .stop-name { font-size:12px; color:var(--text); margin-bottom:2px; display:flex; align-items:center; gap:5px; }
-  .stop-icon { font-size:13px; flex-shrink:0; }
-  .stop-name-text { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .stop-type {
-    font-size:8px; letter-spacing:0.1em; text-transform:uppercase;
-    color:var(--muted); padding:1px 5px;
-    border:1px solid var(--border); border-radius:3px; flex-shrink:0;
-  }
-
-  .time-grid { padding:0 18px 10px 50px; display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-  .time-block { display:flex; flex-direction:column; gap:4px; }
-  .time-block-label { font-size:8px; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); }
-  .time-inputs { display:flex; align-items:center; gap:5px; }
-  .time-input-wrap { display:flex; flex-direction:column; gap:1px; }
-  .time-mini-label { font-size:7px; color:var(--muted); opacity:0.6; }
-  .planned-time { font-size:12px; color:var(--muted); }
-
-  /* Free-text input with HH:MM mask */
-  input.time-in {
-    background:var(--bg); border:1px solid var(--border);
-    border-radius:3px; color:var(--green);
-    font-family:'JetBrains Mono',monospace;
-    font-size:12px; padding:3px 5px; width:54px;
-    outline:none; transition:border-color 0.2s, color 0.2s; letter-spacing:0.05em;
-  }
-  input.time-in:focus { border-color:var(--green); }
-  input.time-in.empty { color:var(--muted); border-style:dashed; }
-  input.time-in::placeholder { color:var(--muted); opacity:0.5; }
-  input.time-in.ontime { color:var(--green);  border-color:rgba(74,222,128,0.4); }
-  input.time-in.late   { color:var(--red);    border-color:rgba(248,113,113,0.4); }
-
-  /* Delta badge shown between planned and actual */
-  .delta-wrap { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; }
-  .delta-arrow { color:var(--border); font-size:9px; }
-  .delta-badge {
-    font-size:9px; font-weight:500; padding:1px 4px;
-    border-radius:3px; white-space:nowrap; line-height:1.4;
-  }
-  .delta-badge.ontime { background:rgba(74,222,128,0.12);  color:var(--green); }
-  .delta-badge.late   { background:rgba(248,113,113,0.12); color:var(--red); }
-  .delta-badge.hidden { visibility:hidden; }
-
-
-  /* ── UNDO BUTTON ────────────────────────────────────────── */
-  .undo-btn {
-    background:transparent; border:1px solid var(--border);
-    border-radius:4px; color:var(--muted);
-    font-family:'JetBrains Mono',monospace; font-size:11px;
-    padding:5px 10px; cursor:pointer; transition:all 0.2s;
-    white-space:nowrap; flex-shrink:0;
-  }
-  .undo-btn:hover:not(:disabled) { border-color:var(--amber); color:var(--amber); }
-  .undo-btn:disabled { opacity:0.3; cursor:default; }
-
-  /* ── RESET BUTTON ───────────────────────────────────────── */
-  .reset-btn {
-    background:transparent; border:1px solid var(--border);
-    border-radius:3px; color:var(--muted);
-    font-family:'JetBrains Mono',monospace; font-size:9px;
-    letter-spacing:0.08em; text-transform:uppercase;
-    padding:3px 8px; cursor:pointer; transition:all 0.2s;
-    margin-left:auto; flex-shrink:0;
-  }
-  .reset-btn:hover { border-color:#f87171; color:#f87171; }
-
-  /* Confirm modal */
-  .modal-overlay {
-    display:none; position:fixed; inset:0;
-    background:rgba(0,0,0,0.6); z-index:9000;
-    align-items:center; justify-content:center;
-  }
-  .modal-overlay.show { display:flex; }
-  .modal {
-    background:var(--surface2); border:1px solid var(--border);
-    border-radius:8px; padding:24px 28px; max-width:300px; width:90%;
-    box-shadow:0 8px 32px rgba(0,0,0,0.6);
-    animation:modal-in 0.18s ease;
-  }
-  @keyframes modal-in { from { opacity:0; transform:scale(0.95); } to { opacity:1; transform:scale(1); } }
-  .modal-title {
-    font-family:'Unbounded',sans-serif; font-size:12px; letter-spacing:0.02em;
-    color:var(--text); margin-bottom:8px;
-  }
-  .modal-body { font-size:11px; color:var(--muted); margin-bottom:20px; line-height:1.6; }
-  .modal-actions { display:flex; gap:8px; justify-content:flex-end; }
-  .modal-cancel {
-    padding:6px 16px; border-radius:4px;
-    border:1px solid var(--border); background:transparent;
-    color:var(--muted); font-family:'JetBrains Mono',monospace;
-    font-size:11px; cursor:pointer; transition:all 0.15s;
-  }
-  .modal-cancel:hover { border-color:var(--text); color:var(--text); }
-  .modal-confirm {
-    padding:6px 16px; border-radius:4px;
-    border:1px solid #f87171; background:rgba(248,113,113,0.1);
-    color:#f87171; font-family:'JetBrains Mono',monospace;
-    font-size:11px; cursor:pointer; transition:all 0.15s;
-  }
-  .modal-confirm:hover { background:rgba(248,113,113,0.2); }
-
-
-  /* ── DRAG & DROP ─────────────────────────────────────────── */
-  .stop-card { position:relative; }
-  .drag-handle {
-    position:absolute; left:0; top:0; bottom:0; width:14px;
-    display:flex; align-items:center; justify-content:center;
-    cursor:grab; color:var(--border); font-size:11px;
-    opacity:0; transition:opacity 0.15s;
-    user-select:none;
-  }
-  .stop-card:hover .drag-handle { opacity:1; }
-  .stop-card.dragging { opacity:0.4; background:var(--surface2); }
-  .stop-card.drag-over { border-top:2px solid var(--amber); }
-  .day-section[data-day="2"] .stop-card.drag-over { border-top-color:var(--d2); }
-
-  /* ── DELETE BUTTON ── ВСЕГДА ВИДИМАЯ И КРАСНАЯ ───────────────────────── */
-  .delete-stop-btn {
-    position:absolute; top:8px; right:8px;
-    background:transparent; border:none;
-    color:#f87171; font-size:16px; cursor:pointer;
-    line-height:1; padding:4px 6px; border-radius:3px;
-    opacity:1; transition:color 0.15s;
-    z-index:5;
-  }
-  .delete-stop-btn:hover { color:#ff4d4d; } /* чуть ярче при наведении */
-
-  /* ── ADD STOP BUTTON ─────────────────────────────────────── */
-  .add-stop-btn {
-    width:100%; padding:10px; border:none;
-    background:transparent; border-top:1px dashed var(--border);
-    color:var(--muted); font-family:'JetBrains Mono',monospace;
-    font-size:11px; letter-spacing:0.06em; cursor:pointer;
-    transition:all 0.2s; text-align:center;
-  }
-  .add-stop-btn:hover { background:var(--surface2); color:var(--text); }
-
-  /* ── ADD STOP MODAL ──────────────────────────────────────── */
-  .modal-lg { max-width:420px; }
-  .modal-field { margin-bottom:14px; }
-  .modal-label { font-size:9px; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:5px; }
-  .modal-input {
-    width:100%; background:var(--bg); border:1px solid var(--border);
-    border-radius:4px; color:var(--text); font-family:'JetBrains Mono',monospace;
-    font-size:12px; padding:6px 9px; outline:none; transition:border-color 0.2s;
-  }
-  .modal-input:focus { border-color:var(--amber); }
-  .modal-select {
-    width:100%; background:var(--bg); border:1px solid var(--border);
-    border-radius:4px; color:var(--text); font-family:'JetBrains Mono',monospace;
-    font-size:12px; padding:6px 9px; outline:none; cursor:pointer;
-  }
-  .modal-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-  .search-wrap { position:relative; }
-  .search-results {
-    position:absolute; top:100%; left:0; right:0; z-index:100;
-    background:var(--surface2); border:1px solid var(--border);
-    border-radius:0 0 4px 4px; max-height:160px; overflow-y:auto;
-    display:none;
-  }
-  .search-results.show { display:block; }
-  .search-result-item {
-    padding:7px 10px; font-size:11px; cursor:pointer;
-    border-bottom:1px solid var(--border); color:var(--text);
-    transition:background 0.1s;
-  }
-  .search-result-item:last-child { border-bottom:none; }
-  .search-result-item:hover { background:var(--border); }
-  .search-result-item .result-sub { font-size:9px; color:var(--muted); margin-top:2px; }
-  .search-spinner { font-size:10px; color:var(--muted); padding:8px 10px; }
-  /* ── EDITABLE DATE ──────────────────────────────────── */
-  .day-date-wrap { display:inline-flex; align-items:center; gap:4px; cursor:pointer; }
-  .day-date-wrap:hover .day-date-edit-icon { opacity:1; }
-  .day-date-edit-icon { opacity:0; font-size:9px; color:var(--muted); transition:opacity 0.15s; }
-  input.day-date-input {
-    background:transparent; border:none; border-bottom:1px solid var(--amber);
-    color:var(--amber); font-family:'Unbounded',sans-serif; font-size:11px;
-    letter-spacing:0.02em; outline:none; width:120px; padding:1px 2px;
-  }
-
-  /* ── ADD DAY / DELETE DAY ────────────────────────────────── */
-  .day-tab-add {
-    padding:5px 10px; border-radius:4px;
-    border:1px dashed var(--border); background:transparent;
-    color:var(--muted); font-family:'JetBrains Mono',monospace;
-    font-size:11px; cursor:pointer; transition:all 0.2s; white-space:nowrap; flex-shrink:0;
-  }
-  .day-tab-add:hover { border-color:var(--amber); color:var(--amber); }
-  .delete-day-btn {
-    background:transparent; border:1px solid var(--border);
-    border-radius:3px; color:var(--muted);
-    font-family:'JetBrains Mono',monospace; font-size:9px;
-    padding:3px 7px; cursor:pointer; transition:all 0.2s; flex-shrink:0;
-  }
-  .delete-day-btn:hover { border-color:#f87171; color:#f87171; }
-
-  /* ── MAP ─────────────────────────────────────────────── */
-  #map { flex:1; z-index:1; min-width:0; }
-  .leaflet-container { background:#111318 !important; }
-
-  /* Dark tile: invert tiles + hue-rotate so OSM labels stay readable */
-  .leaflet-tile-pane { filter:invert(100%) hue-rotate(180deg); }
-
-  /* Popup */
-  .leaflet-popup-content-wrapper {
-    background:var(--surface2) !important; border:1px solid var(--border) !important;
-    border-radius:6px !important; box-shadow:0 4px 20px rgba(0,0,0,.6) !important;
-    color:var(--text) !important; font-family:'JetBrains Mono',monospace !important; font-size:12px !important;
-  }
-  .leaflet-popup-tip { background:var(--surface2) !important; }
-  .leaflet-popup-close-button { color:var(--muted) !important; font-size:16px !important; }
-  .popup-inner { min-width:170px; }
-  .popup-name { font-size:13px; margin-bottom:7px; display:flex; align-items:center; gap:5px; }
-  .popup-row { display:flex; justify-content:space-between; gap:14px; font-size:11px; color:var(--muted); margin-bottom:3px; }
-  .popup-row span:last-child { color:var(--text); }
-
-  /* Toast */
-  .toast {
-    position:fixed; bottom:20px; right:20px;
-    background:var(--surface2); border:1px solid var(--green);
-    color:var(--green); font-family:'JetBrains Mono',monospace;
-    font-size:12px; padding:7px 14px; border-radius:4px;
-    z-index:9999; opacity:0; transform:translateY(8px);
-    transition:all 0.25s; pointer-events:none;
-  }
-  .toast.show { opacity:1; transform:translateY(0); }
-
-  /* ── MOBILE ──────────────────────────────────────────── */
-  @media (max-width:700px) {
-    header {
-      flex-wrap:wrap;
-      padding:8px 14px 6px;
-      gap:6px;
-    }
-    .logo { font-size:16px; flex:1; }
-    .logo span { display:none; }
-    .sidebar-toggle { display:block; order:2; }
-    .header-right {
-      width:100%;
-      order:3;
-      margin-left:0;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-    }
-    .day-tabs {
-      display: flex;
-      flex-wrap: nowrap;
-      gap: 5px;
-      min-width: min-content;
-    }
-    .day-tab {
-      flex: 0 0 auto;
-      padding: 5px 10px;
-      font-size: 11px;
-      white-space: nowrap;
-    }
-    .day-tab-add {
-      flex: 0 0 auto;
-      white-space: nowrap;
-    }
-    .undo-btn {
-      flex-shrink: 0;
-    }
-
-    .main { flex-direction:column; }
-
-    .sidebar {
-      width:100%;
-      border-right:none;
-      border-bottom:1px solid var(--border);
-      flex-shrink:0;
-      max-height:0;
-      overflow:hidden;
-      transition:max-height 0.32s ease;
-    }
-    .sidebar.open {
-      max-height:55vh;
-      overflow-y:auto;
-    }
-
-    #map { flex:1; min-height:0; }
-    .time-grid { padding-left:40px; }
-
-    /* Кнопка удаления на мобилках крупнее */
-    .delete-stop-btn {
-      font-size: 22px;
-      padding: 8px 10px;
-      top: 4px;
-      right: 4px;
-    }
-
-    /* Кнопка сброса всегда красная (уже добавлено ранее) */
-    .reset-btn {
-      border-color: #f87171;
-      color: #f87171;
-    }
-  }
-</style>
+<link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
@@ -443,6 +16,7 @@
     <div class="day-tabs" id="dayTabs"></div>
     <button class="undo-btn" id="undoBtn" onclick="undoAction()" disabled title="Отменить последнее действие">↩ отмена</button>
     <span id="syncStatus" title="Статус облачного сохранения" style="font-size:10px;color:var(--muted);white-space:nowrap;flex-shrink:0;cursor:default;">☁ —</span>
+    <button onclick="openCloudSettings()" title="Настройки облака" class="settings-btn">⚙</button>
     <button class="sidebar-toggle" id="toggleBtn" onclick="toggleSidebar()">☰</button>
   </div>
 </header>
@@ -450,1434 +24,197 @@
 <div class="main">
   <div class="sidebar" id="sidebar">
     <div id="daySections"></div>
-  </div><!-- /sidebar -->
-
-<!-- Add Stop Modal -->
-<div class="modal-overlay" id="addStopModal" onclick="if(event.target===this)closeAddStop()">
-  <div class="modal modal-lg">
-    <div class="modal-title">Новая точка</div>
-
-    <div class="modal-field">
-      <div class="modal-label">Поиск места</div>
-      <div class="search-wrap">
-        <input class="modal-input" id="nominatim-input" type="text" placeholder="Название, адрес…"
-          oninput="nominatimSearch(this.value)" autocomplete="off">
-        <div class="search-results" id="nominatim-results"></div>
-      </div>
-    </div>
-
-    <div class="modal-field">
-      <div class="modal-label">Название точки</div>
-      <input class="modal-input" id="new-stop-name" type="text" placeholder="Газпромнефть у Ефремова">
-    </div>
-
-    <div class="modal-row">
-      <div class="modal-field">
-        <div class="modal-label">Иконка</div>
-        <input class="modal-input" id="new-stop-icon" type="text" placeholder="⛽" style="font-size:18px;text-align:center;">
-      </div>
-      <div class="modal-field">
-        <div class="modal-label">Тип</div>
-        <select class="modal-select" id="new-stop-type" onchange="prefillStopIcon(this.value)">
-          <option value="Заправка">⛽ Заправка</option>
-          <option value="Кафе">🍜 Кафе</option>
-          <option value="Отель">🛎 Отель</option>
-          <option value="Жильё">🏠 Жильё</option>
-          <option value="Другое">📍 Другое</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="modal-row">
-      <div class="modal-field">
-        <div class="modal-label">Приб. план</div>
-        <input class="modal-input" id="new-stop-arrP" type="text" placeholder="--:--" maxlength="5"
-          oninput="applyMask(this)" onblur="padTime(this)">
-      </div>
-      <div class="modal-field">
-        <div class="modal-label">Отпр. план (опционально)</div>
-        <input class="modal-input" id="new-stop-depP" type="text" placeholder="--:--" maxlength="5"
-          oninput="applyMask(this)" onblur="padTime(this)">
-      </div>
-    </div>
-
-    <div id="new-stop-coords-display" style="font-size:10px;color:var(--green);margin-bottom:6px;display:none;">
-      📍 <span id="new-stop-coords-text"></span>
-    </div>
-    <div class="modal-row" style="margin-bottom:14px;">
-      <div class="modal-field" style="margin-bottom:0">
-        <div class="modal-label">Широта (lat)</div>
-        <input class="modal-input" id="new-stop-lat" type="number" step="any" placeholder="55.7965">
-      </div>
-      <div class="modal-field" style="margin-bottom:0">
-        <div class="modal-label">Долгота (lng)</div>
-        <input class="modal-input" id="new-stop-lng" type="number" step="any" placeholder="37.9475">
-      </div>
-    </div>
-
-    <div class="modal-actions">
-      <button class="modal-cancel" onclick="closeAddStop()">Отмена</button>
-      <button class="modal-confirm" style="border-color:var(--green);color:var(--green);background:rgba(74,222,128,0.1);"
-        onclick="doAddStop()">Добавить</button>
-    </div>
   </div>
-</div>
 
-<!-- Confirm delete day modal -->
-<div class="modal-overlay" id="deleteDayModal" onclick="if(event.target===this)closeDeleteDayModal()">
-  <div class="modal">
-    <div class="modal-title">Удалить день?</div>
-    <div class="modal-body" id="deleteDayModalBody">День и все его точки будут удалены.</div>
-    <div class="modal-actions">
-      <button class="modal-cancel" onclick="closeDeleteDayModal()">Отмена</button>
-      <button class="modal-confirm" onclick="doDeleteDay()">Удалить</button>
-    </div>
-  </div>
-</div>
-
-<!-- Edit start point modal (добавлено поле для планового времени) -->
-<div class="modal-overlay" id="editStartModal" onclick="if(event.target===this)closeEditStart()">
-  <div class="modal modal-lg">
-    <div class="modal-title">Точка старта</div>
-    <div class="modal-field">
-      <div class="modal-label">Поиск места</div>
-      <div class="search-wrap">
-        <input class="modal-input" id="edit-start-search" type="text" placeholder="Название, адрес…"
-          oninput="startNominatimSearch(this.value)" autocomplete="off">
-        <div class="search-results" id="edit-start-results"></div>
-      </div>
-    </div>
-    <div class="modal-field">
-      <div class="modal-label">Название</div>
-      <input class="modal-input" id="edit-start-name" type="text" placeholder="Балашиха">
-    </div>
-    <div class="modal-row">
+  <!-- Add Stop Modal -->
+  <div class="modal-overlay" id="addStopModal" onclick="if(event.target===this)closeAddStop()">
+    <div class="modal modal-lg">
+      <div class="modal-title">Новая точка</div>
       <div class="modal-field">
-        <div class="modal-label">Иконка</div>
-        <input class="modal-input" id="edit-start-icon" type="text" placeholder="🏠" style="font-size:18px;text-align:center;">
-      </div>
-      <div class="modal-field" style="display:flex;flex-direction:column;justify-content:flex-end;">
-        <div id="edit-start-coords-display" style="font-size:10px;color:var(--green);display:none;">
-          📍 <span id="edit-start-coords-text"></span>
+        <div class="modal-label">Поиск места</div>
+        <div class="search-wrap">
+          <input class="modal-input" id="nominatim-input" type="text" placeholder="Название, адрес…"
+            oninput="nominatimSearch(this.value)" autocomplete="off">
+          <div class="search-results" id="nominatim-results"></div>
         </div>
       </div>
-    </div>
-    <!-- поле для планового времени отправления -->
-    <div class="modal-field">
-      <div class="modal-label">Отпр. план</div>
-      <input class="modal-input" id="edit-start-departP" type="text" placeholder="--:--" maxlength="5"
-        oninput="applyMask(this)" onblur="padTime(this)">
-    </div>
-    <div class="modal-row">
       <div class="modal-field">
-        <div class="modal-label">Широта (lat)</div>
-        <input class="modal-input" id="edit-start-lat" type="number" step="any" placeholder="55.7965">
+        <div class="modal-label">Название точки</div>
+        <input class="modal-input" id="new-stop-name" type="text" placeholder="Газпромнефть у Ефремова">
+      </div>
+      <div class="modal-row">
+        <div class="modal-field">
+          <div class="modal-label">Иконка</div>
+          <input class="modal-input" id="new-stop-icon" type="text" placeholder="⛽" style="font-size:18px;text-align:center;">
+        </div>
+        <div class="modal-field">
+          <div class="modal-label">Тип</div>
+          <select class="modal-select" id="new-stop-type" onchange="prefillStopIcon(this.value)">
+            <option value="Заправка">⛽ Заправка</option>
+            <option value="Кафе">🍜 Кафе</option>
+            <option value="Отель">🛎 Отель</option>
+            <option value="Жильё">🏠 Жильё</option>
+            <option value="Другое">📍 Другое</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-row">
+        <div class="modal-field">
+          <div class="modal-label">Приб. план</div>
+          <input class="modal-input" id="new-stop-arrP" type="text" placeholder="--:--" maxlength="5"
+            oninput="applyMask(this)" onblur="padTime(this)">
+        </div>
+        <div class="modal-field">
+          <div class="modal-label">Отпр. план (опционально)</div>
+          <input class="modal-input" id="new-stop-depP" type="text" placeholder="--:--" maxlength="5"
+            oninput="applyMask(this)" onblur="padTime(this)">
+        </div>
+      </div>
+      <div id="new-stop-coords-display" style="font-size:10px;color:var(--green);margin-bottom:6px;display:none;">
+        📍 <span id="new-stop-coords-text"></span>
+      </div>
+      <div class="modal-row" style="margin-bottom:14px;">
+        <div class="modal-field" style="margin-bottom:0">
+          <div class="modal-label">Широта (lat)</div>
+          <input class="modal-input" id="new-stop-lat" type="number" step="any" placeholder="55.7965">
+        </div>
+        <div class="modal-field" style="margin-bottom:0">
+          <div class="modal-label">Долгота (lng)</div>
+          <input class="modal-input" id="new-stop-lng" type="number" step="any" placeholder="37.9475">
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="modal-cancel" onclick="closeAddStop()">Отмена</button>
+        <button class="modal-confirm" style="border-color:var(--green);color:var(--green);background:rgba(74,222,128,0.1);"
+          onclick="doAddStop()">Добавить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirm delete day modal -->
+  <div class="modal-overlay" id="deleteDayModal" onclick="if(event.target===this)closeDeleteDayModal()">
+    <div class="modal">
+      <div class="modal-title">Удалить день?</div>
+      <div class="modal-body" id="deleteDayModalBody">День и все его точки будут удалены.</div>
+      <div class="modal-actions">
+        <button class="modal-cancel" onclick="closeDeleteDayModal()">Отмена</button>
+        <button class="modal-confirm" onclick="doDeleteDay()">Удалить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit start point modal -->
+  <div class="modal-overlay" id="editStartModal" onclick="if(event.target===this)closeEditStart()">
+    <div class="modal modal-lg">
+      <div class="modal-title">Точка старта</div>
+      <div class="modal-field">
+        <div class="modal-label">Поиск места</div>
+        <div class="search-wrap">
+          <input class="modal-input" id="edit-start-search" type="text" placeholder="Название, адрес…"
+            oninput="startNominatimSearch(this.value)" autocomplete="off">
+          <div class="search-results" id="edit-start-results"></div>
+        </div>
       </div>
       <div class="modal-field">
-        <div class="modal-label">Долгота (lng)</div>
-        <input class="modal-input" id="edit-start-lng" type="number" step="any" placeholder="37.9475">
+        <div class="modal-label">Название</div>
+        <input class="modal-input" id="edit-start-name" type="text" placeholder="Балашиха">
+      </div>
+      <div class="modal-row">
+        <div class="modal-field">
+          <div class="modal-label">Иконка</div>
+          <input class="modal-input" id="edit-start-icon" type="text" placeholder="🏠" style="font-size:18px;text-align:center;">
+        </div>
+        <div class="modal-field" style="display:flex;flex-direction:column;justify-content:flex-end;">
+          <div id="edit-start-coords-display" style="font-size:10px;color:var(--green);display:none;">
+            📍 <span id="edit-start-coords-text"></span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-field">
+        <div class="modal-label">Отпр. план</div>
+        <input class="modal-input" id="edit-start-departP" type="text" placeholder="--:--" maxlength="5"
+          oninput="applyMask(this)" onblur="padTime(this)">
+      </div>
+      <div class="modal-row">
+        <div class="modal-field">
+          <div class="modal-label">Широта (lat)</div>
+          <input class="modal-input" id="edit-start-lat" type="number" step="any" placeholder="55.7965">
+        </div>
+        <div class="modal-field">
+          <div class="modal-label">Долгота (lng)</div>
+          <input class="modal-input" id="edit-start-lng" type="number" step="any" placeholder="37.9475">
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="modal-cancel" onclick="closeEditStart()">Отмена</button>
+        <button class="modal-confirm" style="border-color:var(--green);color:var(--green);background:rgba(74,222,128,0.1);"
+          onclick="doEditStart()">Сохранить</button>
       </div>
     </div>
-    <div class="modal-actions">
-      <button class="modal-cancel" onclick="closeEditStart()">Отмена</button>
-      <button class="modal-confirm" style="border-color:var(--green);color:var(--green);background:rgba(74,222,128,0.1);"
-        onclick="doEditStart()">Сохранить</button>
-    </div>
   </div>
-</div>
 
-<!-- Confirm delete stop modal -->
-<div class="modal-overlay" id="deleteStopModal" onclick="if(event.target===this)closeDeleteModal()">
-  <div class="modal">
-    <div class="modal-title">Удалить точку?</div>
-    <div class="modal-body" id="deleteStopModalBody">Точка будет удалена из маршрута.</div>
-    <div class="modal-actions">
-      <button class="modal-cancel" onclick="closeDeleteModal()">Отмена</button>
-      <button class="modal-confirm" onclick="doDeleteStop()">Удалить</button>
+  <!-- Confirm delete stop modal -->
+  <div class="modal-overlay" id="deleteStopModal" onclick="if(event.target===this)closeDeleteModal()">
+    <div class="modal">
+      <div class="modal-title">Удалить точку?</div>
+      <div class="modal-body" id="deleteStopModalBody">Точка будет удалена из маршрута.</div>
+      <div class="modal-actions">
+        <button class="modal-cancel" onclick="closeDeleteModal()">Отмена</button>
+        <button class="modal-confirm" onclick="doDeleteStop()">Удалить</button>
+      </div>
     </div>
   </div>
-</div>
 
-<!-- Confirm reset modal -->
-<div class="modal-overlay" id="resetModal" onclick="if(event.target===this)closeModal()">
-  <div class="modal">
-    <div class="modal-title">Сбросить данные?</div>
-    <div class="modal-body" id="resetModalBody">Всё фактическое время за день будет удалено. Это действие нельзя отменить.</div>
-    <div class="modal-actions">
-      <button class="modal-cancel" onclick="closeModal()">Отмена</button>
-      <button class="modal-confirm" onclick="doReset()">Сбросить</button>
+  <!-- Confirm reset modal -->
+  <div class="modal-overlay" id="resetModal" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+      <div class="modal-title">Сбросить данные?</div>
+      <div class="modal-body" id="resetModalBody">Всё фактическое время за день будет удалено. Это действие нельзя отменить.</div>
+      <div class="modal-actions">
+        <button class="modal-cancel" onclick="closeModal()">Отмена</button>
+        <button class="modal-confirm" onclick="doReset()">Сбросить</button>
+      </div>
     </div>
   </div>
-</div>
+
+  <!-- Cloud Settings Modal -->
+  <div class="modal-overlay" id="cloudSettingsModal" onclick="if(event.target===this)closeCloudSettings()">
+    <div class="modal modal-lg">
+      <div class="modal-title">⚙ Настройки облака</div>
+      <div class="modal-body" style="margin-bottom:14px;">
+        Данные хранятся в GitHub Gist. Токен сохраняется только в вашем браузере — в коде сайта его нет.
+      </div>
+      <div class="modal-field">
+        <div class="modal-label">GitHub Personal Access Token (scope: gist)</div>
+        <input class="modal-input" id="cs-token" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off">
+      </div>
+      <div class="modal-field">
+        <div class="modal-label">Gist ID (из URL после последнего /)</div>
+        <input class="modal-input" id="cs-gist" type="text" placeholder="a1b2c3d4e5f67890abcd1234" autocomplete="off">
+      </div>
+      <div id="cs-status" style="font-size:10px;min-height:16px;margin-bottom:10px;"></div>
+      <div class="modal-actions">
+        <button class="modal-cancel" onclick="clearCloudSettings()" style="margin-right:auto;border-color:#f87171;color:#f87171;">Очистить</button>
+        <button class="modal-cancel" onclick="closeCloudSettings()">Отмена</button>
+        <button class="modal-confirm" style="border-color:var(--green);color:var(--green);background:rgba(74,222,128,0.1);"
+          onclick="saveCloudSettings()">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
   <div id="map"></div>
 </div>
 
 <div class="toast" id="toast">💾 Сохранено</div>
 
-<script>
-// ── DATA ─────────────────────────────────────────────────────────────────────
-const DAY_COLORS = ['#f5a623','#60a5fa','#a78bfa','#34d399','#f472b6','#fb923c'];
-const DAY_ORDINALS = ['первый','второй','третий','четвёртый','пятый','шестой'];
+<!-- Scripts: порядок важен — config и data первыми -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/data.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/map.js"></script>
+<script src="js/render.js"></script>
+<script src="js/app.js"></script>
 
-// ── CLOUD CONFIG ──────────────────────────────────────────────────────────────
-// Используется GitHub Gist API (работает в России без VPN, бесплатно).
-// 1. github.com → Settings → Developer settings → Personal access tokens → Tokens (classic)
-//    → Generate new token → поставьте галочку "gist" → скопируйте токен
-// 2. gist.github.com → новый gist → файл data.json, содержимое {"init":true}
-//    → Create secret gist → скопируйте ID из URL (строка после последнего /)
-const CLOUD_CONFIG = {
-  apiKey: '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',   // ← GitHub Personal Access Token (с правом gist)
-  binId:  '5db3f9febd8e2db50f8296cc6e620ae9',   // ← Gist ID из URL, например: 'a1b2c3d4e5f67890abcd1234'
-};
-// При пустых полях данные сохраняются только в localStorage (офлайн-режим).
-
-// Базовые дни 1 и 2 (могут быть перезаписаны при загрузке)
-const DAYS_DATA = {
-  1: {
-    color:'#f5a623',
-    date:'24 апреля',
-    departP:'03:00', departA:'',
-    start:{ lat:55.796967, lng:37.947488, name:'Балашиха', icon:'🏠' },
-    stops:[
-      { id:'d1s1', num:1, icon:'⛽', type:'Заправка', name:'Газпромнефть у Ефремова',
-        lat:53.700104, lng:38.045031, arrP:'05:50', depP:'06:00', arrA:'', depA:'' },
-      { id:'d1s2', num:2, icon:'🥞', type:'Кафе', name:'Помпончик · Ефремов',
-        lat:53.204038, lng:38.225938, arrP:'06:40', depP:'07:30', arrA:'', depA:'' },
-      { id:'d1s3', num:3, icon:'⛽', type:'Заправка', name:'Газпромнефть за Воронежем',
-        lat:51.247589, lng:39.654248, arrP:'10:30', depP:'10:40', arrA:'', depA:'' },
-      { id:'d1s4', num:4, icon:'🍜', type:'Кафе', name:'Помпончик · у Павловска',
-        lat:50.597873, lng:40.152914, arrP:'11:30', depP:'12:30', arrA:'', depA:'' },
-      { id:'d1s5', num:5, icon:'⛽', type:'Заправка', name:'Газпромнефть за Богучаром',
-        lat:49.602400, lng:40.549723, arrP:'13:40', depP:'14:00', arrA:'', depA:'' },
-      { id:'d1s6', num:6, icon:'⛽', type:'Заправка', name:'Газпромнефть Ростов-на-Дону',
-        lat:47.278214, lng:39.796337, arrP:'17:30', depP:'', arrA:'', depA:'' },
-      { id:'d1s7', num:7, icon:'🛎', type:'Отель', name:'Амакс Конгресс Отель',
-        lat:47.248822, lng:39.711902, arrP:'18:00', depP:'', arrA:'', depA:'' },
-    ]
-  },
-  2: {
-    color:'#60a5fa',
-    date:'25 апреля',
-    departP:'09:00', departA:'',
-    start:{ lat:47.248822, lng:39.711902, name:'Амакс Конгресс Отель', icon:'🛎' },
-    stops:[
-      { id:'d2s1', num:1, icon:'⛽', type:'Заправка', name:'Газпромнефть',
-        lat:46.079930, lng:39.781240, arrP:'10:40', depP:'11:00', arrA:'', depA:'' },
-      { id:'d2s2', num:2, icon:'🥗', type:'Кафе', name:'Сицилия · Кореновск',
-        lat:45.463089, lng:39.449137, arrP:'12:00', depP:'13:00', arrA:'', depA:'' },
-      { id:'d2s3', num:3, icon:'🏠', type:'Жильё', name:'ЖК Синее Море',
-        lat:44.707314, lng:37.782650, arrP:'16:30', depP:'', arrA:'', depA:'' },
-    ]
-  }
-};
-
-// ── STATE ─────────────────────────────────────────────────────────────────────
-let state = { actuals:{} };
-
-function dayKeys() { return Object.keys(DAYS_DATA).map(Number); }
-
-// ── CLOUD STORAGE HELPERS (GitHub Gist API) ──────────────────────────────────
-const GIST_URL = 'https://api.github.com/gists';
-
-function cloudEnabled() {
-  return CLOUD_CONFIG.apiKey && CLOUD_CONFIG.binId;
-}
-
-function setSyncStatus(text, color) {
-  const el = document.getElementById('syncStatus');
-  if (!el) return;
-  el.textContent = text;
-  el.style.color = color || 'var(--muted)';
-}
-
-async function fetchCloudData() {
-  const r = await fetch(`${GIST_URL}/${CLOUD_CONFIG.binId}`, {
-    headers: {
-      'Authorization': `token ${CLOUD_CONFIG.apiKey}`,
-      'Accept': 'application/vnd.github+json'
-    }
-  });
-  if (!r.ok) throw new Error('HTTP ' + r.status);
-  const json = await r.json();
-  const raw = json.files['data.json']?.content;
-  if (!raw) throw new Error('data.json not found in gist');
-  return JSON.parse(raw);
-}
-
-async function pushCloudData(payload) {
-  const r = await fetch(`${GIST_URL}/${CLOUD_CONFIG.binId}`, {
-    method: 'PATCH',
-    headers: {
-      'Authorization': `token ${CLOUD_CONFIG.apiKey}`,
-      'Accept': 'application/vnd.github+json',
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      files: { 'data.json': { content: JSON.stringify(payload) } }
-    })
-  });
-  if (!r.ok) throw new Error('HTTP ' + r.status);
-}
-
-// Debounce: откладывает облачное сохранение на 1.5с после последнего изменения
-let _saveCloudTimer = null;
-function scheduleCloudSave(payload) {
-  clearTimeout(_saveCloudTimer);
-  _saveCloudTimer = setTimeout(async () => {
-    setSyncStatus('☁ сохранение…', 'var(--amber)');
-    try {
-      await pushCloudData(payload);
-      setSyncStatus('☁ сохранено', 'var(--green)');
-      setTimeout(() => setSyncStatus('☁ ок', 'var(--muted)'), 2000);
-    } catch(e) {
-      console.error('Cloud save error', e);
-      setSyncStatus('☁ ошибка', '#f87171');
-    }
-  }, 1500);
-}
-
-// ── APPLY SAVED PAYLOAD ───────────────────────────────────────────────────────
-function applyPayload(saved) {
-  state.actuals = saved.actuals || {};
-
-  if (saved.daysData) {
-    Object.keys(DAYS_DATA).forEach(k => delete DAYS_DATA[k]);
-    Object.entries(saved.daysData).forEach(([dayStr, dayData]) => {
-      DAYS_DATA[Number(dayStr)] = dayData;
-    });
-  } else {
-    // старый формат (обратная совместимость)
-    if (saved.stopsData) {
-      Object.entries(saved.stopsData).forEach(([dayStr, stops]) => {
-        const day = Number(dayStr);
-        if (DAYS_DATA[day]) DAYS_DATA[day].stops = stops.map(s => ({ ...s }));
-      });
-    }
-    if (saved.extraDays) {
-      saved.extraDays.forEach(ed => {
-        if (!DAYS_DATA[ed.day]) {
-          DAYS_DATA[ed.day] = {
-            color: ed.color, date: ed.date,
-            departP: ed.departP, departA: ed.departA || '',
-            start: ed.start, stops: ed.stops
-          };
-        }
-      });
-    }
-    if (saved.dates) {
-      dayKeys().forEach(day => {
-        if (saved.dates[day]) DAYS_DATA[day].date = saved.dates[day];
-      });
-    }
-  }
-
-  Object.entries(state.actuals).forEach(([id, a]) => {
-    dayKeys().forEach(day => {
-      DAYS_DATA[day].stops.forEach(s => {
-        if (s.id !== id) return;
-        if (a.arrA !== undefined) s.arrA = a.arrA;
-        if (a.depA !== undefined) s.depA = a.depA;
-      });
-    });
-  });
-
-  dayKeys().forEach(day => {
-    if (saved['dep'+day]) DAYS_DATA[day].departA = saved['dep'+day];
-  });
-}
-
-// ── LOAD STATE ────────────────────────────────────────────────────────────────
-async function loadState() {
-  // 1. Сначала грузим из localStorage (мгновенно — UI не ждёт)
-  try {
-    const raw = localStorage.getItem('travel_tracker_v3');
-    if (raw) applyPayload(JSON.parse(raw));
-  } catch(e) { console.error('loadState localStorage error', e); }
-
-  // 2. Затем пробуем облако (перезаписывает локальный кэш)
-  if (!cloudEnabled()) {
-    setSyncStatus('☁ офлайн', 'var(--muted)');
-    return;
-  }
-
-  setSyncStatus('☁ загрузка…', 'var(--amber)');
-  try {
-    const saved = await fetchCloudData();
-    const json = JSON.stringify(saved);
-    _lastCloudHash = strHash(json);
-    applyPayload(saved);
-    // Обновляем UI после загрузки облачных данных
-    dayKeys().forEach(d => redrawDay(d));
-    renderTabs();
-    renderAllDays();
-    updateProgress();
-    setSyncStatus('☁ загружено', 'var(--green)');
-    setTimeout(() => setSyncStatus('☁ ок', 'var(--muted)'), 2000);
-  } catch(e) {
-    console.error('loadState cloud error', e);
-    setSyncStatus('☁ ошибка загрузки', '#f87171');
-  }
-}
-
-// ── SAVE DATA ─────────────────────────────────────────────────────────────────
-function saveData() {
-  try {
-    dayKeys().forEach(day => DAYS_DATA[day].stops.forEach(s => {
-      const aEl = document.getElementById('arr-'+s.id);
-      const dEl = document.getElementById('dep-'+s.id);
-      if (!state.actuals[s.id]) state.actuals[s.id]={};
-      if (aEl) { s.arrA = aEl.value; state.actuals[s.id].arrA = aEl.value; }
-      if (dEl) { s.depA = dEl.value; state.actuals[s.id].depA = dEl.value; }
-    }));
-
-    const deps = {};
-    dayKeys().forEach(day => {
-      const el = document.getElementById('d'+day+'-depart');
-      deps['dep'+day] = el ? el.value : '';
-      DAYS_DATA[day].departA = deps['dep'+day];
-    });
-
-    const daysData = {};
-    dayKeys().forEach(day => {
-      daysData[day] = JSON.parse(JSON.stringify(DAYS_DATA[day]));
-    });
-
-    const payload = { actuals: state.actuals, daysData, ...deps };
-
-    // Всегда сохраняем в localStorage как кэш
-    localStorage.setItem('travel_tracker_v3', JSON.stringify(payload));
-
-    // Дополнительно — в облако (с дебаунсом)
-    if (cloudEnabled()) scheduleCloudSave(payload);
-
-  } catch(e) { console.error('saveData error', e); }
-  showToast();
-  updateProgress();
-}
-
-// ── AUTO-POLL (тихое обновление раз в 30с) ───────────────────────────────────
-let _lastCloudHash = null;   // хэш последних известных данных
-let _userIsTyping  = false;  // не перебиваем пользователя во время ввода
-let _typingTimer   = null;
-
-// Простой хэш строки — чтобы не обновлять UI когда данные не изменились
-function strHash(s) {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) { h = (Math.imul(31, h) + s.charCodeAt(i)) | 0; }
-  return h;
-}
-
-// Слушаем любой ввод — пауза 5с после последнего нажатия считается "не печатает"
-document.addEventListener('input', () => {
-  _userIsTyping = true;
-  clearTimeout(_typingTimer);
-  _typingTimer = setTimeout(() => { _userIsTyping = false; }, 5000);
-});
-
-async function pollCloud() {
-  if (!cloudEnabled()) return;
-  if (_userIsTyping) return;            // пользователь сейчас вводит — пропускаем
-  if (_saveCloudTimer) return;          // идёт сохранение — пропускаем
-
-  try {
-    const saved = await fetchCloudData();
-    const json  = JSON.stringify(saved);
-    const hash  = strHash(json);
-    if (hash === _lastCloudHash) return; // данные не изменились — ничего не делаем
-    _lastCloudHash = hash;
-
-    applyPayload(saved);
-    localStorage.setItem('travel_tracker_v3', json);
-
-    dayKeys().forEach(d => redrawDay(d));
-    renderTabs();
-    renderAllDays();
-    updateProgress();
-    showToast('🔄 Данные обновлены');
-  } catch(e) {
-    // тихая ошибка — не мешаем пользователю
-    console.warn('poll error', e);
-  }
-}
-
-function startPolling(intervalMs = 30000) {
-  if (!cloudEnabled()) return;
-  setInterval(pollCloud, intervalMs);
-}
-
-// ── TIME MASK ─────────────────────────────────────────────────────────────────
-function applyMask(el) {
-  const oldVal = el.value;
-  const pos = el.selectionStart;
-  const digitsBeforeCursor = oldVal.slice(0, pos).replace(/[^0-9]/g, "").length;
-  let digits = oldVal.replace(/[^0-9]/g, "").slice(0, 4);
-  let formatted = digits.length >= 3 ? digits.slice(0,2) + ":" + digits.slice(2) : digits;
-  el.value = formatted;
-  el.classList.toggle("empty", !formatted);
-  let digitCount = 0, newPos = formatted.length;
-  if (digitsBeforeCursor === 0) { newPos = 0; }
-  else { for (let i = 0; i < formatted.length; i++) { if (/[0-9]/.test(formatted[i])) digitCount++; if (digitCount === digitsBeforeCursor) { newPos = i + 1; break; } } }
-  el.setSelectionRange(newPos, newPos);
-  if (formatted.length === 5) updateProgress();
-}
-
-function padTime(el) {
-  const val = el.value.trim();
-  if (!val) { saveData(); return; }
-  const digits = val.replace(/[^0-9]/g, "");
-  let padded = val;
-  if (digits.length === 3) {
-    padded = "0" + digits[0] + ":" + digits.slice(1);
-  }
-  if (/^\d:\d\d$/.test(val)) {
-    padded = "0" + val;
-  }
-  el.value = padded;
-  el.classList.toggle("empty", !padded);
-  saveData();
-}
-
-// ── DELTA UTILS ───────────────────────────────────────────────────────────────
-function timeDelta(planned, actual) {
-  if (!planned || !actual || planned.length < 4 || actual.length < 4) return null;
-  const [ph, pm] = planned.split(':').map(Number);
-  const [ah, am] = actual.split(':').map(Number);
-  if (isNaN(ph)||isNaN(pm)||isNaN(ah)||isNaN(am)) return null;
-  return (ah*60+am) - (ph*60+pm);
-}
-function fmtDelta(d) {
-  if (d === null) return null;
-  const abs = Math.abs(d);
-  const sign = d >= 0 ? '+' : '−';
-  const h = Math.floor(abs/60), m = abs%60;
-  return h > 0 ? `${sign}${h}ч ${m}м` : `${sign}${m}м`;
-}
-
-// ── PROGRESS + DELTAS ─────────────────────────────────────────────────────────
-function updateProgress() {
-  dayKeys().forEach(day => {
-    const stops = DAYS_DATA[day].stops;
-    let filled = 0, lastDelta = null;
-    stops.forEach(s => {
-      if (s.arrA && s.arrA.length >= 4) filled++;
-      const dArr = timeDelta(s.arrP, s.arrA);
-      if (dArr !== null) lastDelta = dArr;
-      const dDep = timeDelta(s.depP, s.depA);
-      if (dDep !== null) lastDelta = dDep;
-    });
-    const pct = Math.round((filled / stops.length) * 100);
-    const fill = document.getElementById('d'+day+'-fill');
-    const pctEl = document.getElementById('d'+day+'-pct');
-    if (fill) fill.style.width = pct+'%';
-    if (pctEl) pctEl.textContent = pct+'%';
-
-    const dEl = document.getElementById('d'+day+'-delta-val');
-    if (dEl) {
-      if (lastDelta === null) {
-        dEl.textContent = '—';
-        dEl.style.color = '';
-      } else {
-        dEl.textContent = lastDelta === 0 ? '±0м' : fmtDelta(lastDelta);
-        dEl.style.color = lastDelta > 0 ? 'var(--red)' : lastDelta < 0 ? 'var(--green)' : 'var(--muted)';
-      }
-    }
-
-    stops.forEach(s => {
-      const aEl = document.getElementById('arr-'+s.id);
-      const dEl2 = document.getElementById('delta-arr-'+s.id);
-      if (aEl) {
-        const val = aEl.value;
-        const delta = timeDelta(s.arrP, val);
-        aEl.classList.remove('empty','ontime','late');
-        if (!val) { aEl.classList.add('empty'); }
-        else if (delta !== null) { aEl.classList.add(delta <= 0 ? 'ontime' : 'late'); }
-        if (dEl2) {
-          if (delta !== null) {
-            dEl2.textContent = fmtDelta(delta);
-            dEl2.className = 'delta-badge ' + (delta <= 0 ? 'ontime' : 'late');
-          } else {
-            dEl2.textContent = '→';
-            dEl2.className = 'delta-badge hidden';
-          }
-        }
-      }
-      const depEl = document.getElementById('dep-'+s.id);
-      const dEl3 = document.getElementById('delta-dep-'+s.id);
-      if (depEl) {
-        const val = depEl.value;
-        const delta = timeDelta(s.depP, val);
-        depEl.classList.remove('empty','ontime','late');
-        if (!val) { depEl.classList.add('empty'); }
-        else if (delta !== null) { depEl.classList.add(delta <= 0 ? 'ontime' : 'late'); }
-        if (dEl3) {
-          if (delta !== null) {
-            dEl3.textContent = fmtDelta(delta);
-            dEl3.className = 'delta-badge ' + (delta <= 0 ? 'ontime' : 'late');
-          } else {
-            dEl3.textContent = '→';
-            dEl3.className = 'delta-badge hidden';
-          }
-        }
-      }
-    });
-  });
-  refreshSegments();
-}
-
-// ── RENDER STOPS ──────────────────────────────────────────────────────────────
-function makeStopCard(s, day) {
-  const hasDepart = s.depP !== undefined && s.depP !== '';
-  const depBlock = hasDepart ? `
-    <div class="time-block">
-      <div class="time-block-label">Отправление</div>
-      <div class="time-inputs">
-        <div class="time-input-wrap">
-          <div class="time-mini-label">план</div>
-          <div class="planned-time">${s.depP}</div>
-        </div>
-        <div class="delta-wrap">
-          <span class="delta-badge hidden" id="delta-dep-${s.id}">→</span>
-        </div>
-        <div class="time-input-wrap">
-          <div class="time-mini-label">факт</div>
-          <input class="time-in ${s.depA?'':'empty'}" id="dep-${s.id}"
-            type="text" maxlength="5" value="${s.depA||''}" placeholder="${s.depP||'--:--'}"
-            autocomplete="off" oninput="applyMask(this)" onblur="padTime(this)">
-        </div>
-      </div>
-    </div>` : `<div></div>`;
-
-  const div = document.createElement('div');
-  div.className = 'stop-card';
-  div.id = 'card-'+s.id;
-  div.draggable = true;
-  div.dataset.id = s.id;
-  div.dataset.day = day;
-
-  div.addEventListener('click', e => {
-    if (e.target.closest('input,button,.drag-handle')) return;
-    highlightStop(s.id, day);
-  });
-
-  div.innerHTML = `
-    <div class="drag-handle" title="Перетащить">⠿</div>
-    <button class="delete-stop-btn" data-del-day="${day}" data-del-id="${s.id}" title="Удалить точку">×</button>
-    <div class="stop-main">
-      <div class="stop-num">${s.num}</div>
-      <div class="stop-info">
-        <div class="stop-name">
-          <span class="stop-icon">${s.icon}</span>
-          <span class="stop-name-text">${s.name}</span>
-          <span class="stop-type">${s.type}</span>
-        </div>
-      </div>
-    </div>
-    <div class="time-grid">
-      <div class="time-block">
-        <div class="time-block-label">Прибытие</div>
-        <div class="time-inputs">
-          <div class="time-input-wrap">
-            <div class="time-mini-label">план</div>
-            <div class="planned-time">${s.arrP||'—'}</div>
-          </div>
-          <div class="delta-wrap">
-            <span class="delta-badge hidden" id="delta-arr-${s.id}">→</span>
-          </div>
-          <div class="time-input-wrap">
-            <div class="time-mini-label">факт</div>
-            <input class="time-in ${s.arrA?'':'empty'}" id="arr-${s.id}"
-              type="text" maxlength="5" value="${s.arrA||''}" placeholder="${s.arrP||'--:--'}"
-              autocomplete="off" oninput="applyMask(this)" onblur="padTime(this)">
-          </div>
-        </div>
-      </div>
-      ${depBlock}
-    </div>`;
-
-  div.querySelector('.delete-stop-btn').addEventListener('click', e => {
-    e.stopPropagation();
-    const btn = e.currentTarget;
-    deleteStop(parseInt(btn.dataset.delDay), btn.dataset.delId, e);
-  });
-
-  div.addEventListener('dragstart', onDragStart);
-  div.addEventListener('dragover',  onDragOver);
-  div.addEventListener('dragleave', onDragLeave);
-  div.addEventListener('drop',      onDrop);
-  div.addEventListener('dragend',   onDragEnd);
-  return div;
-}
-
-function renderStops(day) {
-  const container = document.getElementById('d'+day+'-stops');
-  container.innerHTML = '';
-  DAYS_DATA[day].stops.forEach((s, i) => { s.num = i + 1; });
-  DAYS_DATA[day].stops.forEach(s => container.appendChild(makeStopCard(s, day)));
-  const cntEl = document.getElementById('d'+day+'-stop-count');
-  if (cntEl) cntEl.textContent = DAYS_DATA[day].stops.length;
-}
-
-// ── MAP ───────────────────────────────────────────────────────────────────────
-let map, layers = {}, segmentLayersGlobal = {};
-
-function initMap() {
-  map = L.map('map', { center:[51.5,39.5], zoom:5, zoomControl:true, attributionControl:false });
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19 }).addTo(map);
-  map.zoomControl.setPosition('topright');
-
-  dayKeys().forEach(d => {
-    if (!layers[d]) layers[d] = L.layerGroup();
-    if (!segmentLayers[d]) segmentLayers[d] = [];
-  });
-}
-
-function hexRgba(hex, a, darken=1) {
-  const r=Math.round(parseInt(hex.slice(1,3),16)*darken);
-  const g=Math.round(parseInt(hex.slice(3,5),16)*darken);
-  const b=Math.round(parseInt(hex.slice(5,7),16)*darken);
-  return `rgba(${r},${g},${b},${a})`;
-}
-
-function makeIcon(emoji, color, size=34) {
-  const bg = hexRgba(color, 0.7, 0.45);
-  const html = `<div style="
-    width:${size}px;height:${size}px;
-    border-radius:50% 50% 50% 0;transform:rotate(-45deg);
-    background:${bg};border:2px solid rgba(255,255,255,0.18);
-    display:flex;align-items:center;justify-content:center;
-    box-shadow:0 2px 12px rgba(0,0,0,0.8), 0 0 0 1px rgba(0,0,0,0.4);">
-    <span style="transform:rotate(45deg);font-size:${Math.round(size*0.44)}px;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.9));">${emoji}</span>
-  </div>`;
-  return L.divIcon({ html, className:'', iconSize:[size,size], iconAnchor:[size/2,size], popupAnchor:[0,-size] });
-}
-
-function makeStartIcon(emoji, color) {
-  const bg = hexRgba(color, 0.7, 0.45);
-  const html = `<div style="
-    width:38px;height:38px;border-radius:50%;
-    background:${bg};border:2px solid rgba(255,255,255,0.18);
-    display:flex;align-items:center;justify-content:center;
-    font-size:17px;box-shadow:0 2px 12px rgba(0,0,0,0.8), 0 0 0 1px rgba(0,0,0,0.4);filter:drop-shadow(0 1px 3px rgba(0,0,0,0.9));">${emoji}</div>`;
-  return L.divIcon({ html, className:'', iconSize:[38,38], iconAnchor:[19,19], popupAnchor:[0,-22] });
-}
-
-const segmentLayers = {};
-
-function drawDay(d) {
-  const data = DAYS_DATA[d];
-  if (!data) return;
-  const color = data.color;
-  const group = layers[d];
-  if (!group) return;
-
-  const startM = L.marker([data.start.lat,data.start.lng], { icon:makeStartIcon(data.start.icon,color) });
-  startM.bindPopup(`<div class="popup-inner">
-    <div class="popup-name">${data.start.icon} <b>${data.start.name}</b></div>
-    <div class="popup-row"><span>Начало маршрута</span></div>
-  </div>`);
-  group.addLayer(startM);
-
-  const allPoints = [
-    {lat:data.start.lat, lng:data.start.lng, done: true},
-    ...data.stops.map(s => ({lat:s.lat, lng:s.lng, id:s.id, done:false}))
-  ];
-  for (let i=0; i<allPoints.length-1; i++) {
-    const from = allPoints[i], to = allPoints[i+1];
-    const seg = L.polyline(
-      [[from.lat,from.lng],[to.lat,to.lng]],
-      { color, weight:3, opacity:0.2, lineCap:'round', lineJoin:'round',
-        dashArray:'6 6' }
-    );
-    group.addLayer(seg);
-    if (!segmentLayers[d]) segmentLayers[d] = [];
-    segmentLayers[d].push({ seg, fromId: from.id || null, toId: to.id });
-  }
-
-  data.stops.forEach(s => {
-    const marker = L.marker([s.lat,s.lng], { icon:makeIcon(s.icon,color) });
-    marker.bindPopup('<div class="popup-inner"></div>');
-    marker.on('popupopen', () => {
-      const arrEl = document.getElementById('arr-'+s.id);
-      const depEl = document.getElementById('dep-'+s.id);
-      const arrA = (arrEl && arrEl.value) || s.arrA || '—';
-      const depA = (depEl && depEl.value) || s.depA || '—';
-      const depRows = s.depP
-        ? `<div class="popup-row"><span>Отпр. план</span><span>${s.depP}</span></div>
-           <div class="popup-row"><span>Отпр. факт</span><span>${depA}</span></div>`
-        : '';
-      marker.getPopup().setContent(`<div class="popup-inner">
-        <div class="popup-name">${s.icon} <b>${s.name}</b></div>
-        <div class="popup-row"><span>Тип</span><span>${s.type}</span></div>
-        <div class="popup-row"><span>Приб. план</span><span>${s.arrP||'—'}</span></div>
-        <div class="popup-row"><span>Приб. факт</span><span>${arrA}</span></div>
-        ${depRows}
-      </div>`);
-    });
-    marker.on('click', ()=>highlightStop(s.id,d));
-    group.addLayer(marker);
-  });
-}
-
-function switchMapDay(d) {
-  dayKeys().forEach(n => n===d ? layers[n] && layers[n].addTo(map) : (layers[n] && map.hasLayer(layers[n]) && map.removeLayer(layers[n])));
-  const data = DAYS_DATA[d];
-  if (!data) return;
-  const pts = [[data.start.lat,data.start.lng],...data.stops.map(s=>[s.lat,s.lng])].filter(p=>p[0]&&p[1]);
-  if (pts.length > 1) map.fitBounds(L.latLngBounds(pts),{padding:[40,40]});
-}
-
-function refreshSegments() {
-  dayKeys().forEach(d => {
-    if (!segmentLayers[d]) return;
-    segmentLayers[d].forEach(({ seg, fromId, toId }) => {
-      const toArrEl = document.getElementById('arr-'+toId);
-      const toArrFilled = !!(toArrEl && toArrEl.value && toArrEl.value.length >= 4);
-      const toStop = DAYS_DATA[d]?.stops.find(s => s.id === toId);
-      const toDepEl = document.getElementById('dep-'+toId);
-      const toDepFilled = toStop && toStop.depP
-        ? !!(toDepEl && toDepEl.value && toDepEl.value.length >= 4)
-        : true;
-
-      let fromDone = false;
-      if (!fromId) {
-        fromDone = true;
-      } else {
-        const fromStop = DAYS_DATA[d]?.stops.find(s => s.id === fromId);
-        const fromArrEl = document.getElementById('arr-'+fromId);
-        const fromArrFilled = !!(fromArrEl && fromArrEl.value && fromArrEl.value.length >= 4);
-        if (fromStop && fromStop.depP) {
-          const fromDepEl = document.getElementById('dep-'+fromId);
-          const fromDepFilled = !!(fromDepEl && fromDepEl.value && fromDepEl.value.length >= 4);
-          fromDone = fromArrFilled && fromDepFilled;
-        } else {
-          fromDone = fromArrFilled;
-        }
-      }
-
-      if (fromDone && toArrFilled && toDepFilled) {
-        seg.setStyle({ opacity:0.9, weight:4, dashArray:null });
-      } else {
-        seg.setStyle({ opacity:0.5, weight:3, dashArray:'6 6' });
-      }
-    });
-  });
-}
-
-// ── UI ────────────────────────────────────────────────────────────────────────
-function highlightStop(id, d) {
-  document.querySelectorAll('.stop-card').forEach(c=>c.classList.remove('selected'));
-  const card = document.getElementById('card-'+id);
-  if (card) { card.classList.add('selected'); card.scrollIntoView({behavior:'smooth',block:'nearest'}); }
-  const stop = DAYS_DATA[d]?.stops.find(s=>s.id===id);
-  if (stop) map.setView([stop.lat,stop.lng],11,{animate:true});
-}
-
-let currentDay = 1;
-function switchDay(d) {
-  currentDay = d;
-  document.querySelectorAll('.day-tab').forEach(t => t.classList.toggle('active', parseInt(t.dataset.day) === d));
-  document.querySelectorAll('.day-section').forEach(s => s.classList.toggle('visible', parseInt(s.dataset.day) === d));
-  // Обновляем цвета вкладок: убираем инлайн-стили у всех, ставим активной цвет дня
-  document.querySelectorAll('.day-tab').forEach(tab => {
-    const day = parseInt(tab.dataset.day);
-    tab.style.backgroundColor = '';
-    tab.style.borderColor = '';
-    if (day === d) {
-      const color = DAYS_DATA[day]?.color;
-      if (color) {
-        tab.style.backgroundColor = color;
-        tab.style.borderColor = color;
-      }
-    }
-  });
-  switchMapDay(d);
-}
-
-function toggleSidebar() {
-  const sb = document.getElementById('sidebar');
-  sb.classList.toggle('open');
-  document.getElementById('toggleBtn').textContent = sb.classList.contains('open') ? '✕' : '☰';
-  setTimeout(() => map && map.invalidateSize(), 340);
-}
-
-// ── RESET ─────────────────────────────────────────────────────────────────────
-let resetTargetDay = null;
-
-function confirmReset(day) {
-  resetTargetDay = day;
-  const label = `День ${day} · ${DAYS_DATA[day].date}`;
-  document.getElementById('resetModalBody').textContent =
-    `Всё фактическое время за «${label}» будет удалено. Это действие нельзя отменить.`;
-  document.getElementById('resetModal').classList.add('show');
-}
-
-function closeModal() {
-  document.getElementById('resetModal').classList.remove('show');
-  resetTargetDay = null;
-}
-
-function doReset() {
-  if (!resetTargetDay) return;
-  const day = resetTargetDay;
-  closeModal();
-  snapshotForUndo(`Сброс данных дня ${day}`);
-
-  DAYS_DATA[day].stops.forEach(s => { 
-    s.arrA = ''; 
-    s.depA = ''; 
-    delete state.actuals[s.id];
-  });
-
-  DAYS_DATA[day].departA = '';
-  const dep = document.getElementById('d'+day+'-depart');
-  if (dep) { dep.value = ''; dep.classList.add('empty'); }
-
-  renderStops(day);
-  redrawDay(day);
-  updateDayRoute(day);
-  saveData();
-  updateProgress();
-  showToast('🗑 Данные сброшены');
-}
-
-let toastTimer;
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  if (msg) t.textContent = msg;
-  else t.textContent = '💾 Сохранено';
-  t.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(()=>t.classList.remove('show'), 1600);
-}
-
-function redrawDay(d) {
-  if (!layers[d]) {
-    layers[d] = L.layerGroup();
-    segmentLayers[d] = [];
-  } else {
-    layers[d].clearLayers();
-    segmentLayers[d] = [];
-  }
-  drawDay(d);
-  refreshSegments();
-}
-
-// ── DRAG AND DROP ─────────────────────────────────────────────────────────────
-let dragSrcId = null, dragSrcDay = null;
-
-function onDragStart(e) {
-  dragSrcId  = this.dataset.id;
-  dragSrcDay = parseInt(this.dataset.day);
-  this.classList.add('dragging');
-  e.dataTransfer.effectAllowed = 'move';
-}
-function onDragOver(e) {
-  e.preventDefault();
-  e.dataTransfer.dropEffect = 'move';
-  this.classList.add('drag-over');
-}
-function onDragLeave() { this.classList.remove('drag-over'); }
-function onDrop(e) {
-  e.preventDefault();
-  this.classList.remove('drag-over');
-  const targetId  = this.dataset.id;
-  const targetDay = parseInt(this.dataset.day);
-  if (!dragSrcId || dragSrcId === targetId || dragSrcDay !== targetDay) return;
-
-  const stops = DAYS_DATA[targetDay].stops;
-  const fromIdx = stops.findIndex(s => s.id === dragSrcId);
-  const toIdx   = stops.findIndex(s => s.id === targetId);
-  if (fromIdx < 0 || toIdx < 0) return;
-
-  snapshotForUndo('Изменён порядок точек');
-  const [moved] = stops.splice(fromIdx, 1);
-  stops.splice(toIdx, 0, moved);
-
-  renderStops(targetDay);
-  redrawDay(targetDay);
-  updateDayRoute(targetDay);
-  saveData();
-}
-function onDragEnd() {
-  document.querySelectorAll('.stop-card').forEach(c => {
-    c.classList.remove('dragging', 'drag-over');
-  });
-  dragSrcId = dragSrcDay = null;
-}
-
-// ── DELETE STOP ───────────────────────────────────────────────────────────────
-let deleteTargetDay = null, deleteTargetId = null;
-
-function deleteStop(day, id, e) {
-  e && e.stopPropagation();
-  deleteTargetDay = day;
-  deleteTargetId = id;
-  const stop = DAYS_DATA[day].stops.find(s => s.id === id);
-  document.getElementById('deleteStopModalBody').textContent =
-    stop ? `«${stop.name}» будет удалена из маршрута.` : 'Точка будет удалена из маршрута.';
-  document.getElementById('deleteStopModal').classList.add('show');
-}
-
-function closeDeleteModal() {
-  document.getElementById('deleteStopModal').classList.remove('show');
-  deleteTargetDay = deleteTargetId = null;
-}
-
-function doDeleteStop() {
-  if (!deleteTargetDay || !deleteTargetId) return;
-  const day = deleteTargetDay, id = deleteTargetId;
-  closeDeleteModal();
-  const delStop = DAYS_DATA[day].stops.find(s => s.id === id);
-  snapshotForUndo(`Удалена точка «${delStop ? delStop.name : id}»`);
-  const stops = DAYS_DATA[day].stops;
-  const idx = stops.findIndex(s => s.id === id);
-  if (idx < 0) return;
-  stops.splice(idx, 1);
-  delete state.actuals[id];
-
-  renderStops(day);
-  redrawDay(day);
-  updateDayRoute(day);
-  updateProgress();
-  saveData();
-  showToast('🗑 Точка удалена');
-}
-
-// ── ADD STOP / NOMINATIM ──────────────────────────────────────────────────────
-let addStopDay = null;
-let newStopLat = null, newStopLng = null;
-let nominatimTimer = null;
-
-function openAddStop(day) {
-  addStopDay = day;
-  newStopLat = newStopLng = null;
-  ['nominatim-input','new-stop-name','new-stop-arrP','new-stop-depP','new-stop-lat','new-stop-lng'].forEach(id => {
-    document.getElementById(id).value = '';
-  });
-  document.getElementById('new-stop-type').value = 'Другое';
-  document.getElementById('new-stop-icon').value = TYPE_ICONS['Другое'];
-  document.getElementById('nominatim-results').classList.remove('show');
-  document.getElementById('new-stop-coords-display').style.display = 'none';
-  document.getElementById('addStopModal').classList.add('show');
-  setTimeout(() => document.getElementById('nominatim-input').focus(), 100);
-}
-
-function closeAddStop() {
-  document.getElementById('addStopModal').classList.remove('show');
-  document.getElementById('nominatim-results').classList.remove('show');
-  addStopDay = null;
-}
-
-function nominatimSearch(q) {
-  clearTimeout(nominatimTimer);
-  const res = document.getElementById('nominatim-results');
-  if (!q || q.length < 3) { res.classList.remove('show'); return; }
-  res.classList.add('show');
-  res.innerHTML = '<div class="search-spinner">Поиск…</div>';
-  nominatimTimer = setTimeout(async () => {
-    try {
-      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&accept-language=ru`;
-      const r = await fetch(url, { headers: { 'Accept-Language': 'ru' } });
-      const data = await r.json();
-      if (!data.length) { res.innerHTML = '<div class="search-spinner">Ничего не найдено</div>'; return; }
-      res.innerHTML = '';
-      data.forEach(item => {
-        const d = document.createElement('div');
-        d.className = 'search-result-item';
-        const main = item.name || item.display_name.split(',')[0];
-        const sub  = item.display_name.split(',').slice(1,3).join(',').trim();
-        d.innerHTML = `<div>${main}</div><div class="result-sub">${sub}</div>`;
-        d.onclick = () => {
-          newStopLat = parseFloat(item.lat);
-          newStopLng = parseFloat(item.lon);
-          document.getElementById('nominatim-input').value = item.display_name;
-          if (!document.getElementById('new-stop-name').value)
-            document.getElementById('new-stop-name').value = main;
-          document.getElementById('new-stop-coords-text').textContent =
-            `${newStopLat.toFixed(5)}, ${newStopLng.toFixed(5)}`;
-          document.getElementById('new-stop-coords-display').style.display = 'block';
-          document.getElementById('new-stop-lat').value = newStopLat.toFixed(6);
-          document.getElementById('new-stop-lng').value = newStopLng.toFixed(6);
-          res.classList.remove('show');
-        };
-        res.appendChild(d);
-      });
-    } catch(err) {
-      res.innerHTML = '<div class="search-spinner">Ошибка поиска</div>';
-    }
-  }, 500);
-}
-
-const TYPE_ICONS = {
-  'Заправка': '⛽',
-  'Кафе':     '🍜',
-  'Отель':    '🛎',
-  'Жильё':    '🏠',
-  'Другое':   '📍',
-};
-
-function prefillStopIcon(type) {
-  const iconEl = document.getElementById('new-stop-icon');
-  const knownIcons = Object.values(TYPE_ICONS);
-  if (!iconEl.value || knownIcons.includes(iconEl.value)) {
-    iconEl.value = TYPE_ICONS[type] || '📍';
-  }
-}
-
-function doAddStop() {
-  const name = document.getElementById('new-stop-name').value.trim();
-  if (!name) { document.getElementById('new-stop-name').focus(); return; }
-  if (newStopLat === null) {
-    const manLat = parseFloat(document.getElementById('new-stop-lat').value);
-    const manLng = parseFloat(document.getElementById('new-stop-lng').value);
-    if (isNaN(manLat) || isNaN(manLng)) {
-      alert('Укажите координаты — выберите из поиска или введите вручную');
-      return;
-    }
-    newStopLat = manLat;
-    newStopLng = manLng;
-  }
-
-  const icon  = document.getElementById('new-stop-icon').value.trim() || '📍';
-  const type  = document.getElementById('new-stop-type').value;
-  const arrP  = document.getElementById('new-stop-arrP').value.trim();
-  const depP  = document.getElementById('new-stop-depP').value.trim();
-  const id    = 'd' + addStopDay + 's' + Date.now();
-
-  const stop = {
-    id, num: 0, icon, type, name,
-    lat: newStopLat, lng: newStopLng,
-    arrP: arrP || '', depP: depP || '',
-    arrA: '', depA: ''
-  };
-
-  const day = addStopDay;
-  snapshotForUndo('Добавлена точка');
-  DAYS_DATA[day].stops.push(stop);
-  closeAddStop();
-  renderStops(day);
-  redrawDay(day);
-  updateDayRoute(day);
-  updateProgress();
-  saveData();
-  showToast('✅ Точка добавлена');
-}
-
-// ── DAY RENDERING ────────────────────────────────────────────────────────────
-function renderTabs() {
-  const tabsEl = document.getElementById('dayTabs');
-  tabsEl.innerHTML = '';
-  dayKeys().forEach(d => {
-    const data = DAYS_DATA[d];
-    const btn = document.createElement('button');
-    btn.className = 'day-tab' + (d === currentDay ? ' active' : '');
-    btn.dataset.day = d;
-    btn.textContent = `День ${d} · ${data.date.split(' ')[0]} ${data.date.split(' ')[1]?.slice(0,3) || ''}`;
-    btn.onclick = () => switchDay(d);
-    // Устанавливаем инлайн-стиль только если активна
-    if (d === currentDay) {
-      btn.style.backgroundColor = data.color;
-      btn.style.borderColor = data.color;
-    }
-    tabsEl.appendChild(btn);
-  });
-  const addBtn = document.createElement('button');
-  addBtn.className = 'day-tab-add';
-  addBtn.textContent = '＋ день';
-  addBtn.onclick = addNewDay;
-  tabsEl.appendChild(addBtn);
-}
-
-function renderDaySection(d) {
-  const data = DAYS_DATA[d];
-  const ordinal = DAY_ORDINALS[d - 1] || `${d}-й`;
-  const sec = document.createElement('div');
-  sec.className = 'day-section' + (d === currentDay ? ' visible' : '');
-  sec.dataset.day = d;
-  sec.id = 'day' + d;
-
-  sec.innerHTML = `
-    <div class="day-header" style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;">
-      <div style="flex:1;min-width:0">
-        <div class="day-label" style="color: ${data.color};"> <!-- цвет дня здесь -->
-          День ${ordinal} ·
-          <span class="day-date-wrap" onclick="editDate(${d}, this)" title="Нажмите для изменения даты">
-            <span class="day-date-text">${data.date}</span>
-            <span class="day-date-edit-icon">✎</span>
-          </span>
-        </div>
-        <div class="day-route" id="d${d}-route"></div>
-      </div>
-      <button class="delete-day-btn" onclick="confirmDeleteDay(${d})" title="Удалить день">✕ ДЕНЬ</button>
-      <button class="reset-btn" onclick="confirmReset(${d})">⟳ СБРОС</button>
-    </div>
-    <div class="depart-row">
-      <div class="depart-icon">🚗</div>
-      <div class="depart-label" style="cursor:pointer;display:flex;align-items:center;gap:4px;" onclick="openEditStart(${d})" title="Изменить точку старта">
-        <span id="d${d}-start-name">${data.start.icon} ${data.start.name}</span>
-        <span style="font-size:9px;color:var(--border)">✎</span>
-      </div>
-      <div class="depart-times">
-        <div class="time-pair"><div class="time-label">план</div><div class="time-val">${data.departP||'—'}</div></div>
-        <div class="time-sep">→</div>
-        <div class="time-pair">
-          <div class="time-label">факт</div>
-          <input class="time-in ${data.departA?'':'empty'}" id="d${d}-depart" type="text" maxlength="5"
-            value="${data.departA||''}" placeholder="--:--" autocomplete="off"
-            oninput="applyMask(this)" onblur="padTime(this)">
-        </div>
-      </div>
-    </div>
-    <div class="day-progress">
-      <div class="progress-label"><span>Прогресс</span><span id="d${d}-pct">0%</span></div>
-      <div class="progress-bar"><div class="progress-fill" id="d${d}-fill"></div></div>
-    </div>
-    <div class="stats-row">
-      <div class="stat-box"><div class="stat-val" id="d${d}-stop-count">${data.stops.length}</div><div class="stat-key">ОСТАНОВОК</div></div>
-      <div class="stat-box"><div class="stat-val">—</div><div class="stat-key">В ПУТИ</div></div>
-      <div class="stat-box"><div class="stat-val" id="d${d}-delta-val">—</div><div class="stat-key">ОТКЛОНЕНИЕ</div></div>
-    </div>
-    <div id="d${d}-stops"></div>
-    <button class="add-stop-btn" onclick="openAddStop(${d})">＋ ДОБАВИТЬ ТОЧКУ</button>
-  `;
-  return sec;
-}
-
-function renderAllDays() {
-  const container = document.getElementById('daySections');
-  container.innerHTML = '';
-  dayKeys().forEach(d => {
-    container.appendChild(renderDaySection(d));
-    renderStops(d);
-    updateDayRoute(d);
-  });
-}
-
-function updateDayRoute(d) {
-  const el = document.getElementById('d'+d+'-route');
-  if (!el) return;
-  const data = DAYS_DATA[d];
-  const last = data.stops[data.stops.length - 1];
-  el.textContent = data.start.name + (last ? ' → ' + last.name : '');
-}
-
-// ── EDIT START POINT ─────────────────────────────────────────────────────────
-let editStartDay = null, editStartLat = null, editStartLng = null;
-let startSearchTimer = null;
-
-function openEditStart(day) {
-  editStartDay = day;
-  const s = DAYS_DATA[day].start;
-  editStartLat = s.lat; editStartLng = s.lng;
-  document.getElementById('edit-start-search').value = '';
-  document.getElementById('edit-start-name').value = s.name;
-  document.getElementById('edit-start-icon').value = s.icon;
-  document.getElementById('edit-start-departP').value = DAYS_DATA[day].departP || '';
-  document.getElementById('edit-start-lat').value = s.lat || '';
-  document.getElementById('edit-start-lng').value = s.lng || '';
-  document.getElementById('edit-start-results').classList.remove('show');
-  document.getElementById('edit-start-coords-display').style.display = s.lat ? 'block' : 'none';
-  document.getElementById('edit-start-coords-text').textContent = s.lat ? `${s.lat.toFixed(5)}, ${s.lng.toFixed(5)}` : '';
-  document.getElementById('editStartModal').classList.add('show');
-  setTimeout(() => document.getElementById('edit-start-search').focus(), 100);
-}
-
-function closeEditStart() {
-  document.getElementById('editStartModal').classList.remove('show');
-  editStartDay = null;
-}
-
-function startNominatimSearch(q) {
-  clearTimeout(startSearchTimer);
-  const res = document.getElementById('edit-start-results');
-  if (!q || q.length < 3) { res.classList.remove('show'); return; }
-  res.classList.add('show');
-  res.innerHTML = '<div class="search-spinner">Поиск…</div>';
-  startSearchTimer = setTimeout(async () => {
-    try {
-      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&accept-language=ru`;
-      const r = await fetch(url, { headers: { 'Accept-Language': 'ru' } });
-      const data = await r.json();
-      if (!data.length) { res.innerHTML = '<div class="search-spinner">Ничего не найдено</div>'; return; }
-      res.innerHTML = '';
-      data.forEach(item => {
-        const el = document.createElement('div');
-        el.className = 'search-result-item';
-        const main = item.name || item.display_name.split(',')[0];
-        const sub  = item.display_name.split(',').slice(1,3).join(',').trim();
-        el.innerHTML = `<div>${main}</div><div class="result-sub">${sub}</div>`;
-        el.onclick = () => {
-          editStartLat = parseFloat(item.lat);
-          editStartLng = parseFloat(item.lon);
-          document.getElementById('edit-start-search').value = item.display_name;
-          if (!document.getElementById('edit-start-name').value || document.getElementById('edit-start-name').value === DAYS_DATA[editStartDay].start.name)
-            document.getElementById('edit-start-name').value = main;
-          document.getElementById('edit-start-lat').value = editStartLat.toFixed(6);
-          document.getElementById('edit-start-lng').value = editStartLng.toFixed(6);
-          document.getElementById('edit-start-coords-text').textContent = `${editStartLat.toFixed(5)}, ${editStartLng.toFixed(5)}`;
-          document.getElementById('edit-start-coords-display').style.display = 'block';
-          res.classList.remove('show');
-        };
-        res.appendChild(el);
-      });
-    } catch(err) { res.innerHTML = '<div class="search-spinner">Ошибка поиска</div>'; }
-  }, 500);
-}
-
-function doEditStart() {
-  const name = document.getElementById('edit-start-name').value.trim();
-  if (!name) { document.getElementById('edit-start-name').focus(); return; }
-  const manLat = parseFloat(document.getElementById('edit-start-lat').value);
-  const manLng = parseFloat(document.getElementById('edit-start-lng').value);
-  const lat = editStartLat || (isNaN(manLat) ? null : manLat);
-  const lng = editStartLng || (isNaN(manLng) ? null : manLng);
-  if (!lat || !lng) { alert('Укажите координаты'); return; }
-  const icon = document.getElementById('edit-start-icon').value.trim() || '🚗';
-  const day = editStartDay;
-  DAYS_DATA[day].start = { lat, lng, name, icon };
-  DAYS_DATA[day].departP = document.getElementById('edit-start-departP').value.trim();
-  closeEditStart();
-  const nameEl = document.getElementById('d'+day+'-start-name');
-  if (nameEl) nameEl.textContent = icon + ' ' + name;
-  // обновляем отображение планового времени в панели
-  const planTimeEl = document.querySelector(`#day${day} .depart-row .time-pair:first-child .time-val`);
-  if (planTimeEl) planTimeEl.textContent = DAYS_DATA[day].departP || '—';
-  updateDayRoute(day);
-  redrawDay(day);
-  saveData();
-  showToast('✅ Старт обновлён');
-}
-
-// ── EDITABLE DATE ─────────────────────────────────────────────────────────────
-function editDate(day, wrapEl) {
-  const textEl = wrapEl.querySelector('.day-date-text');
-  const current = DAYS_DATA[day].date;
-  const inp = document.createElement('input');
-  inp.className = 'day-date-input';
-  inp.value = current;
-  inp.style.color = DAYS_DATA[day].color;
-  inp.style.borderBottomColor = DAYS_DATA[day].color;
-  wrapEl.replaceWith(inp);
-  inp.focus(); inp.select();
-  const commit = () => {
-    const val = inp.value.trim() || current;
-    DAYS_DATA[day].date = val;
-    const newWrap = document.createElement('span');
-    newWrap.className = 'day-date-wrap';
-    newWrap.title = 'Нажмите для изменения даты';
-    newWrap.onclick = () => editDate(day, newWrap);
-    newWrap.innerHTML = `<span class="day-date-text">${val}</span><span class="day-date-edit-icon">✎</span>`;
-    inp.replaceWith(newWrap);
-    renderTabs();
-    saveData();
-  };
-  inp.onblur = commit;
-  inp.onkeydown = e => { if (e.key === 'Enter') inp.blur(); if (e.key === 'Escape') { inp.value = current; inp.blur(); } };
-}
-
-// ── ADD / DELETE DAY ──────────────────────────────────────────────────────────
-function addNewDay() {
-  const keys = dayKeys();
-  const newD = Math.max(...keys) + 1;
-  const colorIdx = (keys.length) % DAY_COLORS.length;
-  DAYS_DATA[newD] = {
-    color: DAY_COLORS[colorIdx],
-    date: 'Дата',
-    departP: '', departA: '',
-    start: { lat: 0, lng: 0, name: 'Старт', icon: '🚗' },
-    stops: []
-  };
-  layers[newD] = L.layerGroup();
-  segmentLayers[newD] = [];
-  renderTabs();
-  const container = document.getElementById('daySections');
-  container.appendChild(renderDaySection(newD));
-  renderStops(newD);
-  updateDayRoute(newD);
-  switchDay(newD);
-  saveData();
-  showToast('📅 День добавлен');
-}
-
-let deleteDayTarget = null;
-function confirmDeleteDay(d) {
-  if (dayKeys().length <= 1) { showToast('Нельзя удалить последний день'); return; }
-  deleteDayTarget = d;
-  document.getElementById('deleteDayModalBody').textContent =
-    `День ${d} · ${DAYS_DATA[d].date} и все его точки будут удалены.`;
-  document.getElementById('deleteDayModal').classList.add('show');
-}
-function closeDeleteDayModal() {
-  document.getElementById('deleteDayModal').classList.remove('show');
-  deleteDayTarget = null;
-}
-function doDeleteDay() {
-  const d = deleteDayTarget;
-  closeDeleteDayModal();
-  if (!d || !DAYS_DATA[d]) return;
-  snapshotForUndo(`Удалён день ${d}`);
-  if (map.hasLayer(layers[d])) map.removeLayer(layers[d]);
-  delete layers[d];
-  segmentLayers[d] = [];
-  delete DAYS_DATA[d];
-  const keys = dayKeys();
-  const newCurrent = keys.includes(currentDay) ? currentDay : keys[0];
-  renderTabs();
-  renderAllDays();
-  dayKeys().forEach(dk => { redrawDay(dk); });
-  switchDay(newCurrent);
-  saveData();
-  showToast('🗑 День удалён');
-}
-
-// ── UNDO HISTORY ─────────────────────────────────────────────────────────────
-const undoStack = [];
-const UNDO_LIMIT = 20;
-
-function snapshotForUndo(label) {
-  const snapshot = {
-    label,
-    days: Object.fromEntries(dayKeys().map(d => [d, { stops: DAYS_DATA[d].stops.map(s => ({...s})) }]))
-  };
-  undoStack.push(snapshot);
-  if (undoStack.length > UNDO_LIMIT) undoStack.shift();
-  document.getElementById('undoBtn').disabled = false;
-}
-
-function undoAction() {
-  if (!undoStack.length) return;
-  const snapshot = undoStack.pop();
-  dayKeys().forEach(d => {
-    if (snapshot.days[d]) DAYS_DATA[d].stops = snapshot.days[d].stops;
-  });
-  dayKeys().forEach(d => { 
-    renderStops(d); 
-    redrawDay(d); 
-    updateDayRoute(d);
-  });
-  updateProgress();
-  saveData();
-  document.getElementById('undoBtn').disabled = undoStack.length === 0;
-  showToast('↩ ' + snapshot.label);
-}
-
-// ── INIT ──────────────────────────────────────────────────────────────────────
-initMap();
-dayKeys().forEach(d => redrawDay(d));
-layers[currentDay].addTo(map);
-renderTabs();
-renderAllDays();
-updateProgress();
-// loadState — async: сначала localStorage (мгновенно), потом облако
-loadState().then(() => startPolling(30000));
-setTimeout(() => {
-  const d = DAYS_DATA[1];
-  if (d) {
-    const coords = [[d.start.lat,d.start.lng],...d.stops.map(s=>[s.lat,s.lng])];
-    if (coords.length) map.fitBounds(L.latLngBounds(coords), {padding:[40,40]});
-  }
-  refreshSegments();
-}, 150);
-</script>
 </body>
 </html>
