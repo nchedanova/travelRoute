@@ -17,7 +17,6 @@
     <button class="undo-btn" id="undoBtn" onclick="undoAction()" disabled title="Отменить последнее действие">↩ отмена</button>
     <span id="syncStatus" title="Статус облачного сохранения" style="font-size:10px;color:var(--muted);white-space:nowrap;flex-shrink:0;cursor:default;">☁ —</span>
     <button onclick="openCloudSettings()" title="Настройки облака" class="settings-btn">⚙</button>
-    <button class="sidebar-toggle" id="toggleBtn" onclick="toggleSidebar()">☰</button>
   </div>
 </header>
 
@@ -203,6 +202,7 @@
   </div>
 
   <div id="map"></div>
+  <button class="map-toggle-btn" id="toggleBtn" onclick="toggleSidebar()">☰</button>
 </div>
 
 <div class="toast" id="toast">💾 Сохранено</div>
