@@ -620,14 +620,16 @@ const DAY_COLORS = ['#f5a623','#60a5fa','#a78bfa','#34d399','#f472b6','#fb923c']
 const DAY_ORDINALS = ['первый','второй','третий','четвёртый','пятый','шестой'];
 
 // ── CLOUD CONFIG ──────────────────────────────────────────────────────────────
-// Зарегистрируйтесь на https://jsonbin.io (бесплатно) и заполните поля ниже.
-// 1. Создайте аккаунт → получите Master Key (вкладка "API Keys")
-// 2. Нажмите "+ Create Bin" → введите {} → сохраните, скопируйте BIN ID из URL
+// Используется GitHub Gist API (работает в России без VPN, бесплатно).
+// 1. github.com → Settings → Developer settings → Personal access tokens → Tokens (classic)
+//    → Generate new token → поставьте галочку "gist" → скопируйте токен
+// 2. gist.github.com → новый gist → файл data.json, содержимое {"init":true}
+//    → Create secret gist → скопируйте ID из URL (строка после последнего /)
 const CLOUD_CONFIG = {
-  apiKey: '$2a$10$UuZHVV.aNcrB1l9n3ec7YOLOPnGOKFC5dpcjrdHrwItPpyxOGqMzC',   // ← вставьте ваш JSONbin Master Key, например: '$2a$10$abc...'
-  binId:  '69b1bcefb7ec241ddc5e554f',   // ← вставьте ваш Bin ID, например: '6643f1e0acd3cb34a83b1234'
+  apiKey: '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',   // ← GitHub Personal Access Token (с правом gist)
+  binId:  '5db3f9febd8e2db50f8296cc6e620ae9',   // ← Gist ID из URL, например: 'a1b2c3d4e5f67890abcd1234'
 };
-// При пустых полях данные по-прежнему сохраняются в localStorage (офлайн-режим).
+// При пустых полях данные сохраняются только в localStorage (офлайн-режим).
 
 // Базовые дни 1 и 2 (могут быть перезаписаны при загрузке)
 const DAYS_DATA = {
@@ -674,8 +676,8 @@ let state = { actuals:{} };
 
 function dayKeys() { return Object.keys(DAYS_DATA).map(Number); }
 
-// ── CLOUD STORAGE HELPERS ─────────────────────────────────────────────────────
-const JSONBIN_URL = 'https://api.jsonbin.io/v3/b';
+// ── CLOUD STORAGE HELPERS (GitHub Gist API) ──────────────────────────────────
+const GIST_URL = 'https://api.github.com/gists';
 
 function cloudEnabled() {
   return CLOUD_CONFIG.apiKey && CLOUD_CONFIG.binId;
@@ -689,23 +691,30 @@ function setSyncStatus(text, color) {
 }
 
 async function fetchCloudData() {
-  const r = await fetch(`${JSONBIN_URL}/${CLOUD_CONFIG.binId}/latest`, {
-    headers: { 'X-Master-Key': CLOUD_CONFIG.apiKey }
+  const r = await fetch(`${GIST_URL}/${CLOUD_CONFIG.binId}`, {
+    headers: {
+      'Authorization': `token ${CLOUD_CONFIG.apiKey}`,
+      'Accept': 'application/vnd.github+json'
+    }
   });
   if (!r.ok) throw new Error('HTTP ' + r.status);
   const json = await r.json();
-  return json.record;
+  const raw = json.files['data.json']?.content;
+  if (!raw) throw new Error('data.json not found in gist');
+  return JSON.parse(raw);
 }
 
 async function pushCloudData(payload) {
-  const r = await fetch(`${JSONBIN_URL}/${CLOUD_CONFIG.binId}`, {
-    method: 'PUT',
+  const r = await fetch(`${GIST_URL}/${CLOUD_CONFIG.binId}`, {
+    method: 'PATCH',
     headers: {
-      'Content-Type': 'application/json',
-      'X-Master-Key': CLOUD_CONFIG.apiKey,
-      'X-Bin-Versioning': 'false',
+      'Authorization': `token ${CLOUD_CONFIG.apiKey}`,
+      'Accept': 'application/vnd.github+json',
+      'Content-Type': 'application/json'
     },
-    body: JSON.stringify(payload)
+    body: JSON.stringify({
+      files: { 'data.json': { content: JSON.stringify(payload) } }
+    })
   });
   if (!r.ok) throw new Error('HTTP ' + r.status);
 }
@@ -794,6 +803,8 @@ async function loadState() {
   setSyncStatus('☁ загрузка…', 'var(--amber)');
   try {
     const saved = await fetchCloudData();
+    const json = JSON.stringify(saved);
+    _lastCloudHash = strHash(json);
     applyPayload(saved);
     // Обновляем UI после загрузки облачных данных
     dayKeys().forEach(d => redrawDay(d));
@@ -842,6 +853,56 @@ function saveData() {
   } catch(e) { console.error('saveData error', e); }
   showToast();
   updateProgress();
+}
+
+// ── AUTO-POLL (тихое обновление раз в 30с) ───────────────────────────────────
+let _lastCloudHash = null;   // хэш последних известных данных
+let _userIsTyping  = false;  // не перебиваем пользователя во время ввода
+let _typingTimer   = null;
+
+// Простой хэш строки — чтобы не обновлять UI когда данные не изменились
+function strHash(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) { h = (Math.imul(31, h) + s.charCodeAt(i)) | 0; }
+  return h;
+}
+
+// Слушаем любой ввод — пауза 5с после последнего нажатия считается "не печатает"
+document.addEventListener('input', () => {
+  _userIsTyping = true;
+  clearTimeout(_typingTimer);
+  _typingTimer = setTimeout(() => { _userIsTyping = false; }, 5000);
+});
+
+async function pollCloud() {
+  if (!cloudEnabled()) return;
+  if (_userIsTyping) return;            // пользователь сейчас вводит — пропускаем
+  if (_saveCloudTimer) return;          // идёт сохранение — пропускаем
+
+  try {
+    const saved = await fetchCloudData();
+    const json  = JSON.stringify(saved);
+    const hash  = strHash(json);
+    if (hash === _lastCloudHash) return; // данные не изменились — ничего не делаем
+    _lastCloudHash = hash;
+
+    applyPayload(saved);
+    localStorage.setItem('travel_tracker_v3', json);
+
+    dayKeys().forEach(d => redrawDay(d));
+    renderTabs();
+    renderAllDays();
+    updateProgress();
+    showToast('🔄 Данные обновлены');
+  } catch(e) {
+    // тихая ошибка — не мешаем пользователю
+    console.warn('poll error', e);
+  }
+}
+
+function startPolling(intervalMs = 30000) {
+  if (!cloudEnabled()) return;
+  setInterval(pollCloud, intervalMs);
 }
 
 // ── TIME MASK ─────────────────────────────────────────────────────────────────
@@ -1808,7 +1869,7 @@ renderTabs();
 renderAllDays();
 updateProgress();
 // loadState — async: сначала localStorage (мгновенно), потом облако
-loadState();
+loadState().then(() => startPolling(30000));
 setTimeout(() => {
   const d = DAYS_DATA[1];
   if (d) {
