@@ -355,18 +355,20 @@ input.day-date-input {
 
 /* ── MOBILE ──────────────────────────────────────────── */
 @media (max-width:700px) {
-  header { flex-wrap:wrap; padding:8px 14px 6px; gap:6px; }
-  .logo { font-size:16px; flex:1; }
+  header { flex-wrap:nowrap; padding:8px 14px; gap:8px; }
+  .logo { font-size:14px; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .logo span { display:none; }
-  .sidebar-toggle { display:block; order:2; }
+  .sidebar-toggle { display:none; }
   .header-right {
-    width:100%; order:3; margin-left:0;
+    display:flex; align-items:center; gap:6px;
     overflow-x:auto; -webkit-overflow-scrolling:touch;
+    flex-shrink:1; min-width:0;
   }
   .day-tabs { display:flex; flex-wrap:nowrap; gap:5px; min-width:min-content; }
   .day-tab { flex:0 0 auto; padding:5px 10px; font-size:11px; white-space:nowrap; }
   .day-tab-add { flex:0 0 auto; white-space:nowrap; }
   .undo-btn { flex-shrink:0; }
+  #syncStatus { display:none; }
   .main { flex-direction:column; }
   .sidebar {
     width:100%; border-right:none; border-bottom:1px solid var(--border);
@@ -377,4 +379,21 @@ input.day-date-input {
   .time-grid { padding-left:40px; }
   .delete-stop-btn { font-size:22px; padding:8px 10px; top:4px; right:4px; }
   .reset-btn { border-color:var(--red); color:var(--red); }
+}
+
+/* ── ПЛАВАЮЩАЯ КНОПКА (только мобилки) ──────────────── */
+.map-toggle-btn {
+  display:none;
+}
+@media (max-width:700px) {
+  .map-toggle-btn {
+    display:flex; align-items:center; justify-content:center;
+    position:fixed; bottom:20px; left:16px; z-index:500;
+    width:48px; height:48px; border-radius:50%;
+    background:var(--surface); border:1px solid var(--border);
+    color:var(--text); font-size:20px; cursor:pointer;
+    box-shadow:0 2px 16px rgba(0,0,0,0.7);
+    transition:all 0.2s;
+  }
+  .map-toggle-btn:active { transform:scale(0.92); }
 }
