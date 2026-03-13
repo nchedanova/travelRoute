@@ -13,6 +13,21 @@ function setSyncStatus(text, color) {
   el.style.color = color || 'var(--muted)';
 }
 
+function setModeBadge() {
+  const badge = document.getElementById('modeBadge');
+  if (!badge) return;
+  if (!cloudEnabled()) {
+    badge.textContent = '⊘ офлайн';
+    badge.className = 'mode-badge';
+  } else if (CLOUD_CONFIG.canWrite) {
+    badge.textContent = '✏ админ';
+    badge.className = 'mode-badge admin';
+  } else {
+    badge.textContent = '👁 чтение';
+    badge.className = 'mode-badge viewer';
+  }
+}
+
 let _gistOwnerLogin = null; // кешируем логин владельца после первого API-запроса
 
 async function fetchCloudData() {
@@ -135,6 +150,7 @@ async function loadState() {
   // 2. Затем пробуем облако (перезаписывает локальный кэш)
   if (!cloudEnabled()) {
     setSyncStatus('☁ офлайн', 'var(--muted)');
+    setModeBadge();
     return;
   }
 
@@ -144,6 +160,7 @@ async function loadState() {
   } else {
     setSyncStatus('☁ загрузка…', 'var(--amber)');
   }
+  setModeBadge();
   try {
     const saved = await fetchCloudData();
     const json  = JSON.stringify(saved);
