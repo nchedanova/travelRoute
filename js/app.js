@@ -477,6 +477,4 @@ setTimeout(() => {
 
 // Показать настройки при первом открытии только если не задан ни токен, ни gist ID
 // (если gist пришёл из URL — зритель, модал не нужен)
-if (!localStorage.getItem('travel_gist_token') && !localStorage.getItem('travel_gist_id')) {
-  setTimeout(openCloudSettings, 600);
-}
+// Автооткрытие модала убрано — владелец настраивает через кнопку ⚙
