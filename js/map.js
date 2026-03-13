@@ -97,7 +97,13 @@ function initMap() {
   map.zoomControl.setPosition('topright');
 
   // тап/клик по карте — закрываем пилл
-  map.on('click', () => closePill());
+  // Firefox: marker click bubbles to map even after stopPropagation on divIcon,
+  // so we suppress the map click for a short window after any marker click
+  let _suppressMapClick = false;
+  map.on('click', () => {
+    if (_suppressMapClick) return;
+    closePill();
+  });
   // при движении карты — перепозиционируем пилл
   map.on('move', () => {
     if (_activeStop) _positionPill(_activeMarker.getLatLng());
@@ -286,6 +292,9 @@ function drawDay(d) {
     const marker = L.marker([s.lat, s.lng], { icon: makeIcon(s.icon, color) });
     marker.on('click', e => {
       L.DomEvent.stopPropagation(e);
+      // Suppress the map click that Firefox fires right after marker click
+      _suppressMapClick = true;
+      setTimeout(() => { _suppressMapClick = false; }, 50);
       if (_activeStop && _activeStop.s.id === s.id) { closePill(); return; }
       openPill(marker, s, d, color);
       highlightStop(s.id, d);
