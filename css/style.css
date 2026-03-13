@@ -430,3 +430,77 @@ input.day-date-input {
   .sidebar.open::-webkit-scrollbar-track { background:transparent; }
   .sidebar.open::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
 }
+
+/* ── PILL POPUP ───────────────────────────────────────── */
+@keyframes pillPulse {
+  0%,100% { opacity:.6; transform:scale(1); }
+  50%      { opacity:1;  transform:scale(1.12); }
+}
+
+.map-pill-popup {
+  position:absolute;
+  z-index:900;
+  pointer-events:auto;
+  background:rgba(22,24,27,0.95);
+  border:0.5px solid rgba(255,255,255,.12);
+  border-radius:14px;
+  padding:8px 12px;
+  white-space:nowrap;
+  min-width:120px;
+  backdrop-filter:blur(6px);
+  opacity:0;
+  transform:translateX(-50%) translateY(4px);
+  transition:opacity 0.18s ease, transform 0.18s ease;
+}
+.map-pill-popup.pill-visible {
+  opacity:1;
+  transform:translateX(-50%) translateY(0);
+}
+
+.pill-name {
+  font-size:12px;
+  font-weight:500;
+  color:#fff;
+  text-align:center;
+  margin-bottom:7px;
+  letter-spacing:.01em;
+}
+.pill-times {
+  display:flex;
+  gap:0;
+  align-items:stretch;
+}
+.pill-time-block {
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:2px;
+  padding:0 8px;
+}
+.pill-time-block + .pill-time-block {
+  border-left:0.5px solid rgba(255,255,255,.1);
+}
+.pill-time-label {
+  font-size:8px;
+  color:rgba(255,255,255,.3);
+  letter-spacing:.07em;
+}
+.pill-time-plan {
+  font-size:10px;
+  color:rgba(255,255,255,.25);
+}
+.pill-time-fact {
+  font-size:14px;
+  font-weight:500;
+  line-height:1.2;
+}
+.pill-fact-ok   { color:#4ade80; }
+.pill-fact-late { color:#f87171; }
+.pill-fact-no   { color:rgba(255,255,255,.2); }
+
+.pill-divider {
+  width:0.5px;
+  background:rgba(255,255,255,.1);
+  align-self:stretch;
+}
