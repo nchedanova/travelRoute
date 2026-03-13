@@ -17,7 +17,7 @@ async function fetchCloudData() {
   const headers = { 'Accept': 'application/vnd.github+json' };
   if (CLOUD_CONFIG.apiKey) headers['Authorization'] = `token ${CLOUD_CONFIG.apiKey}`;
 
-  const r = await fetch(`${GIST_URL}/${CLOUD_CONFIG.binId}`, { headers });
+  const r = await fetch(`${GIST_URL}/${CLOUD_CONFIG.binId}`, { headers, cache: 'no-store' });
   if (!r.ok) throw new Error('HTTP ' + r.status);
   const json = await r.json();
   const raw = json.files['data.json']?.content;
