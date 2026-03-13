@@ -18,17 +18,15 @@ const _routeCache = (() => {
 let _cacheSaveTimer = null;
 function _persistCache() {
   clearTimeout(_cacheSaveTimer);
-  _cacheSaveTimer = setTimeout(() => {
-    try { localStorage.setItem(OSRM_CACHE_KEY, JSON.stringify(_routeCache)); }
-    catch (e) {
-      // localStorage переполнен — чистим половину старых записей
-      if (e.name === 'QuotaExceededError') {
-        const keys = Object.keys(_routeCache);
-        keys.slice(0, Math.floor(keys.length / 2)).forEach(k => delete _routeCache[k]);
-        try { localStorage.setItem(OSRM_CACHE_KEY, JSON.stringify(_routeCache)); } catch {}
-      }
+  // Сохраняем сразу — на мобильных страница может выгрузиться до таймера
+  try { localStorage.setItem(OSRM_CACHE_KEY, JSON.stringify(_routeCache)); }
+  catch (e) {
+    if (e.name === 'QuotaExceededError') {
+      const keys = Object.keys(_routeCache);
+      keys.slice(0, Math.floor(keys.length / 2)).forEach(k => delete _routeCache[k]);
+      try { localStorage.setItem(OSRM_CACHE_KEY, JSON.stringify(_routeCache)); } catch {}
     }
-  }, 500);
+  }
 }
 
 // Очередь запросов: предотвращает rate-limit на публичном OSRM
@@ -264,4 +262,8 @@ function refreshSegments() {
       }
     });
   });
+  // Страховка: сохраняем кэш когда пользователь уходит со страницы
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') _persistCache();
+});
 }
