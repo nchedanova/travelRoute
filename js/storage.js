@@ -186,9 +186,10 @@ function saveData() {
   updateProgress();
 }
 
-// ── AUTO-POLL (тихое обновление раз в 30с) ────────────────────────────────────
+// ── AUTO-POLL (тихое обновление) ──────────────────────────────────────────────
 let _lastCloudHash = null;
 let _userIsTyping  = false;
+let _userHasFocus  = false;  // любой инпут сфокусирован
 let _typingTimer   = null;
 
 function strHash(s) {
@@ -203,9 +204,23 @@ document.addEventListener('input', () => {
   _typingTimer = setTimeout(() => { _userIsTyping = false; }, 5000);
 });
 
+document.addEventListener('focusin', e => {
+  if (e.target.matches('input, select, textarea')) _userHasFocus = true;
+});
+document.addEventListener('focusout', e => {
+  if (e.target.matches('input, select, textarea')) {
+    // небольшая задержка на случай перехода между полями
+    setTimeout(() => {
+      if (!document.activeElement?.matches('input, select, textarea')) _userHasFocus = false;
+    }, 200);
+  }
+});
+
 async function pollCloud() {
   if (!cloudEnabled()) return;
-  if (_userIsTyping) return;
+  // Владельцу поллинг не нужен — он сам пишет; зрителю блокируем только если активен инпут
+  if (CLOUD_CONFIG.canWrite) return;
+  if (_userIsTyping || _userHasFocus) return;
   if (_saveCloudTimer) return;
 
   try {
@@ -228,8 +243,10 @@ async function pollCloud() {
   }
 }
 
-function startPolling(intervalMs = 30000) {
+function startPolling(intervalMs = 5000) {
   if (!cloudEnabled()) return;
+  // Владелец не поллит — он источник правды
+  if (CLOUD_CONFIG.canWrite) return;
   setInterval(pollCloud, intervalMs);
 }
 
