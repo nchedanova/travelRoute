@@ -237,6 +237,9 @@ async function pollCloud() {
     renderTabs();
     renderAllDays();
     updateProgress();
+    const t = new Date().toLocaleTimeString('ru', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+    setSyncStatus(`🔄 обновлено ${t}`, 'var(--green)');
+    setTimeout(() => setSyncStatus('👁 только чтение', 'var(--amber)'), 3000);
     showToast('🔄 Данные обновлены');
   } catch(e) {
     console.warn('poll error', e);
@@ -320,7 +323,7 @@ async function saveCloudSettings() {
     st.style.color = 'var(--green)';
     setTimeout(() => {
       closeCloudSettings();
-      loadState().then(() => startPolling(30000));
+      loadState().then(() => startPolling());
     }, 800);
   } catch(e) {
     st.textContent = '✗ Ошибка: ' + e.message;
