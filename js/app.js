@@ -464,7 +464,7 @@ layers[currentDay].addTo(map);
 renderTabs();
 renderAllDays();
 updateProgress();
-loadState().then(() => startPolling(30000));
+loadState().then(() => startPolling());
 
 setTimeout(() => {
   const d = DAYS_DATA[1];
