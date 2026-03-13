@@ -165,7 +165,11 @@ function openAddStop(day) {
   addStopDay = day;
   newStopLat = newStopLng = null;
   ['nominatim-input','new-stop-name','new-stop-arrP','new-stop-depP','new-stop-lat','new-stop-lng']
-    .forEach(id => { document.getElementById(id).value = ''; });
+    .forEach(id => {
+      const el = document.getElementById(id);
+      el.value = '';
+      if (el.classList.contains('modal-input')) el.classList.remove('empty');
+    });
   document.getElementById('new-stop-type').value = 'Другое';
   document.getElementById('new-stop-icon').value = TYPE_ICONS['Другое'];
   document.getElementById('nominatim-results').classList.remove('show');
@@ -220,11 +224,31 @@ function nominatimSearch(q) {
   }, 500);
 }
 
+// Offsets in minutes per stop type for auto-fill of departure plan time
+const DEP_OFFSETS = { 'Кафе': 60, 'Заправка': 20 };
+
 function prefillStopIcon(type) {
   const iconEl    = document.getElementById('new-stop-icon');
   const knownIcons = Object.values(TYPE_ICONS);
   if (!iconEl.value || knownIcons.includes(iconEl.value))
     iconEl.value = TYPE_ICONS[type] || '📍';
+}
+
+function prefillDepTime() {
+  const type   = document.getElementById('new-stop-type').value;
+  const arrVal = document.getElementById('new-stop-arrP').value.trim();
+  const depEl  = document.getElementById('new-stop-depP');
+  // Only prefill if depP is still empty (don't overwrite user edits)
+  if (depEl.value.trim()) return;
+  const offset = DEP_OFFSETS[type];
+  if (!offset || arrVal.length < 5) return;
+  const [h, m] = arrVal.split(':').map(Number);
+  if (isNaN(h) || isNaN(m)) return;
+  const total = h * 60 + m + offset;
+  const rh = String(Math.floor(total / 60) % 24).padStart(2, '0');
+  const rm = String(total % 60).padStart(2, '0');
+  depEl.value = `${rh}:${rm}`;
+  depEl.classList.remove('empty');
 }
 
 function doAddStop() {
@@ -465,6 +489,17 @@ renderTabs();
 renderAllDays();
 updateProgress();
 loadState().then(() => startPolling());
+
+// Fix 4: scroll active time input into view when mobile keyboard opens
+document.addEventListener('focusin', e => {
+  if (!e.target.matches('input.time-in, input#new-stop-arrP, input#new-stop-depP')) return;
+  if (window.innerWidth > 700) return;
+  const sidebar = document.getElementById('sidebar');
+  // wait for keyboard animation (~300ms)
+  setTimeout(() => {
+    e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 320);
+});
 
 setTimeout(() => {
   const d = DAYS_DATA[1];
