@@ -181,19 +181,20 @@
     <div class="modal modal-lg">
       <div class="modal-title">⚙ Настройки облака</div>
       <div class="modal-body" style="margin-bottom:14px;">
-        Данные хранятся в GitHub Gist. Токен сохраняется только в вашем браузере — в коде сайта его нет.
+        Данные хранятся в <b>публичном</b> GitHub Gist. Токен нужен только владельцу для записи — зрители открывают сайт по ссылке без токена.
       </div>
       <div class="modal-field">
-        <div class="modal-label">GitHub Personal Access Token (scope: gist)</div>
+        <div class="modal-label">GitHub Personal Access Token (scope: gist) — только для владельца</div>
         <input class="modal-input" id="cs-token" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off">
       </div>
       <div class="modal-field">
-        <div class="modal-label">Gist ID (из URL после последнего /)</div>
+        <div class="modal-label">Gist ID (из URL gist.github.com после последнего /)</div>
         <input class="modal-input" id="cs-gist" type="text" placeholder="a1b2c3d4e5f67890abcd1234" autocomplete="off">
       </div>
       <div id="cs-status" style="font-size:10px;min-height:16px;margin-bottom:10px;"></div>
-      <div class="modal-actions">
+      <div class="modal-actions" style="flex-wrap:wrap;gap:8px;">
         <button class="modal-cancel" onclick="clearCloudSettings()" style="margin-right:auto;border-color:#f87171;color:#f87171;">Очистить</button>
+        <button class="modal-cancel" onclick="copyShareLink()" title="Скопировать ссылку для зрителей (без токена)">🔗 Скопировать ссылку</button>
         <button class="modal-cancel" onclick="closeCloudSettings()">Отмена</button>
         <button class="modal-confirm" style="border-color:var(--green);color:var(--green);background:rgba(74,222,128,0.1);"
           onclick="saveCloudSettings()">Сохранить</button>
@@ -209,12 +210,12 @@
 
 <!-- Scripts: порядок важен — config и data первыми -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="js/config.js"></script>
-<script src="js/data.js"></script>
-<script src="js/storage.js"></script>
-<script src="js/map.js"></script>
-<script src="js/render.js"></script>
-<script src="js/app.js"></script>
+<script src="js/config.js?v=3"></script>
+<script src="js/data.js?v=3"></script>
+<script src="js/storage.js?v=3"></script>
+<script src="js/map.js?v=3"></script>
+<script src="js/render.js?v=3"></script>
+<script src="js/app.js?v=3"></script>
 
 </body>
 </html>
