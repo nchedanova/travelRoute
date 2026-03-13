@@ -1,8 +1,9 @@
 // ── CLOUD STORAGE HELPERS (GitHub Gist API) ───────────────────────────────────
 const GIST_URL = 'https://api.github.com/gists';
 
+// cloudEnabled = можно хотя бы читать (gistId есть)
 function cloudEnabled() {
-  return !!(CLOUD_CONFIG.apiKey && CLOUD_CONFIG.binId);
+  return CLOUD_CONFIG.canRead;
 }
 
 function setSyncStatus(text, color) {
@@ -13,12 +14,10 @@ function setSyncStatus(text, color) {
 }
 
 async function fetchCloudData() {
-  const r = await fetch(`${GIST_URL}/${CLOUD_CONFIG.binId}`, {
-    headers: {
-      'Authorization': `token ${CLOUD_CONFIG.apiKey}`,
-      'Accept': 'application/vnd.github+json'
-    }
-  });
+  const headers = { 'Accept': 'application/vnd.github+json' };
+  if (CLOUD_CONFIG.apiKey) headers['Authorization'] = `token ${CLOUD_CONFIG.apiKey}`;
+
+  const r = await fetch(`${GIST_URL}/${CLOUD_CONFIG.binId}`, { headers });
   if (!r.ok) throw new Error('HTTP ' + r.status);
   const json = await r.json();
   const raw = json.files['data.json']?.content;
@@ -27,6 +26,7 @@ async function fetchCloudData() {
 }
 
 async function pushCloudData(payload) {
+  if (!CLOUD_CONFIG.canWrite) throw new Error('Нет токена — запись недоступна');
   const r = await fetch(`${GIST_URL}/${CLOUD_CONFIG.binId}`, {
     method: 'PATCH',
     headers: {
@@ -123,7 +123,12 @@ async function loadState() {
     return;
   }
 
-  setSyncStatus('☁ загрузка…', 'var(--amber)');
+  // Если нет токена — режим «только чтение»
+  if (!CLOUD_CONFIG.canWrite) {
+    setSyncStatus('👁 только чтение', 'var(--amber)');
+  } else {
+    setSyncStatus('☁ загрузка…', 'var(--amber)');
+  }
   try {
     const saved = await fetchCloudData();
     const json  = JSON.stringify(saved);
@@ -135,7 +140,10 @@ async function loadState() {
     renderAllDays();
     updateProgress();
     setSyncStatus('☁ загружено', 'var(--green)');
-    setTimeout(() => setSyncStatus('☁ ок', 'var(--muted)'), 2000);
+    setTimeout(() => setSyncStatus(
+      CLOUD_CONFIG.canWrite ? '☁ ок' : '👁 только чтение',
+      CLOUD_CONFIG.canWrite ? 'var(--muted)' : 'var(--amber)'
+    ), 2000);
   } catch(e) {
     console.error('loadState cloud error', e);
     setSyncStatus('☁ ошибка загрузки', '#f87171');
@@ -170,8 +178,8 @@ function saveData() {
     // Всегда сохраняем в localStorage как кэш
     localStorage.setItem('travel_tracker_v3', JSON.stringify(payload));
 
-    // Дополнительно — в облако (с дебаунсом)
-    if (cloudEnabled()) scheduleCloudSave(payload);
+    // Дополнительно — в облако (с дебаунсом), только если есть токен
+    if (CLOUD_CONFIG.canWrite) scheduleCloudSave(payload);
 
   } catch(e) { console.error('saveData error', e); }
   showToast();
@@ -223,6 +231,24 @@ async function pollCloud() {
 function startPolling(intervalMs = 30000) {
   if (!cloudEnabled()) return;
   setInterval(pollCloud, intervalMs);
+}
+
+function copyShareLink() {
+  const gistId = CLOUD_CONFIG.binId;
+  if (!gistId) {
+    const st = document.getElementById('cs-status');
+    st.textContent = '⚠ Сначала сохраните Gist ID';
+    st.style.color = '#f87171';
+    return;
+  }
+  const url = new URL(window.location.href);
+  url.search = ''; // убираем старые params
+  url.searchParams.set('gist', gistId);
+  navigator.clipboard.writeText(url.toString()).then(() => {
+    const st = document.getElementById('cs-status');
+    st.textContent = '✓ Ссылка скопирована! Gist должен быть публичным.';
+    st.style.color = 'var(--green)';
+  });
 }
 
 // ── CLOUD SETTINGS UI ─────────────────────────────────────────────────────────
