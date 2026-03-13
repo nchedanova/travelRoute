@@ -475,7 +475,8 @@ setTimeout(() => {
   refreshSegments();
 }, 150);
 
-// Показать настройки при первом открытии если токен не задан
-if (!localStorage.getItem('travel_gist_token')) {
+// Показать настройки при первом открытии только если не задан ни токен, ни gist ID
+// (если gist пришёл из URL — зритель, модал не нужен)
+if (!localStorage.getItem('travel_gist_token') && !localStorage.getItem('travel_gist_id')) {
   setTimeout(openCloudSettings, 600);
 }
