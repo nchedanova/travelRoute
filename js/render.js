@@ -18,22 +18,22 @@ function fmtDelta(d) {
 // ── TIME MASK ─────────────────────────────────────────────────────────────────
 function applyMask(el) {
   const oldVal = el.value;
-  const pos    = el.selectionStart;
+  // Firefox can return null for selectionStart — fall back to end of string
+  const pos    = (el.selectionStart != null) ? el.selectionStart : oldVal.length;
   const digitsBeforeCursor = oldVal.slice(0, pos).replace(/[^0-9]/g, '').length;
   let digits    = oldVal.replace(/[^0-9]/g, '').slice(0, 4);
   let formatted = digits.length >= 3 ? digits.slice(0, 2) + ':' + digits.slice(2) : digits;
   el.value = formatted;
   el.classList.toggle('empty', !formatted);
   let digitCount = 0, newPos = formatted.length;
-  if (digitsBeforeCursor === 0) { newPos = 0; }
-  else {
+  if (digitsBeforeCursor > 0) {
     for (let i = 0; i < formatted.length; i++) {
       if (/[0-9]/.test(formatted[i])) digitCount++;
       if (digitCount === digitsBeforeCursor) { newPos = i + 1; break; }
     }
   }
-  // requestAnimationFrame fixes cursor jump in Firefox
-  requestAnimationFrame(() => { try { el.setSelectionRange(newPos, newPos); } catch(e){} });
+  // Synchronous call works in both Chrome and Firefox
+  try { el.setSelectionRange(newPos, newPos); } catch(e) {}
   if (formatted.length === 5) updateProgress();
 }
 
