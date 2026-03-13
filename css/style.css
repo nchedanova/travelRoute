@@ -385,15 +385,48 @@ input.day-date-input {
 .map-toggle-btn {
   display:none;
 }
+.map-toggle-wrap {
+  display:none;
+}
 @media (max-width:700px) {
+  .map-toggle-wrap {
+    display:flex; flex-direction:column; align-items:center;
+    position:fixed; bottom:20px; left:16px; z-index:500;
+    gap:4px;
+  }
   .map-toggle-btn {
     display:flex; align-items:center; justify-content:center;
-    position:fixed; bottom:20px; left:16px; z-index:500;
     width:48px; height:48px; border-radius:50%;
     background:var(--surface); border:1px solid var(--border);
     color:var(--text); font-size:20px; cursor:pointer;
     box-shadow:0 2px 16px rgba(0,0,0,0.7);
-    transition:all 0.2s;
+    transition:background 0.15s;
+    -webkit-tap-highlight-color: transparent;
+    outline: none;
   }
+  .map-toggle-btn:hover,
+  .map-toggle-btn:focus-visible { background:var(--surface2); }
   .map-toggle-btn:active { transform:scale(0.92); }
+  .map-toggle-btn:focus { outline: none; }
+
+  .mode-badge {
+    font-size:9px; letter-spacing:0.06em; font-weight:600;
+    padding:2px 7px; border-radius:10px;
+    background:var(--surface); border:1px solid var(--border);
+    color:var(--muted); white-space:nowrap;
+    box-shadow:0 1px 6px rgba(0,0,0,0.5);
+    transition:opacity 0.3s;
+  }
+  .mode-badge.admin { color:var(--amber); border-color:var(--amber); }
+  .mode-badge.viewer { color:#60a5fa; border-color:#60a5fa; }
+
+  /* Fix 5: sidebar overscroll — prevent back-gesture conflict */
+  .sidebar.open {
+    overscroll-behavior: contain;
+    overscroll-behavior-y: contain;
+  }
+  /* Bigger touch-friendly scrollbar for sidebar */
+  .sidebar.open::-webkit-scrollbar { width:6px; }
+  .sidebar.open::-webkit-scrollbar-track { background:transparent; }
+  .sidebar.open::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
 }
