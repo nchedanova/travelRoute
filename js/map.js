@@ -4,13 +4,36 @@ const layers        = {};
 const segmentLayers = {};
 
 // ── OSRM ROUTING ──────────────────────────────────────────────────────────────
-// Кэш маршрутов: ключ = "lat1,lng1|lat2,lng2" → массив [lat,lng]
-const _routeCache = {};
+const OSRM_CACHE_KEY = 'travel_route_cache';
+const OSRM_DELAY_MS  = 650; // задержка между запросами (публичный OSRM ~600ms)
 
-// Очередь запросов: предотвращает rate-limit на публичном OSRM (1 req/s)
-const _fetchQueue  = [];
-let   _queueBusy   = false;
-const OSRM_DELAY_MS = 650; // задержка между запросами
+// Кэш маршрутов: ключ = "lat1,lng1|lat2,lng2" → массив [lat,lng]
+// Загружается из localStorage при старте → линии сразу по дорогам без OSRM-запроса
+const _routeCache = (() => {
+  try { return JSON.parse(localStorage.getItem(OSRM_CACHE_KEY) || '{}'); }
+  catch { return {}; }
+})();
+
+// Отложенное сохранение: не дёргаем localStorage на каждый сегмент
+let _cacheSaveTimer = null;
+function _persistCache() {
+  clearTimeout(_cacheSaveTimer);
+  _cacheSaveTimer = setTimeout(() => {
+    try { localStorage.setItem(OSRM_CACHE_KEY, JSON.stringify(_routeCache)); }
+    catch (e) {
+      // localStorage переполнен — чистим половину старых записей
+      if (e.name === 'QuotaExceededError') {
+        const keys = Object.keys(_routeCache);
+        keys.slice(0, Math.floor(keys.length / 2)).forEach(k => delete _routeCache[k]);
+        try { localStorage.setItem(OSRM_CACHE_KEY, JSON.stringify(_routeCache)); } catch {}
+      }
+    }
+  }, 500);
+}
+
+// Очередь запросов: предотвращает rate-limit на публичном OSRM
+const _fetchQueue = [];
+let   _queueBusy  = false;
 
 async function _drainQueue() {
   if (_queueBusy) return;
@@ -47,6 +70,7 @@ async function _osrmFetch(from, to) {
       if (data.code !== 'Ok' || !data.routes?.length) return null;
       const coords = data.routes[0].geometry.coordinates.map(([lng, lat]) => [lat, lng]);
       _routeCache[key] = coords;
+      _persistCache(); // сохраняем в localStorage для следующей сессии
       return coords;
     } catch (_) {
       if (attempt === 2) return null;
