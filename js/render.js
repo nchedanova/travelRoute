@@ -32,7 +32,8 @@ function applyMask(el) {
       if (digitCount === digitsBeforeCursor) { newPos = i + 1; break; }
     }
   }
-  el.setSelectionRange(newPos, newPos);
+  // requestAnimationFrame fixes cursor jump in Firefox
+  requestAnimationFrame(() => { try { el.setSelectionRange(newPos, newPos); } catch(e){} });
   if (formatted.length === 5) updateProgress();
 }
 
