@@ -246,7 +246,7 @@ async function pollCloud() {
   }
 }
 
-function startPolling(intervalMs = 10000) {
+function startPolling(intervalMs = 30000) {
   if (!cloudEnabled()) return;
   // Владелец не поллит — он источник правды
   if (CLOUD_CONFIG.canWrite) return;
