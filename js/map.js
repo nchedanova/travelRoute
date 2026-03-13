@@ -18,15 +18,17 @@ const _routeCache = (() => {
 let _cacheSaveTimer = null;
 function _persistCache() {
   clearTimeout(_cacheSaveTimer);
-  // Сохраняем сразу — на мобильных страница может выгрузиться до таймера
-  try { localStorage.setItem(OSRM_CACHE_KEY, JSON.stringify(_routeCache)); }
-  catch (e) {
-    if (e.name === 'QuotaExceededError') {
-      const keys = Object.keys(_routeCache);
-      keys.slice(0, Math.floor(keys.length / 2)).forEach(k => delete _routeCache[k]);
-      try { localStorage.setItem(OSRM_CACHE_KEY, JSON.stringify(_routeCache)); } catch {}
+  _cacheSaveTimer = setTimeout(() => {
+    try { localStorage.setItem(OSRM_CACHE_KEY, JSON.stringify(_routeCache)); }
+    catch (e) {
+      // localStorage переполнен — чистим половину старых записей
+      if (e.name === 'QuotaExceededError') {
+        const keys = Object.keys(_routeCache);
+        keys.slice(0, Math.floor(keys.length / 2)).forEach(k => delete _routeCache[k]);
+        try { localStorage.setItem(OSRM_CACHE_KEY, JSON.stringify(_routeCache)); } catch {}
+      }
     }
-  }
+  }, 500);
 }
 
 // Очередь запросов: предотвращает rate-limit на публичном OSRM
@@ -94,6 +96,13 @@ function initMap() {
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19 }).addTo(map);
   map.zoomControl.setPosition('topright');
 
+  // тап/клик по карте — закрываем пилл
+  map.on('click', () => closePill());
+  // при движении карты — перепозиционируем пилл
+  map.on('move', () => {
+    if (_activeStop) _positionPill(_activeMarker.getLatLng());
+  });
+
   dayKeys().forEach(d => {
     if (!layers[d])        layers[d]        = L.layerGroup();
     if (!segmentLayers[d]) segmentLayers[d] = [];
@@ -108,17 +117,23 @@ function hexRgba(hex, a, darken = 1) {
   return `rgba(${r},${g},${b},${a})`;
 }
 
-function makeIcon(emoji, color, size = 34) {
+function makeIcon(emoji, color, size = 34, active = false) {
   const bg = hexRgba(color, 0.7, 0.45);
-  const html = `<div style="
-    width:${size}px;height:${size}px;
-    border-radius:50% 50% 50% 0;transform:rotate(-45deg);
-    background:${bg};border:2px solid rgba(255,255,255,0.18);
-    display:flex;align-items:center;justify-content:center;
-    box-shadow:0 2px 12px rgba(0,0,0,0.8), 0 0 0 1px rgba(0,0,0,0.4);">
-    <span style="transform:rotate(45deg);font-size:${Math.round(size*0.44)}px;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.9));">${emoji}</span>
+  const ring = active
+    ? `<div style="position:absolute;inset:-8px;border-radius:50%;border:1.5px solid ${hexRgba(color,0.5)};background:${hexRgba(color,0.1)};animation:pillPulse 1.6s ease-in-out infinite;"></div>` : '';
+  const html = `<div style="position:relative;width:${size}px;height:${size}px;">
+    ${ring}
+    <div style="
+      position:relative;width:${size}px;height:${size}px;
+      border-radius:50% 50% 50% 0;transform:rotate(-45deg);
+      background:${bg};border:2px solid rgba(255,255,255,0.18);
+      display:flex;align-items:center;justify-content:center;
+      box-shadow:0 2px 12px rgba(0,0,0,0.8), 0 0 0 1px rgba(0,0,0,0.4);">
+      <span style="transform:rotate(45deg);font-size:${Math.round(size*0.44)}px;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.9));">${emoji}</span>
+    </div>
   </div>`;
-  return L.divIcon({ html, className:'', iconSize:[size,size], iconAnchor:[size/2,size], popupAnchor:[0,-size] });
+  const pad = active ? 8 : 0;
+  return L.divIcon({ html, className:'', iconSize:[size+pad*2,size+pad*2], iconAnchor:[size/2+pad,size+pad] });
 }
 
 function makeStartIcon(emoji, color) {
@@ -129,7 +144,103 @@ function makeStartIcon(emoji, color) {
     display:flex;align-items:center;justify-content:center;
     font-size:17px;box-shadow:0 2px 12px rgba(0,0,0,0.8), 0 0 0 1px rgba(0,0,0,0.4);
     filter:drop-shadow(0 1px 3px rgba(0,0,0,0.9));">${emoji}</div>`;
-  return L.divIcon({ html, className:'', iconSize:[38,38], iconAnchor:[19,19], popupAnchor:[0,-22] });
+  return L.divIcon({ html, className:'', iconSize:[38,38], iconAnchor:[19,19] });
+}
+
+// ── PILL POPUP ─────────────────────────────────────────────────────────────────
+let _pillEl       = null;   // DOM-элемент пилла
+let _activeMarker = null;   // текущий открытый маркер
+let _activeStop   = null;   // его данные {s, d, color, marker}
+
+function _getOrCreatePill() {
+  if (!_pillEl) {
+    _pillEl = document.createElement('div');
+    _pillEl.className = 'map-pill-popup';
+    _pillEl.style.display = 'none';
+    document.getElementById('map').appendChild(_pillEl);
+    // клик по пиллу — не закрываем
+    _pillEl.addEventListener('click', e => e.stopPropagation());
+  }
+  return _pillEl;
+}
+
+function _pillContent(s, d) {
+  const arrEl  = document.getElementById('arr-' + s.id);
+  const depEl  = document.getElementById('dep-' + s.id);
+  const arrA   = (arrEl && arrEl.value) || s.arrA || '';
+  const depA   = (depEl && depEl.value) || s.depA || '';
+
+  function timeBlock(label, plan, fact) {
+    const hasFact = fact && fact.length >= 4;
+    const hasPlan = plan && plan.length >= 4;
+    let factClass = 'pill-fact-no';
+    if (hasFact && hasPlan) {
+      const [ph,pm] = plan.split(':').map(Number);
+      const [fh,fm] = fact.split(':').map(Number);
+      factClass = (fh*60+fm) <= (ph*60+pm) ? 'pill-fact-ok' : 'pill-fact-late';
+    }
+    return `<div class="pill-time-block">
+      <div class="pill-time-label">${label}</div>
+      <div class="pill-time-plan">${hasPlan ? plan : '—'}</div>
+      <div class="pill-time-fact ${factClass}">${hasFact ? fact : '—'}</div>
+    </div>`;
+  }
+
+  const depBlock = s.depP !== undefined && s.depP !== ''
+    ? `<div class="pill-divider"></div>${timeBlock('ОТПР', s.depP, depA)}`
+    : '';
+
+  return `<div class="pill-name">${s.icon} ${s.name}</div>
+    <div class="pill-times">
+      ${timeBlock('ПРИБ', s.arrP, arrA)}
+      ${depBlock}
+    </div>`;
+}
+
+function openPill(marker, s, d, color) {
+  // закрываем предыдущий
+  closePill(false);
+
+  _activeStop   = { s, d, color, marker };
+  _activeMarker = marker;
+
+  // активная иконка с кольцом
+  marker.setIcon(makeIcon(s.icon, color, 34, true));
+
+  const pill = _getOrCreatePill();
+  pill.innerHTML = _pillContent(s, d);
+
+  _positionPill(marker.getLatLng());
+  pill.style.display = 'block';
+  // небольшой reflow для transition
+  requestAnimationFrame(() => pill.classList.add('pill-visible'));
+}
+
+function closePill(resetIcon = true) {
+  if (_activeStop && resetIcon) {
+    const { s, d, color, marker } = _activeStop;
+    marker.setIcon(makeIcon(s.icon, color, 34, false));
+  }
+  if (_pillEl) {
+    _pillEl.classList.remove('pill-visible');
+    _pillEl.style.display = 'none';
+  }
+  _activeStop   = null;
+  _activeMarker = null;
+}
+
+function _positionPill(latlng) {
+  if (!_pillEl) return;
+  const pt = map.latLngToContainerPoint(latlng);
+  _pillEl.style.left      = pt.x + 'px';
+  _pillEl.style.bottom    = (map.getContainer().clientHeight - pt.y + 12) + 'px';
+  _pillEl.style.transform = 'translateX(-50%)';
+}
+
+function refreshPill() {
+  if (!_activeStop) return;
+  const { s, d } = _activeStop;
+  _getOrCreatePill().innerHTML = _pillContent(s, d);
 }
 
 // ── DRAW DAY ──────────────────────────────────────────────────────────────────
@@ -142,10 +253,6 @@ function drawDay(d) {
 
   // Стартовый маркер
   const startM = L.marker([data.start.lat, data.start.lng], { icon: makeStartIcon(data.start.icon, color) });
-  startM.bindPopup(`<div class="popup-inner">
-    <div class="popup-name">${data.start.icon} <b>${data.start.name}</b></div>
-    <div class="popup-row"><span>Начало маршрута</span></div>
-  </div>`);
   group.addLayer(startM);
 
   // Сегменты маршрута по дорогам (OSRM)
@@ -177,25 +284,12 @@ function drawDay(d) {
   // Маркеры остановок
   data.stops.forEach(s => {
     const marker = L.marker([s.lat, s.lng], { icon: makeIcon(s.icon, color) });
-    marker.bindPopup('<div class="popup-inner"></div>');
-    marker.on('popupopen', () => {
-      const arrEl = document.getElementById('arr-' + s.id);
-      const depEl = document.getElementById('dep-' + s.id);
-      const arrA  = (arrEl && arrEl.value) || s.arrA || '—';
-      const depA  = (depEl && depEl.value) || s.depA || '—';
-      const depRows = s.depP
-        ? `<div class="popup-row"><span>Отпр. план</span><span>${s.depP}</span></div>
-           <div class="popup-row"><span>Отпр. факт</span><span>${depA}</span></div>`
-        : '';
-      marker.getPopup().setContent(`<div class="popup-inner">
-        <div class="popup-name">${s.icon} <b>${s.name}</b></div>
-        <div class="popup-row"><span>Тип</span><span>${s.type}</span></div>
-        <div class="popup-row"><span>Приб. план</span><span>${s.arrP || '—'}</span></div>
-        <div class="popup-row"><span>Приб. факт</span><span>${arrA}</span></div>
-        ${depRows}
-      </div>`);
+    marker.on('click', e => {
+      L.DomEvent.stopPropagation(e);
+      if (_activeStop && _activeStop.s.id === s.id) { closePill(); return; }
+      openPill(marker, s, d, color);
+      highlightStop(s.id, d);
     });
-    marker.on('click', () => highlightStop(s.id, d));
     group.addLayer(marker);
   });
 }
@@ -262,8 +356,4 @@ function refreshSegments() {
       }
     });
   });
-  // Страховка: сохраняем кэш когда пользователь уходит со страницы
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'hidden') _persistCache();
-});
 }
