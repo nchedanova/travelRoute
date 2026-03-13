@@ -13,13 +13,28 @@ function setSyncStatus(text, color) {
   el.style.color = color || 'var(--muted)';
 }
 
+let _gistOwnerLogin = null; // кешируем логин владельца после первого API-запроса
+
 async function fetchCloudData() {
   const headers = { 'Accept': 'application/vnd.github+json' };
   if (CLOUD_CONFIG.apiKey) headers['Authorization'] = `token ${CLOUD_CONFIG.apiKey}`;
 
+  // Зрители (без токена): если знаем логин — читаем raw URL (нет лимитов API)
+  if (!CLOUD_CONFIG.apiKey && _gistOwnerLogin) {
+    const rawUrl = `https://gist.githubusercontent.com/${_gistOwnerLogin}/${CLOUD_CONFIG.binId}/raw/data.json?t=${Date.now()}`;
+    const r = await fetch(rawUrl, { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return await r.json();
+  }
+
+  // Первый запрос (или владелец с токеном) — через API, запоминаем логин
   const r = await fetch(`${GIST_URL}/${CLOUD_CONFIG.binId}`, { headers, cache: 'no-store' });
   if (!r.ok) throw new Error('HTTP ' + r.status);
   const json = await r.json();
+
+  // Сохраняем логин для дальнейших запросов без токена
+  if (json.owner?.login) _gistOwnerLogin = json.owner.login;
+
   const raw = json.files['data.json']?.content;
   if (!raw) throw new Error('data.json not found in gist');
   return JSON.parse(raw);
@@ -246,7 +261,7 @@ async function pollCloud() {
   }
 }
 
-function startPolling(intervalMs = 30000) {
+function startPolling(intervalMs = 5000) {
   if (!cloudEnabled()) return;
   // Владелец не поллит — он источник правды
   if (CLOUD_CONFIG.canWrite) return;
