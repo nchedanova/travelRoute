@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Дорожный журнал</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧭</text></svg>">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
@@ -48,7 +49,7 @@
         </div>
         <div class="modal-field">
           <div class="modal-label">Тип</div>
-          <select class="modal-select" id="new-stop-type" onchange="prefillStopIcon(this.value)">
+          <select class="modal-select" id="new-stop-type" onchange="prefillStopIcon(this.value);prefillDepTime()">
             <option value="Заправка">⛽ Заправка</option>
             <option value="Кафе">🍜 Кафе</option>
             <option value="Отель">🛎 Отель</option>
@@ -61,7 +62,7 @@
         <div class="modal-field">
           <div class="modal-label">Приб. план</div>
           <input class="modal-input" id="new-stop-arrP" type="text" placeholder="--:--" maxlength="5"
-            oninput="applyMask(this)" onblur="padTime(this)">
+            oninput="applyMask(this);prefillDepTime()" onblur="padTime(this)">
         </div>
         <div class="modal-field">
           <div class="modal-label">Отпр. план (опционально)</div>
@@ -203,19 +204,22 @@
   </div>
 
   <div id="map"></div>
-  <button class="map-toggle-btn" id="toggleBtn" onclick="toggleSidebar()">☰</button>
+  <div class="map-toggle-wrap">
+    <button class="map-toggle-btn" id="toggleBtn" onclick="toggleSidebar()">☰</button>
+    <div class="mode-badge" id="modeBadge"></div>
+  </div>
 </div>
 
 <div class="toast" id="toast">💾 Сохранено</div>
 
 <!-- Scripts: порядок важен — config и data первыми -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="js/config.js?v=3"></script>
-<script src="js/data.js?v=3"></script>
-<script src="js/storage.js?v=3"></script>
-<script src="js/map.js?v=3"></script>
-<script src="js/render.js?v=3"></script>
-<script src="js/app.js?v=3"></script>
+<script src="js/config.js?v=6"></script>
+<script src="js/data.js?v=6"></script>
+<script src="js/storage.js?v=6"></script>
+<script src="js/map.js?v=6"></script>
+<script src="js/render.js?v=6"></script>
+<script src="js/app.js?v=6"></script>
 
 </body>
 </html>
