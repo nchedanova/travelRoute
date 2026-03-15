@@ -631,14 +631,15 @@ input.day-date-input {
 
 /* ── GPS ───────────────────────────────────────────────────────────────────── */
 
-/* Машинка GPS */
-@keyframes carPulse {
-  0%,100% { filter: drop-shadow(0 0 0px color-mix(in srgb, var(--gps-color) 0%, transparent)); }
-  50%      { filter: drop-shadow(0 0 6px var(--gps-color)); }
+/* Пульсирующая машинка в круге цвета дня */
+@keyframes carRingPulse {
+  0%   { transform: scale(1);    opacity: 1; }
+  50%  { transform: scale(1.18); opacity: 0.6; }
+  100% { transform: scale(1);    opacity: 1; }
 }
 .gps-car {
-  width: 32px; height: 32px;
-  animation: carPulse 2s ease-in-out infinite;
+  animation: carRingPulse 2s ease-in-out infinite;
+  transform-origin: center;
 }
 
 /* Кнопка "Еду" в хедере */
