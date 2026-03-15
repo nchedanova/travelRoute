@@ -552,6 +552,10 @@ function editDepartTime(day, el) {
 }
 
 // ── INLINE STOP EDITOR ────────────────────────────────────────────────────────
+// per-card edit state: stores temp lat/lng from Nominatim search
+const _editStopCoords = {};
+let _editStopSearchTimer = null;
+
 function editStop(id, day) {
   const s    = DAYS_DATA[day].stops.find(x => x.id === id);
   if (!s) return;
@@ -559,6 +563,9 @@ function editStop(id, day) {
   const tg   = document.getElementById('stop-timegrid-' + id);
   const form = document.getElementById('edit-form-' + id);
   if (!main || !tg || !form) return;
+
+  // Reset temp coords to current stop coords
+  _editStopCoords[id] = { lat: s.lat, lng: s.lng };
 
   main.style.display = 'none';
   tg.style.display   = 'none';
@@ -569,6 +576,18 @@ function editStop(id, day) {
     .join('');
 
   form.innerHTML = `
+    <div class="edit-field" style="margin-bottom:8px;">
+      <div class="edit-label">Поиск нового места</div>
+      <div class="search-wrap">
+        <input class="edit-input edit-input-name" id="ei-search-${id}"
+          type="text" placeholder="Название, адрес…"
+          oninput="editStopSearch(this.value, '${id}')" autocomplete="off">
+        <div class="search-results" id="ei-results-${id}"></div>
+      </div>
+    </div>
+    <div id="ei-coords-display-${id}" style="font-size:10px;color:var(--green);margin-bottom:6px;display:${s.lat ? 'block' : 'none'};">
+      📍 <span id="ei-coords-text-${id}">${s.lat ? s.lat.toFixed(5) + ', ' + s.lng.toFixed(5) : ''}</span>
+    </div>
     <div class="edit-row">
       <div class="edit-field">
         <div class="edit-label">Иконка</div>
@@ -602,8 +621,46 @@ function editStop(id, day) {
       <button class="edit-save-btn" onclick="saveStopEdit('${id}', ${day})">✓ Сохранить</button>
     </div>`;
 
-  // Auto-focus name
-  setTimeout(() => document.getElementById('ei-name-' + id)?.focus(), 50);
+  setTimeout(() => document.getElementById('ei-search-' + id)?.focus(), 50);
+}
+
+function editStopSearch(q, id) {
+  clearTimeout(_editStopSearchTimer);
+  const res = document.getElementById('ei-results-' + id);
+  if (!res) return;
+  if (!q || q.length < 3) { res.classList.remove('show'); return; }
+  res.classList.add('show');
+  res.innerHTML = '<div class="search-spinner">Поиск…</div>';
+  _editStopSearchTimer = setTimeout(async () => {
+    try {
+      const url  = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&accept-language=ru`;
+      const r    = await fetch(url, { headers: { 'Accept-Language': 'ru' } });
+      const data = await r.json();
+      if (!data.length) { res.innerHTML = '<div class="search-spinner">Ничего не найдено</div>'; return; }
+      res.innerHTML = '';
+      data.forEach(item => {
+        const el   = document.createElement('div');
+        el.className = 'search-result-item';
+        const main = item.name || item.display_name.split(',')[0];
+        const sub  = item.display_name.split(',').slice(1, 3).join(',').trim();
+        el.innerHTML = `<div>${main}</div><div class="result-sub">${sub}</div>`;
+        el.onclick = () => {
+          const lat = parseFloat(item.lat), lng = parseFloat(item.lon);
+          _editStopCoords[id] = { lat, lng };
+          // Pre-fill name if still the old value
+          const nameEl = document.getElementById('ei-name-' + id);
+          if (nameEl && (!nameEl.value || nameEl.value === nameEl.dataset.orig)) {
+            nameEl.value = main;
+          }
+          document.getElementById('ei-search-' + id).value = item.display_name;
+          document.getElementById('ei-coords-text-' + id).textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+          document.getElementById('ei-coords-display-' + id).style.display = 'block';
+          res.classList.remove('show');
+        };
+        res.appendChild(el);
+      });
+    } catch(err) { res.innerHTML = '<div class="search-spinner">Ошибка поиска</div>'; }
+  }, 500);
 }
 
 function cancelStopEdit(id) {
@@ -627,6 +684,14 @@ function saveStopEdit(id, day) {
   s.type = document.getElementById('ei-type-' + id)?.value || s.type;
   s.arrP = document.getElementById('ei-arrP-' + id)?.value.trim() || '';
   s.depP = document.getElementById('ei-depP-' + id)?.value.trim() || '';
+
+  // Update coordinates if a new location was selected via search
+  const coords = _editStopCoords[id];
+  if (coords && coords.lat && coords.lng) {
+    s.lat = coords.lat;
+    s.lng = coords.lng;
+    delete _editStopCoords[id];
+  }
 
   // Update display in-place without full re-render (keeps actual time inputs intact)
   const iconEl  = document.getElementById('stop-icon-disp-' + id);
