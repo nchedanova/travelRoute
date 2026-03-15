@@ -114,28 +114,13 @@ function _getDayColor() {
 
 function _makeCarIcon(isRemote) {
   const ringColor = _getDayColor();
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40">
-    <circle cx="20" cy="20" r="18" fill="${ringColor}" opacity="0.18" stroke="${ringColor}" stroke-width="1.5" opacity="0.4"/>
-    <circle cx="20" cy="20" r="13" fill="#2a1408" opacity="0.82"/>
-    <rect x="9" y="17" width="22" height="10" rx="4" fill="#5c3010"/>
-    <rect x="9" y="17" width="22" height="10" rx="4" fill="none" stroke="#7a4520" stroke-width="0.8"/>
-    <path d="M13 17 Q14 11 20 11 Q26 11 27 17Z" fill="#4a2610"/>
-    <path d="M13 17 Q14 11 20 11 Q26 11 27 17Z" fill="none" stroke="#7a4520" stroke-width="0.8"/>
-    <rect x="13" y="12" width="5" height="4" rx="1.5" fill="#a8d8f0" opacity="0.75"/>
-    <rect x="22" y="12" width="5" height="4" rx="1.5" fill="#a8d8f0" opacity="0.75"/>
-    <rect x="13" y="12" width="5" height="2" rx="1" fill="#d8f0ff" opacity="0.5"/>
-    <rect x="9" y="17" width="5" height="3" rx="1" fill="#ffe890" opacity="0.9"/>
-    <rect x="26" y="17" width="5" height="3" rx="1" fill="#ff8080" opacity="0.8"/>
-    <ellipse cx="13" cy="27" rx="3.5" ry="3.5" fill="#111"/>
-    <ellipse cx="13" cy="27" rx="2.2" ry="2.2" fill="#2a2a2a"/>
-    <ellipse cx="13" cy="27" rx="1" ry="1" fill="#444"/>
-    <ellipse cx="27" cy="27" rx="3.5" ry="3.5" fill="#111"/>
-    <ellipse cx="27" cy="27" rx="2.2" ry="2.2" fill="#2a2a2a"/>
-    <ellipse cx="27" cy="27" rx="1" ry="1" fill="#444"/>
-  </svg>`;
+  const html = `
+    <div style="position:relative;width:44px;height:44px;">
+      <div class="gps-ring" style="--gps-color:${ringColor};position:absolute;inset:0;border-radius:50%;background:${ringColor};opacity:0.25;"></div>
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:24px;line-height:1;">🚗</div>
+    </div>`;
   return L.divIcon({
-    html: `<div class="gps-car" style="--gps-color:${ringColor}">${svg}</div>`,
-    className: '', iconSize: [40, 40], iconAnchor: [20, 20]
+    html, className: '', iconSize: [44, 44], iconAnchor: [22, 22]
   });
 }
 function _updateGpsMarker(lat, lng, accuracy, isRemote) {
