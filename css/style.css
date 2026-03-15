@@ -287,20 +287,37 @@ input.time-in.late   { color:var(--red);    border-color:rgba(248,113,113,0.4); 
 }
 .delete-stop-btn:hover { color:#ff4d4d; }
 
-/* ── EDIT STOP BUTTON ────────────────────────────────── */
-.edit-stop-btn {
-  position:absolute; top:6px; right:32px;
-  background:transparent; border:none;
-  color:var(--muted); font-size:14px; cursor:pointer;
-  padding:4px 5px; border-radius:3px;
-  opacity:0.45; transition:opacity 0.15s, color 0.15s;
+/* ── DOTS MENU BUTTON ────────────────────────────────── */
+.dots-btn {
+  position:absolute; top:4px; right:4px;
+  background:transparent; border:none; cursor:pointer;
+  color:var(--muted); font-size:16px; line-height:1;
+  padding:4px 7px; border-radius:4px; letter-spacing:1px;
+  transition:background 0.12s, color 0.12s; z-index:10;
 }
-.stop-card:hover .edit-stop-btn { opacity:1; }
-.edit-stop-btn:hover { color:var(--amber); }
-@media (hover: none) {
-  /* touch devices — always fully visible */
-  .edit-stop-btn { opacity:1; }
+.dots-btn:hover, .dots-btn.open { background:var(--surface2); color:var(--text); }
+@media (hover: none) { .dots-btn { color:var(--text); } }
+
+/* ── STOP DROPDOWN MENU ───────────────────────────────── */
+.stop-dropdown {
+  display:none; position:absolute; top:30px; right:4px; z-index:200;
+  background:var(--surface2); border:1px solid var(--border);
+  border-radius:8px; overflow:hidden; min-width:176px;
+  box-shadow:0 8px 24px rgba(0,0,0,0.45);
 }
+.stop-dropdown.open { display:block; }
+.stop-dropdown-item {
+  display:flex; align-items:center; gap:10px;
+  padding:10px 14px; font-size:12px; color:var(--text);
+  background:transparent; border:none; width:100%; text-align:left;
+  cursor:pointer; font-family:'JetBrains Mono',monospace; letter-spacing:0.02em;
+  transition:background 0.1s;
+}
+.stop-dropdown-item:hover { background:var(--border); }
+.stop-dropdown-divider { height:1px; background:var(--border); margin:2px 0; }
+.stop-dropdown-item.danger { color:var(--red); }
+.stop-dropdown-item.danger:hover { background:rgba(248,113,113,0.08); }
+.stop-dropdown-item .di-icon { font-size:13px; width:16px; text-align:center; flex-shrink:0; }
 
 /* ── INLINE EDIT FORM ────────────────────────────────── */
 .stop-edit-form {
@@ -474,8 +491,8 @@ input.day-date-input {
   .sidebar.open { max-height:55vh; overflow-y:auto; }
   #map { flex:1; min-height:0; }
   .time-grid { padding-left:40px; }
-  .delete-stop-btn { font-size:20px; padding:8px 8px; top:4px; right:2px; }
-  .edit-stop-btn    { font-size:18px; padding:8px 9px; top:4px; right:36px; }
+  .delete-stop-btn { display:none; }
+  .dots-btn { font-size:18px; padding:6px 10px; }
   .reset-btn { border-color:var(--red); color:var(--red); }
 }
 
