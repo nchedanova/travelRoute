@@ -105,43 +105,50 @@ function _writePosition(lat, lng, speed, accuracy) {
 }
 
 // ── GPS МАРКЕР ─────────────────────────────────────────────────────────────────
+function _getDayColor() {
+  if (typeof currentDay !== 'undefined' && typeof DAYS_DATA !== 'undefined') {
+    return DAYS_DATA[currentDay]?.color || '#f5a623';
+  }
+  return '#f5a623';
+}
+
 function _makeCarIcon(isRemote) {
-  // Коричневая машинка (вид сверху) для владельца и зрителей
-  const color    = isRemote ? '#c0783a' : '#8B5E3C';  // оттенки коричневого
-  const outline  = isRemote ? '#7a4820' : '#5c3d20';
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
-    <!-- Кузов -->
-    <rect x="7" y="8" width="18" height="16" rx="4" fill="${color}" stroke="${outline}" stroke-width="1"/>
-    <!-- Крыша / салон -->
-    <rect x="10" y="11" width="12" height="8" rx="2" fill="${outline}" opacity="0.45"/>
-    <!-- Фары передние -->
-    <rect x="8" y="8" width="4" height="2.5" rx="1" fill="#ffe98a" opacity="0.9"/>
-    <rect x="20" y="8" width="4" height="2.5" rx="1" fill="#ffe98a" opacity="0.9"/>
-    <!-- Фонари задние -->
-    <rect x="8" y="21.5" width="4" height="2.5" rx="1" fill="#f87171" opacity="0.85"/>
-    <rect x="20" y="21.5" width="4" height="2.5" rx="1" fill="#f87171" opacity="0.85"/>
-    <!-- Колёса -->
-    <rect x="5" y="9.5" width="4" height="5" rx="1.5" fill="#222"/>
-    <rect x="23" y="9.5" width="4" height="5" rx="1.5" fill="#222"/>
-    <rect x="5" y="17.5" width="4" height="5" rx="1.5" fill="#222"/>
-    <rect x="23" y="17.5" width="4" height="5" rx="1.5" fill="#222"/>
+  const ringColor = _getDayColor();
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40">
+    <circle cx="20" cy="20" r="18" fill="${ringColor}" opacity="0.18" stroke="${ringColor}" stroke-width="1.5" opacity="0.4"/>
+    <circle cx="20" cy="20" r="13" fill="#2a1408" opacity="0.82"/>
+    <rect x="9" y="17" width="22" height="10" rx="4" fill="#5c3010"/>
+    <rect x="9" y="17" width="22" height="10" rx="4" fill="none" stroke="#7a4520" stroke-width="0.8"/>
+    <path d="M13 17 Q14 11 20 11 Q26 11 27 17Z" fill="#4a2610"/>
+    <path d="M13 17 Q14 11 20 11 Q26 11 27 17Z" fill="none" stroke="#7a4520" stroke-width="0.8"/>
+    <rect x="13" y="12" width="5" height="4" rx="1.5" fill="#a8d8f0" opacity="0.75"/>
+    <rect x="22" y="12" width="5" height="4" rx="1.5" fill="#a8d8f0" opacity="0.75"/>
+    <rect x="13" y="12" width="5" height="2" rx="1" fill="#d8f0ff" opacity="0.5"/>
+    <rect x="9" y="17" width="5" height="3" rx="1" fill="#ffe890" opacity="0.9"/>
+    <rect x="26" y="17" width="5" height="3" rx="1" fill="#ff8080" opacity="0.8"/>
+    <ellipse cx="13" cy="27" rx="3.5" ry="3.5" fill="#111"/>
+    <ellipse cx="13" cy="27" rx="2.2" ry="2.2" fill="#2a2a2a"/>
+    <ellipse cx="13" cy="27" rx="1" ry="1" fill="#444"/>
+    <ellipse cx="27" cy="27" rx="3.5" ry="3.5" fill="#111"/>
+    <ellipse cx="27" cy="27" rx="2.2" ry="2.2" fill="#2a2a2a"/>
+    <ellipse cx="27" cy="27" rx="1" ry="1" fill="#444"/>
   </svg>`;
   return L.divIcon({
-    html: `<div class="gps-car" style="--gps-color:${color}">${svg}</div>`,
-    className: '', iconSize: [32, 32], iconAnchor: [16, 16]
+    html: `<div class="gps-car" style="--gps-color:${ringColor}">${svg}</div>`,
+    className: '', iconSize: [40, 40], iconAnchor: [20, 20]
   });
 }
 function _updateGpsMarker(lat, lng, accuracy, isRemote) {
   if (!map) return;
-  const color = isRemote ? '#c0783a' : '#8B5E3C';
+  const ringColor = _getDayColor();
 
-  // Кружок погрешности
   if (_accuracyCircle) {
     _accuracyCircle.setLatLng([lat, lng]).setRadius(accuracy || 20);
+    _accuracyCircle.setStyle({ color: ringColor, fillColor: ringColor });
   } else {
     _accuracyCircle = L.circle([lat, lng], {
       radius: accuracy || 20,
-      color, fillColor: color,
+      color: ringColor, fillColor: ringColor,
       fillOpacity: 0.07, weight: 1, opacity: 0.25
     }).addTo(map);
   }
@@ -153,7 +160,7 @@ function _updateGpsMarker(lat, lng, accuracy, isRemote) {
   } else {
     _gpsMarker = L.marker([lat, lng], { icon, zIndexOffset: 1000 }).addTo(map);
     _gpsMarker.bindTooltip(isRemote ? '🚗 Путешественник' : '📍 Вы здесь',
-      { permanent: false, direction: 'top', offset: [0, -12] });
+      { permanent: false, direction: 'top', offset: [0, -14] });
   }
 }
 
