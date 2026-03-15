@@ -96,12 +96,20 @@ function initMap() {
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19 }).addTo(map);
   map.zoomControl.setPosition('topright');
 
-  // тап/клик по карте — закрываем пилл
+  // тап/клик по карте — закрываем пилл или добавляем точку
   // Firefox: marker click bubbles to map even after stopPropagation on divIcon,
   // so we suppress the map click for a short window after any marker click
   let _suppressMapClick = false;
-  map.on('click', () => {
+  map.on('click', (e) => {
     if (_suppressMapClick) return;
+    if (window._mapAddMode) {
+      window._mapAddMode = false;
+      document.getElementById('map').style.cursor = '';
+      const mapAddBtn = document.getElementById('mapAddBtn');
+      if (mapAddBtn) { mapAddBtn.classList.remove('active'); mapAddBtn.textContent = '📍 На карте'; }
+      openAddStop(currentDay, e.latlng.lat, e.latlng.lng);
+      return;
+    }
     closePill();
   });
   // при движении карты — перепозиционируем пилл
