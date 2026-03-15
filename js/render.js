@@ -198,12 +198,6 @@ function makeStopCard(s, day) {
     </div>
     <div class="stop-edit-form" id="edit-form-${s.id}" style="display:none;"></div>`;
 
-  div.querySelector('.delete-stop-btn').addEventListener('click', e => {
-    e.stopPropagation();
-    const btn = e.currentTarget;
-    deleteStop(parseInt(btn.dataset.delDay), btn.dataset.delId, e);
-  });
-
   div.addEventListener('dragstart', onDragStart);
   div.addEventListener('dragover',  onDragOver);
   div.addEventListener('dragleave', onDragLeave);
