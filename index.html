@@ -8,6 +8,9 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 </head>
 <body>
 
@@ -18,6 +21,7 @@
     <button class="undo-btn" id="undoBtn" onclick="undoAction()" disabled title="Отменить последнее действие">↩ отмена</button>
     <span id="syncStatus" title="Статус облачного сохранения" style="font-size:10px;color:var(--muted);white-space:nowrap;flex-shrink:0;cursor:default;">☁ —</span>
     <button onclick="openCloudSettings()" title="Настройки облака" class="settings-btn">⚙</button>
+    <button id="drivingBtn" class="driving-btn" onclick="toggleDrivingMode()" style="display:none">🚗 Еду</button>
   </div>
 </header>
 
@@ -246,6 +250,14 @@
   </div>
 
   <div id="map"></div>
+
+  <!-- GPS: спидометр (владелец в режиме "Еду" + зрители) -->
+  <div id="speedDisplay" class="speed-display" style="display:none">
+    <span class="spd-val">—</span><span class="spd-unit">км/ч</span>
+  </div>
+  <!-- GPS: кнопка возврата камеры к позиции -->
+  <button id="gpsFollowBtn" class="gps-follow-btn" onclick="resumeGpsFollow()" style="display:none" title="Вернуться к позиции">◎</button>
+
   <div class="map-toggle-wrap">
     <button class="map-toggle-btn" id="toggleBtn" onclick="toggleSidebar()">☰</button>
     <div class="mode-badge" id="modeBadge"></div>
@@ -262,6 +274,14 @@
 <script src="js/map.js?v=7"></script>
 <script src="js/render.js?v=7"></script>
 <script src="js/app.js?v=7"></script>
+<script src="js/gps.js?v=1"></script>
+<script>
+  // Запускаем GPS после инициализации карты
+  document.addEventListener('DOMContentLoaded', () => {
+    // initGps вызываем после того как map готов (app.js уже вызвал initMap)
+    setTimeout(initGps, 500);
+  });
+</script>
 
 </body>
 </html>
