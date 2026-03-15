@@ -481,6 +481,93 @@ function undoAction() {
   showToast('↩ ' + snapshot.label);
 }
 
+// ── STOP CARD DROPDOWN MENU ───────────────────────────────────────────────────
+function toggleStopMenu(id, day) {
+  const dd  = document.getElementById('dd-' + id);
+  const btn = document.getElementById('dots-' + id);
+  if (!dd || !btn) return;
+  const isOpen = dd.classList.contains('open');
+  closeStopMenus();
+  if (!isOpen) {
+    dd.classList.add('open');
+    btn.classList.add('open');
+  }
+}
+
+function closeStopMenus() {
+  document.querySelectorAll('.stop-dropdown').forEach(d => d.classList.remove('open'));
+  document.querySelectorAll('.dots-btn').forEach(b => b.classList.remove('open'));
+}
+
+// Close menu on outside click
+document.addEventListener('click', e => {
+  if (!e.target.closest('.dots-btn') && !e.target.closest('.stop-dropdown')) closeStopMenus();
+});
+
+// ── EDIT STOP TIME (plan only) ─────────────────────────────────────────────────
+function editStopTime(id, day) {
+  const s    = DAYS_DATA[day].stops.find(x => x.id === id);
+  if (!s) return;
+  const main = document.getElementById('stop-main-' + id);
+  const tg   = document.getElementById('stop-timegrid-' + id);
+  const form = document.getElementById('edit-form-' + id);
+  if (!main || !tg || !form) return;
+
+  main.style.display = 'none';
+  tg.style.display   = 'none';
+  form.style.display = 'block';
+
+  // Disable drag while editing
+  const card = document.getElementById('card-' + id);
+  if (card) card.draggable = false;
+
+  form.innerHTML = `
+    <div class="edit-row" style="align-items:center;gap:16px;flex-wrap:wrap;">
+      <div class="edit-field">
+        <div class="edit-label">Приб. план</div>
+        <input class="edit-input edit-input-time" id="et-arrP-${id}" value="${s.arrP}" maxlength="5"
+          oninput="applyMask(this)" onblur="padTime(this)" placeholder="--:--">
+      </div>
+      ${s.depP !== undefined && s.depP !== '' ? `
+      <div class="edit-field">
+        <div class="edit-label">Отпр. план</div>
+        <input class="edit-input edit-input-time" id="et-depP-${id}" value="${s.depP}" maxlength="5"
+          oninput="applyMask(this)" onblur="padTime(this)" placeholder="--:--">
+      </div>` : ''}
+    </div>
+    <div style="font-size:9px;color:var(--muted);margin-bottom:8px;">Фактическое время остаётся без изменений</div>
+    <div class="edit-actions-row">
+      <button class="edit-cancel-btn" onclick="cancelStopEdit('${id}')">✕ Отмена</button>
+      <button class="edit-save-btn" onclick="saveStopTime('${id}', ${day})">✓ Сохранить</button>
+    </div>`;
+
+  setTimeout(() => document.getElementById('et-arrP-' + id)?.focus(), 50);
+}
+
+function saveStopTime(id, day) {
+  const s = DAYS_DATA[day].stops.find(x => x.id === id);
+  if (!s) return;
+  snapshotForUndo('Изменение времени точки');
+  const newArr = document.getElementById('et-arrP-' + id)?.value.trim();
+  const newDep = document.getElementById('et-depP-' + id)?.value.trim();
+  if (newArr !== undefined) s.arrP = newArr;
+  if (newDep !== undefined) s.depP = newDep;
+
+  const arrPEl = document.getElementById('planned-arr-' + id);
+  const depPEl = document.getElementById('planned-dep-' + id);
+  if (arrPEl) arrPEl.textContent = s.arrP || '—';
+  if (depPEl) depPEl.textContent = s.depP || '—';
+  const arrIn = document.getElementById('arr-' + id);
+  const depIn = document.getElementById('dep-' + id);
+  if (arrIn) arrIn.placeholder = s.arrP || '--:--';
+  if (depIn) depIn.placeholder = s.depP || '--:--';
+
+  cancelStopEdit(id);
+  updateProgress();
+  saveData();
+  showToast('✅ Время обновлено');
+}
+
 // ── TIME ARITHMETIC ───────────────────────────────────────────────────────────
 function timeToMins(t) {
   if (!t || t.length < 5) return null;
