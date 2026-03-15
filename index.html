@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Дорожный журнал</title>
+<title>Дорожный журнал · Балашиха → Авсаллар</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧭</text></svg>">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
@@ -177,6 +177,48 @@
     </div>
   </div>
 
+  <!-- Share / Nav Modal -->
+  <div class="modal-overlay" id="shareModal" onclick="if(event.target===this)closeShareModal()">
+    <div class="modal modal-lg">
+      <div class="modal-title">🗺 Открыть в навигаторе</div>
+      <div class="modal-body" id="share-day-title" style="margin-bottom:14px;font-size:11px;color:var(--muted);"></div>
+      <div class="nav-option">
+
+        <div class="nav-link-row">
+          <div class="nav-link-icon">🟡</div>
+          <div class="nav-link-info">
+            <div class="nav-link-title">Яндекс Карты</div>
+            <div class="nav-link-sub" id="share-yandex-sub"></div>
+          </div>
+          <a id="share-yandex-link" href="#" target="_blank" class="nav-link-btn">Открыть →</a>
+        </div>
+
+        <div class="nav-link-row">
+          <div class="nav-link-icon">🔵</div>
+          <div class="nav-link-info">
+            <div class="nav-link-title">Google Maps <span style="font-size:9px;color:var(--muted);">(макс. 10 точек)</span></div>
+            <div class="nav-link-sub" id="share-google-sub"></div>
+          </div>
+          <a id="share-google-link" href="#" target="_blank" class="nav-link-btn">Открыть →</a>
+        </div>
+
+        <div class="nav-link-row">
+          <div class="nav-link-icon">🟢</div>
+          <div class="nav-link-info">
+            <div class="nav-link-title">2ГИС <span style="font-size:9px;color:var(--muted);">(маршрут до последней точки)</span></div>
+            <div class="nav-link-sub">Откроет маршрут к финальной точке</div>
+          </div>
+          <a id="share-2gis-link" href="#" target="_blank" class="nav-link-btn">Открыть →</a>
+        </div>
+
+      </div>
+      <div class="modal-actions" style="flex-wrap:wrap;gap:8px;">
+        <button id="copy-coords-btn" class="nav-link-btn" onclick="copyShareText()" style="margin-right:auto;padding:6px 14px;">📋 Копировать координаты</button>
+        <button class="modal-cancel" onclick="closeShareModal()">Закрыть</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Cloud Settings Modal -->
   <div class="modal-overlay" id="cloudSettingsModal" onclick="if(event.target===this)closeCloudSettings()">
     <div class="modal modal-lg">
@@ -214,12 +256,12 @@
 
 <!-- Scripts: порядок важен — config и data первыми -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="js/config.js?v=6"></script>
-<script src="js/data.js?v=6"></script>
-<script src="js/storage.js?v=6"></script>
-<script src="js/map.js?v=6"></script>
-<script src="js/render.js?v=6"></script>
-<script src="js/app.js?v=6"></script>
+<script src="js/config.js?v=7"></script>
+<script src="js/data.js?v=7"></script>
+<script src="js/storage.js?v=7"></script>
+<script src="js/map.js?v=7"></script>
+<script src="js/render.js?v=7"></script>
+<script src="js/app.js?v=7"></script>
 
 </body>
 </html>
