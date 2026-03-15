@@ -481,6 +481,232 @@ function undoAction() {
   showToast('↩ ' + snapshot.label);
 }
 
+// ── TIME ARITHMETIC ───────────────────────────────────────────────────────────
+function timeToMins(t) {
+  if (!t || t.length < 5) return null;
+  const [h, m] = t.split(':').map(Number);
+  return isNaN(h) || isNaN(m) ? null : h * 60 + m;
+}
+
+function minsToTime(total) {
+  const t = ((total % 1440) + 1440) % 1440;
+  return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0');
+}
+
+function shiftTime(t, delta) {
+  const mins = timeToMins(t);
+  return mins !== null ? minsToTime(mins + delta) : t;
+}
+
+// ── EDIT DEPARTURE TIME + CASCADE RECALC ──────────────────────────────────────
+function editDepartTime(day, el) {
+  const current = DAYS_DATA[day].departP || '';
+  const inp = document.createElement('input');
+  inp.className   = 'time-val-edit';
+  inp.value       = current;
+  inp.maxLength   = 5;
+  inp.placeholder = '--:--';
+  el.replaceWith(inp);
+  inp.focus(); inp.select();
+
+  const commit = () => {
+    let val = inp.value.trim();
+    const digits = val.replace(/\D/g, '');
+    if (digits.length === 4) val = digits.slice(0, 2) + ':' + digits.slice(2);
+    else if (digits.length === 3) val = '0' + digits[0] + ':' + digits.slice(1);
+
+    const newEl = document.createElement('div');
+    newEl.className  = 'time-val time-val-editable';
+    newEl.id         = 'd' + day + '-departP-display';
+    newEl.title      = 'Нажмите для изменения времени выезда';
+    newEl.textContent = val || '—';
+    newEl.onclick    = () => editDepartTime(day, newEl);
+    inp.replaceWith(newEl);
+
+    // Calculate delta and cascade
+    const oldMins = timeToMins(current);
+    const newMins = timeToMins(val);
+    if (oldMins !== null && newMins !== null && oldMins !== newMins) {
+      const delta = newMins - oldMins;
+      snapshotForUndo('Пересчёт времён · День ' + day);
+      DAYS_DATA[day].departP = val;
+      DAYS_DATA[day].stops.forEach(s => {
+        if (s.arrP) { s.arrP = shiftTime(s.arrP, delta); }
+        if (s.depP) { s.depP = shiftTime(s.depP, delta); }
+      });
+      renderStops(day);
+      redrawDay(day);
+      updateProgress();
+      saveData();
+      showToast('🕐 Времена пересчитаны (' + (delta > 0 ? '+' : '') + Math.round(delta/60*10)/10 + 'ч)');
+    }
+  };
+
+  inp.addEventListener('blur', commit);
+  inp.addEventListener('keydown', e => {
+    // just let characters flow; applyMask needs an input event
+    if (e.key === 'Enter') inp.blur();
+    if (e.key === 'Escape') { inp.value = current; inp.blur(); }
+  });
+  inp.addEventListener('input', () => applyMask(inp));
+}
+
+// ── INLINE STOP EDITOR ────────────────────────────────────────────────────────
+function editStop(id, day) {
+  const s    = DAYS_DATA[day].stops.find(x => x.id === id);
+  if (!s) return;
+  const main = document.getElementById('stop-main-' + id);
+  const tg   = document.getElementById('stop-timegrid-' + id);
+  const form = document.getElementById('edit-form-' + id);
+  if (!main || !tg || !form) return;
+
+  main.style.display = 'none';
+  tg.style.display   = 'none';
+  form.style.display = 'block';
+
+  const typeOptions = ['Заправка', 'Кафе', 'Отель', 'Жильё', 'Другое']
+    .map(t => `<option value="${t}" ${t === s.type ? 'selected' : ''}>${TYPE_ICONS[t] || '📍'} ${t}</option>`)
+    .join('');
+
+  form.innerHTML = `
+    <div class="edit-row">
+      <div class="edit-field">
+        <div class="edit-label">Иконка</div>
+        <input class="edit-input edit-input-icon" id="ei-icon-${id}" value="${s.icon}" maxlength="4">
+      </div>
+      <div class="edit-field" style="flex:1;">
+        <div class="edit-label">Название</div>
+        <input class="edit-input edit-input-name" id="ei-name-${id}" value="${s.name}">
+      </div>
+    </div>
+    <div class="edit-row">
+      <div class="edit-field">
+        <div class="edit-label">Тип</div>
+        <select class="edit-select" id="ei-type-${id}" onchange="document.getElementById('ei-icon-${id}').value=TYPE_ICONS[this.value]||'📍'">
+          ${typeOptions}
+        </select>
+      </div>
+      <div class="edit-field">
+        <div class="edit-label">Приб. план</div>
+        <input class="edit-input edit-input-time" id="ei-arrP-${id}" value="${s.arrP}" maxlength="5"
+          oninput="applyMask(this)" onblur="padTime(this)" placeholder="--:--">
+      </div>
+      <div class="edit-field">
+        <div class="edit-label">Отпр. план</div>
+        <input class="edit-input edit-input-time" id="ei-depP-${id}" value="${s.depP}" maxlength="5"
+          oninput="applyMask(this)" onblur="padTime(this)" placeholder="--:--">
+      </div>
+    </div>
+    <div class="edit-actions-row">
+      <button class="edit-cancel-btn" onclick="cancelStopEdit('${id}')">✕ Отмена</button>
+      <button class="edit-save-btn" onclick="saveStopEdit('${id}', ${day})">✓ Сохранить</button>
+    </div>`;
+
+  // Auto-focus name
+  setTimeout(() => document.getElementById('ei-name-' + id)?.focus(), 50);
+}
+
+function cancelStopEdit(id) {
+  const main = document.getElementById('stop-main-' + id);
+  const tg   = document.getElementById('stop-timegrid-' + id);
+  const form = document.getElementById('edit-form-' + id);
+  if (main) main.style.display = '';
+  if (tg)   tg.style.display   = '';
+  if (form) form.style.display  = 'none';
+}
+
+function saveStopEdit(id, day) {
+  const s = DAYS_DATA[day].stops.find(x => x.id === id);
+  if (!s) return;
+  const newName = document.getElementById('ei-name-' + id)?.value.trim();
+  if (!newName) { document.getElementById('ei-name-' + id)?.focus(); return; }
+
+  snapshotForUndo('Редактирование точки');
+  s.icon = document.getElementById('ei-icon-' + id)?.value.trim() || s.icon;
+  s.name = newName;
+  s.type = document.getElementById('ei-type-' + id)?.value || s.type;
+  s.arrP = document.getElementById('ei-arrP-' + id)?.value.trim() || '';
+  s.depP = document.getElementById('ei-depP-' + id)?.value.trim() || '';
+
+  // Update display in-place without full re-render (keeps actual time inputs intact)
+  const iconEl  = document.getElementById('stop-icon-disp-' + id);
+  const nameEl  = document.getElementById('stop-name-disp-' + id);
+  const typeEl  = document.getElementById('stop-type-disp-' + id);
+  const arrPEl  = document.getElementById('planned-arr-' + id);
+  const depPEl  = document.getElementById('planned-dep-' + id);
+  if (iconEl) iconEl.textContent = s.icon;
+  if (nameEl) nameEl.textContent = s.name;
+  if (typeEl) typeEl.textContent = s.type;
+  if (arrPEl) arrPEl.textContent = s.arrP || '—';
+  if (depPEl) depPEl.textContent = s.depP || '—';
+
+  // Also update actual input placeholders
+  const arrIn = document.getElementById('arr-' + id);
+  const depIn = document.getElementById('dep-' + id);
+  if (arrIn) arrIn.placeholder = s.arrP || '--:--';
+  if (depIn) depIn.placeholder = s.depP || '--:--';
+
+  cancelStopEdit(id);
+  redrawDay(day);
+  updateProgress();
+  saveData();
+  showToast('✅ Точка обновлена');
+}
+
+// ── NAVIGATION / SHARE DAY ────────────────────────────────────────────────────
+function openShareDay(day) {
+  const data   = DAYS_DATA[day];
+  const points = [
+    { lat: data.start.lat, lng: data.start.lng, name: data.start.name },
+    ...data.stops.map(s => ({ lat: s.lat, lng: s.lng, name: s.name }))
+  ];
+
+  // Yandex Maps — unlimited waypoints via rtext
+  const rtext = points.map(p => `${p.lat},${p.lng}`).join('~');
+  const yandexUrl = `https://yandex.ru/maps/?rtext=${rtext}&rtt=auto`;
+
+  // Google Maps — max 10 waypoints in URL (stops 0 and last are origin/dest, rest are via)
+  const pts10 = points.slice(0, 10);
+  const gPath = pts10.map(p => `${p.lat},${p.lng}`).join('/');
+  const googleUrl = `https://www.google.com/maps/dir/${gPath}/`;
+
+  // 2GIS — only supports single destination, so we link to first stop
+  const twoGisUrl = `https://2gis.ru/routeSearch/rsType/car/to/${points[points.length-1].lng},${points[points.length-1].lat}`;
+
+  // Text list
+  const textList = points.map((p, i) =>
+    (i === 0 ? '🚗 Старт: ' : `${i}. `) + p.name + ` (${p.lat.toFixed(5)}, ${p.lng.toFixed(5)})`
+  ).join('\n');
+
+  const modal = document.getElementById('shareModal');
+  document.getElementById('share-day-title').textContent = `День ${day} · ${data.date} · ${data.start.name} → ${points[points.length-1].name}`;
+
+  document.getElementById('share-yandex-link').href = yandexUrl;
+  document.getElementById('share-yandex-sub').textContent = yandexUrl.slice(0, 60) + '…';
+  document.getElementById('share-google-link').href = googleUrl;
+  document.getElementById('share-google-sub').textContent = googleUrl.slice(0, 60) + '…';
+  document.getElementById('share-2gis-link').href = twoGisUrl;
+
+  // Store text for copy
+  modal.dataset.textList = textList;
+  modal.classList.add('show');
+}
+
+function closeShareModal() {
+  document.getElementById('shareModal').classList.remove('show');
+}
+
+function copyShareText() {
+  const modal = document.getElementById('shareModal');
+  const text  = modal.dataset.textList || '';
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copy-coords-btn');
+    btn.textContent = '✓ Скопировано!';
+    btn.classList.add('copy-ok');
+    setTimeout(() => { btn.textContent = '📋 Копировать координаты'; btn.classList.remove('copy-ok'); }, 2000);
+  });
+}
+
 // ── INIT ──────────────────────────────────────────────────────────────────────
 initMap();
 dayKeys().forEach(d => redrawDay(d));
