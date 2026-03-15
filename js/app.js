@@ -161,9 +161,10 @@ let addStopDay  = null;
 let newStopLat  = null, newStopLng = null;
 let nominatimTimer = null;
 
-function openAddStop(day) {
+function openAddStop(day, prefillLat, prefillLng) {
   addStopDay = day;
-  newStopLat = newStopLng = null;
+  newStopLat = prefillLat || null;
+  newStopLng = prefillLng || null;
   ['nominatim-input','new-stop-name','new-stop-arrP','new-stop-depP','new-stop-lat','new-stop-lng']
     .forEach(id => {
       const el = document.getElementById(id);
@@ -173,9 +174,38 @@ function openAddStop(day) {
   document.getElementById('new-stop-type').value = 'Другое';
   document.getElementById('new-stop-icon').value = TYPE_ICONS['Другое'];
   document.getElementById('nominatim-results').classList.remove('show');
-  document.getElementById('new-stop-coords-display').style.display = 'none';
+  if (newStopLat && newStopLng) {
+    // Pre-fill coords from map click
+    document.getElementById('new-stop-lat').value = newStopLat.toFixed(6);
+    document.getElementById('new-stop-lng').value = newStopLng.toFixed(6);
+    document.getElementById('new-stop-coords-text').textContent =
+      `${newStopLat.toFixed(5)}, ${newStopLng.toFixed(5)}`;
+    document.getElementById('new-stop-coords-display').style.display = 'block';
+    // Reverse geocode to suggest a name
+    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${newStopLat}&lon=${newStopLng}&format=json&accept-language=ru`)
+      .then(r => r.json())
+      .then(data => {
+        const name = data.name || data.address?.road || data.display_name?.split(',')[0] || '';
+        if (name) document.getElementById('new-stop-name').value = name;
+      }).catch(() => {});
+  } else {
+    document.getElementById('new-stop-coords-display').style.display = 'none';
+  }
   document.getElementById('addStopModal').classList.add('show');
-  setTimeout(() => document.getElementById('nominatim-input').focus(), 100);
+  setTimeout(() => document.getElementById('new-stop-name').focus(), 100);
+}
+
+function toggleMapAddMode(day) {
+  const btn = document.getElementById('mapAddBtn');
+  window._mapAddMode = !window._mapAddMode;
+  if (window._mapAddMode) {
+    document.getElementById('map').style.cursor = 'crosshair';
+    if (btn) { btn.classList.add('active'); btn.textContent = '✕ ОТМЕНА'; }
+    showToast('📍 Кликни на карту чтобы добавить точку');
+  } else {
+    document.getElementById('map').style.cursor = '';
+    if (btn) { btn.classList.remove('active'); btn.textContent = '📍 НА КАРТЕ'; }
+  }
 }
 
 function closeAddStop() {
