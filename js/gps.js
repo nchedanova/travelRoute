@@ -84,7 +84,13 @@ function _listenRemotePosition() {
   if (!_db) return;
   _db.ref('gps').on('value', snap => {
     const d = snap.val();
-    if (!d) return;
+    if (!d) {
+      // путешественник остановился — убираем подсветку
+      document.body.classList.remove('driving-active');
+      return;
+    }
+    // есть позиция — включаем подсветку как в режиме "Еду"
+    document.body.classList.add('driving-active');
     _updateGpsMarker(d.lat, d.lng, d.accuracy, true);
     _highlightNearest(d.lat, d.lng);
     _updateSpeedDisplay(d.speed);
@@ -99,9 +105,35 @@ function _writePosition(lat, lng, speed, accuracy) {
 }
 
 // ── GPS МАРКЕР ─────────────────────────────────────────────────────────────────
+function _makeCarIcon(isRemote) {
+  // Коричневая машинка (вид сверху) для владельца и зрителей
+  const color    = isRemote ? '#c0783a' : '#8B5E3C';  // оттенки коричневого
+  const outline  = isRemote ? '#7a4820' : '#5c3d20';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+    <!-- Кузов -->
+    <rect x="7" y="8" width="18" height="16" rx="4" fill="${color}" stroke="${outline}" stroke-width="1"/>
+    <!-- Крыша / салон -->
+    <rect x="10" y="11" width="12" height="8" rx="2" fill="${outline}" opacity="0.45"/>
+    <!-- Фары передние -->
+    <rect x="8" y="8" width="4" height="2.5" rx="1" fill="#ffe98a" opacity="0.9"/>
+    <rect x="20" y="8" width="4" height="2.5" rx="1" fill="#ffe98a" opacity="0.9"/>
+    <!-- Фонари задние -->
+    <rect x="8" y="21.5" width="4" height="2.5" rx="1" fill="#f87171" opacity="0.85"/>
+    <rect x="20" y="21.5" width="4" height="2.5" rx="1" fill="#f87171" opacity="0.85"/>
+    <!-- Колёса -->
+    <rect x="5" y="9.5" width="4" height="5" rx="1.5" fill="#222"/>
+    <rect x="23" y="9.5" width="4" height="5" rx="1.5" fill="#222"/>
+    <rect x="5" y="17.5" width="4" height="5" rx="1.5" fill="#222"/>
+    <rect x="23" y="17.5" width="4" height="5" rx="1.5" fill="#222"/>
+  </svg>`;
+  return L.divIcon({
+    html: `<div class="gps-car" style="--gps-color:${color}">${svg}</div>`,
+    className: '', iconSize: [32, 32], iconAnchor: [16, 16]
+  });
+}
 function _updateGpsMarker(lat, lng, accuracy, isRemote) {
   if (!map) return;
-  const color = isRemote ? '#f97316' : '#3b82f6';
+  const color = isRemote ? '#c0783a' : '#8B5E3C';
 
   // Кружок погрешности
   if (_accuracyCircle) {
@@ -114,11 +146,7 @@ function _updateGpsMarker(lat, lng, accuracy, isRemote) {
     }).addTo(map);
   }
 
-  // Пульсирующая точка
-  const icon = L.divIcon({
-    html: `<div class="gps-dot" style="--gps-color:${color}"></div>`,
-    className: '', iconSize: [20, 20], iconAnchor: [10, 10]
-  });
+  const icon = _makeCarIcon(isRemote);
 
   if (_gpsMarker) {
     _gpsMarker.setLatLng([lat, lng]).setIcon(icon);
@@ -156,6 +184,7 @@ function toggleDrivingMode() {
     btn.classList.toggle('active', _drivingMode);
     btn.innerHTML = _drivingMode ? '🛑 Стоп' : '🚗 Еду';
   }
+  document.body.classList.toggle('driving-active', _drivingMode);
 
   const speedEl = document.getElementById('speedDisplay');
   if (speedEl) speedEl.style.display = _drivingMode ? 'flex' : 'none';
