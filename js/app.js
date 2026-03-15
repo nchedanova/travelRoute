@@ -571,6 +571,10 @@ function editStop(id, day) {
   tg.style.display   = 'none';
   form.style.display = 'block';
 
+  // Disable drag while editing so text selection works normally
+  const card = document.getElementById('card-' + id);
+  if (card) card.draggable = false;
+
   const typeOptions = ['Заправка', 'Кафе', 'Отель', 'Жильё', 'Другое']
     .map(t => `<option value="${t}" ${t === s.type ? 'selected' : ''}>${TYPE_ICONS[t] || '📍'} ${t}</option>`)
     .join('');
@@ -670,6 +674,9 @@ function cancelStopEdit(id) {
   if (main) main.style.display = '';
   if (tg)   tg.style.display   = '';
   if (form) form.style.display  = 'none';
+  // Re-enable drag
+  const card = document.getElementById('card-' + id);
+  if (card) card.draggable = true;
 }
 
 function saveStopEdit(id, day) {
