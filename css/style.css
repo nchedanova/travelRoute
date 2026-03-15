@@ -371,6 +371,11 @@ input.time-in.late   { color:var(--red);    border-color:rgba(248,113,113,0.4); 
 .time-val-editable:hover { border-bottom-color:var(--amber); color:var(--amber) !important; }
 
 /* ── ADD STOP BUTTON ─────────────────────────────────── */
+.add-stop-btn.active {
+  border-color:var(--amber) !important; color:var(--amber) !important;
+  background:rgba(245,166,35,0.08) !important;
+}
+
 .add-stop-btn {
   width:100%; padding:10px; border:none;
   background:transparent; border-top:1px dashed var(--border);
