@@ -67,6 +67,10 @@ header {
   z-index:100;
   transition:transform 0.28s ease;
 }
+.sidebar::-webkit-scrollbar { width:5px; }
+.sidebar::-webkit-scrollbar-track { background:transparent; }
+.sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+.sidebar::-webkit-scrollbar-thumb:hover { background:var(--muted); }
 .day-section { display:none; }
 .day-section.visible { display:block; }
 
@@ -627,17 +631,14 @@ input.day-date-input {
 
 /* ── GPS ───────────────────────────────────────────────────────────────────── */
 
-/* Пульсирующая GPS-точка */
-@keyframes gpsPulse {
-  0%,100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--gps-color) 50%, transparent); }
-  50%      { box-shadow: 0 0 0 8px transparent; }
+/* Машинка GPS */
+@keyframes carPulse {
+  0%,100% { filter: drop-shadow(0 0 0px color-mix(in srgb, var(--gps-color) 0%, transparent)); }
+  50%      { filter: drop-shadow(0 0 6px var(--gps-color)); }
 }
-.gps-dot {
-  width: 16px; height: 16px;
-  border-radius: 50%;
-  background: var(--gps-color);
-  border: 2.5px solid white;
-  animation: gpsPulse 2s ease-in-out infinite;
+.gps-car {
+  width: 32px; height: 32px;
+  animation: carPulse 2s ease-in-out infinite;
 }
 
 /* Кнопка "Еду" в хедере */
@@ -716,12 +717,12 @@ input.day-date-input {
   100% { opacity: 0;  transform: scale(1.5); }
 }
 
-/* Подсветка ближайшей остановки */
-.stop-card.gps-nearest {
+/* Подсветка ближайшей остановки — только в режиме "Еду" */
+body.driving-active .stop-card.gps-nearest {
   border-left-color: #60a5fa !important;
   background: rgba(96,165,250,.07) !important;
 }
-.stop-card.gps-nearest .stop-num {
+body.driving-active .stop-card.gps-nearest .stop-num {
   background: #60a5fa !important;
   color: #000 !important;
 }
