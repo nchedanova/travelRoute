@@ -112,6 +112,37 @@ header {
 .stat-key { font-size:8px; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase; margin-top:1px; }
 
 /* ── STOP CARDS ──────────────────────────────────────── */
+/* ── NAV / SHARE BUTTON ───────────────────────────────── */
+.nav-day-btn {
+  font-family:'JetBrains Mono',monospace;
+  font-size:9px; letter-spacing:0.08em;
+  background:transparent; border:1px solid var(--border);
+  color:var(--muted); border-radius:4px; padding:4px 8px;
+  cursor:pointer; transition:border-color 0.15s, color 0.15s;
+}
+.nav-day-btn:hover { border-color:#60a5fa; color:#60a5fa; }
+
+/* ── SHARE MODAL CONTENT ─────────────────────────────── */
+.nav-option { display:flex; flex-direction:column; gap:8px; margin-bottom:14px; }
+.nav-link-row {
+  display:flex; align-items:center; gap:8px;
+  background:var(--surface2); border:1px solid var(--border);
+  border-radius:6px; padding:8px 10px;
+}
+.nav-link-icon { font-size:18px; flex-shrink:0; }
+.nav-link-info { flex:1; min-width:0; }
+.nav-link-title { font-size:11px; color:var(--text); margin-bottom:2px; }
+.nav-link-sub { font-size:9px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.nav-link-btn {
+  font-family:'JetBrains Mono',monospace; font-size:9px;
+  background:transparent; border:1px solid var(--border);
+  color:var(--muted); border-radius:4px; padding:5px 10px;
+  cursor:pointer; transition:all 0.15s; flex-shrink:0; white-space:nowrap;
+}
+.nav-link-btn:hover { border-color:var(--green); color:var(--green); }
+.nav-link-btn.copy-ok { border-color:var(--green); color:var(--green); }
+
+/* ── STOP CARD ───────────────────────────────────────── */
 .stop-card {
   border-bottom:1px solid var(--border);
   border-left:3px solid transparent;
@@ -247,14 +278,80 @@ input.time-in.late   { color:var(--red);    border-color:rgba(248,113,113,0.4); 
 
 /* ── DELETE BUTTON ───────────────────────────────────── */
 .delete-stop-btn {
-  position:absolute; top:8px; right:8px;
+  position:absolute; top:8px; right:4px;
   background:transparent; border:none;
   color:var(--red); font-size:16px; cursor:pointer;
-  line-height:1; padding:4px 6px; border-radius:3px;
+  line-height:1; padding:4px 7px; border-radius:3px;
   opacity:1; transition:color 0.15s;
   z-index:5;
 }
 .delete-stop-btn:hover { color:#ff4d4d; }
+
+/* ── EDIT STOP BUTTON ────────────────────────────────── */
+.edit-stop-btn {
+  position:absolute; top:6px; right:32px;
+  background:transparent; border:none;
+  color:var(--muted); font-size:14px; cursor:pointer;
+  padding:4px 5px; border-radius:3px;
+  opacity:0.45; transition:opacity 0.15s, color 0.15s;
+}
+.stop-card:hover .edit-stop-btn { opacity:1; }
+.edit-stop-btn:hover { color:var(--amber); }
+@media (hover: none) {
+  /* touch devices — always fully visible */
+  .edit-stop-btn { opacity:1; }
+}
+
+/* ── INLINE EDIT FORM ────────────────────────────────── */
+.stop-edit-form {
+  padding:10px 14px 12px;
+}
+.edit-row { display:flex; gap:8px; margin-bottom:8px; align-items:flex-start; }
+.edit-field { display:flex; flex-direction:column; gap:3px; }
+.edit-label { font-size:8px; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); }
+.edit-input {
+  background:var(--bg); border:1px solid var(--border);
+  border-radius:4px; color:var(--text);
+  font-family:'JetBrains Mono',monospace; font-size:12px;
+  padding:5px 8px; outline:none; transition:border-color 0.2s;
+}
+.edit-input:focus { border-color:var(--amber); }
+.edit-input-icon { width:40px; text-align:center; font-size:16px; }
+.edit-input-name { flex:1; }
+.edit-input-time { width:60px; letter-spacing:0.05em; color:var(--muted); }
+.edit-input-time:focus { color:var(--text); }
+.edit-select {
+  background:var(--bg); border:1px solid var(--border);
+  border-radius:4px; color:var(--text);
+  font-family:'JetBrains Mono',monospace; font-size:11px;
+  padding:5px 8px; outline:none; cursor:pointer;
+}
+.edit-actions-row { display:flex; justify-content:flex-end; gap:8px; margin-top:10px; }
+.edit-cancel-btn {
+  font-family:'JetBrains Mono',monospace; font-size:10px;
+  background:transparent; border:1px solid var(--border);
+  color:var(--muted); border-radius:4px; padding:5px 12px; cursor:pointer;
+}
+.edit-cancel-btn:hover { border-color:var(--muted); color:var(--text); }
+.edit-save-btn {
+  font-family:'JetBrains Mono',monospace; font-size:10px;
+  background:rgba(74,222,128,0.08); border:1px solid var(--green);
+  color:var(--green); border-radius:4px; padding:5px 12px; cursor:pointer;
+}
+.edit-save-btn:hover { background:rgba(74,222,128,0.18); }
+
+/* ── EDITABLE PLANNED DEPARTURE TIME ─────────────────── */
+.time-val-edit {
+  font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:500;
+  background:var(--surface2); border:1px solid var(--amber);
+  color:var(--amber); border-radius:4px; width:52px;
+  text-align:center; padding:1px 3px; outline:none; letter-spacing:0.04em;
+}
+.time-val-editable {
+  cursor:pointer; border-bottom:1px dashed var(--border);
+  transition:border-color 0.15s, color 0.15s;
+}
+.time-val-editable:hover { border-bottom-color:var(--amber); color:var(--amber) !important; }
 
 /* ── ADD STOP BUTTON ─────────────────────────────────── */
 .add-stop-btn {
@@ -377,7 +474,8 @@ input.day-date-input {
   .sidebar.open { max-height:55vh; overflow-y:auto; }
   #map { flex:1; min-height:0; }
   .time-grid { padding-left:40px; }
-  .delete-stop-btn { font-size:22px; padding:8px 10px; top:4px; right:4px; }
+  .delete-stop-btn { font-size:20px; padding:8px 8px; top:4px; right:2px; }
+  .edit-stop-btn    { font-size:18px; padding:8px 9px; top:4px; right:36px; }
   .reset-btn { border-color:var(--red); color:var(--red); }
 }
 
