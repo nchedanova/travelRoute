@@ -130,7 +130,7 @@ function makeStopCard(s, day) {
       <div class="time-inputs">
         <div class="time-input-wrap">
           <div class="time-mini-label">план</div>
-          <div class="planned-time">${s.depP}</div>
+          <div class="planned-time" id="planned-dep-${s.id}">${s.depP}</div>
         </div>
         <div class="delta-wrap">
           <span class="delta-badge hidden" id="delta-dep-${s.id}">→</span>
@@ -158,24 +158,25 @@ function makeStopCard(s, day) {
 
   div.innerHTML = `
     <div class="drag-handle" title="Перетащить">⠿</div>
+    <button class="edit-stop-btn" title="Редактировать точку" onclick="editStop('${s.id}', ${day}); event.stopPropagation();">✎</button>
     <button class="delete-stop-btn" data-del-day="${day}" data-del-id="${s.id}" title="Удалить точку">×</button>
-    <div class="stop-main">
+    <div class="stop-main" id="stop-main-${s.id}">
       <div class="stop-num">${s.num}</div>
       <div class="stop-info">
         <div class="stop-name">
-          <span class="stop-icon">${s.icon}</span>
-          <span class="stop-name-text">${s.name}</span>
-          <span class="stop-type">${s.type}</span>
+          <span class="stop-icon" id="stop-icon-disp-${s.id}">${s.icon}</span>
+          <span class="stop-name-text" id="stop-name-disp-${s.id}">${s.name}</span>
+          <span class="stop-type" id="stop-type-disp-${s.id}">${s.type}</span>
         </div>
       </div>
     </div>
-    <div class="time-grid">
+    <div class="time-grid" id="stop-timegrid-${s.id}">
       <div class="time-block">
         <div class="time-block-label">Прибытие</div>
         <div class="time-inputs">
           <div class="time-input-wrap">
             <div class="time-mini-label">план</div>
-            <div class="planned-time">${s.arrP || '—'}</div>
+            <div class="planned-time" id="planned-arr-${s.id}">${s.arrP || '—'}</div>
           </div>
           <div class="delta-wrap">
             <span class="delta-badge hidden" id="delta-arr-${s.id}">→</span>
@@ -189,7 +190,8 @@ function makeStopCard(s, day) {
         </div>
       </div>
       ${depBlock}
-    </div>`;
+    </div>
+    <div class="stop-edit-form" id="edit-form-${s.id}" style="display:none;"></div>`;
 
   div.querySelector('.delete-stop-btn').addEventListener('click', e => {
     e.stopPropagation();
@@ -235,6 +237,7 @@ function renderDaySection(d) {
         </div>
         <div class="day-route" id="d${d}-route"></div>
       </div>
+      <button class="nav-day-btn" onclick="openShareDay(${d})" title="Открыть маршрут в навигаторе">🗺 НАВИГАТОР</button>
       <button class="delete-day-btn" onclick="confirmDeleteDay(${d})" title="Удалить день">✕ ДЕНЬ</button>
       <button class="reset-btn" onclick="confirmReset(${d})">⟳ СБРОС</button>
     </div>
@@ -248,7 +251,9 @@ function renderDaySection(d) {
       <div class="depart-times">
         <div class="time-pair">
           <div class="time-label">план</div>
-          <div class="time-val">${data.departP || '—'}</div>
+          <div class="time-val time-val-editable" id="d${d}-departP-display"
+               onclick="editDepartTime(${d}, this)"
+               title="Нажмите для изменения времени выезда">${data.departP || '—'}</div>
         </div>
         <div class="time-sep">→</div>
         <div class="time-pair">
