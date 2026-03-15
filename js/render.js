@@ -152,14 +152,19 @@ function makeStopCard(s, day) {
   div.dataset.day = day;
 
   div.addEventListener('click', e => {
-    if (e.target.closest('input,button,.drag-handle')) return;
+    if (e.target.closest('input,button,.drag-handle,.stop-dropdown')) return;
     highlightStop(s.id, day);
   });
 
   div.innerHTML = `
     <div class="drag-handle" title="Перетащить">⠿</div>
-    <button class="edit-stop-btn" title="Редактировать точку" onclick="editStop('${s.id}', ${day}); event.stopPropagation();">✎</button>
-    <button class="delete-stop-btn" data-del-day="${day}" data-del-id="${s.id}" title="Удалить точку">×</button>
+    <button class="dots-btn" id="dots-${s.id}" onclick="toggleStopMenu('${s.id}', ${day}); event.stopPropagation();">···</button>
+    <div class="stop-dropdown" id="dd-${s.id}">
+      <button class="stop-dropdown-item" onclick="closeStopMenus(); editStop('${s.id}', ${day});"><span class="di-icon">✎</span> Редактировать</button>
+      <button class="stop-dropdown-item" onclick="closeStopMenus(); editStopTime('${s.id}', ${day});"><span class="di-icon">⏱</span> Изменить время</button>
+      <div class="stop-dropdown-divider"></div>
+      <button class="stop-dropdown-item danger" onclick="closeStopMenus(); deleteStop(${day}, '${s.id}');"><span class="di-icon">×</span> Удалить точку</button>
+    </div>
     <div class="stop-main" id="stop-main-${s.id}">
       <div class="stop-num">${s.num}</div>
       <div class="stop-info">
