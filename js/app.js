@@ -928,3 +928,38 @@ setTimeout(() => {
 // Показать настройки при первом открытии только если не задан ни токен, ни gist ID
 // (если gist пришёл из URL — зритель, модал не нужен)
 // Автооткрытие модала убрано — владелец настраивает через кнопку ⚙
+
+// ── SIDEBAR TABS ───────────────────────────────────────────────────────────────
+let _currentSidebarTab = 'route';
+
+function switchSidebarTab(tab) {
+  _currentSidebarTab = tab;
+  ['route','notes','chat'].forEach(t => {
+    const btn   = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1));
+    const panel = document.getElementById('tabPanel' + t.charAt(0).toUpperCase() + t.slice(1));
+    const active = t === tab;
+    if (btn)   btn.classList.toggle('active', active);
+    if (panel) panel.style.display = active ? '' : 'none';
+  });
+  if (tab === 'chat')  { onChatTabOpen && onChatTabOpen(); }
+  if (tab === 'notes') { onNotesTabOpen && onNotesTabOpen(); }
+  if (tab !== 'chat')  { onChatTabClose && onChatTabClose(); }
+}
+
+// ── STOP NOTE TOGGLE ───────────────────────────────────────────────────────────
+function toggleStopNote(stopId) {
+  const wrap = document.getElementById('stop-note-wrap-' + stopId);
+  if (!wrap) return;
+  const visible = wrap.style.display !== 'none';
+  wrap.style.display = visible ? 'none' : 'block';
+  if (!visible) {
+    const ta = document.getElementById('stop-note-' + stopId);
+    if (ta) { autoResizeNote(ta); setTimeout(() => ta.focus(), 50); }
+  }
+}
+
+// ── AUTO RESIZE HELPERS ────────────────────────────────────────────────────────
+function autoResizeChatInput(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
