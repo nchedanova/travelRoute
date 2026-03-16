@@ -219,6 +219,7 @@ function makeStopCard(s, day) {
     <div class="stop-dropdown" id="dd-${s.id}">
       <button class="stop-dropdown-item" onclick="closeStopMenus(); editStop('${s.id}', ${day});"><span class="di-icon">✎</span> Редактировать</button>
       <button class="stop-dropdown-item" onclick="closeStopMenus(); editStopTime('${s.id}', ${day});"><span class="di-icon">⏱</span> Изменить время</button>
+      <button class="stop-dropdown-item" onclick="closeStopMenus(); toggleStopNote('${s.id}');"><span class="di-icon">📝</span> Заметка</button>
       <div class="stop-dropdown-divider"></div>
       <button class="stop-dropdown-item danger" onclick="closeStopMenus(); deleteStop(${day}, '${s.id}');"><span class="di-icon">×</span> Удалить точку</button>
     </div>
@@ -253,7 +254,10 @@ function makeStopCard(s, day) {
       </div>
       ${depBlock}
     </div>
-    <div class="stop-edit-form" id="edit-form-${s.id}" style="display:none;"></div>`;
+    <div class="stop-edit-form" id="edit-form-${s.id}" style="display:none;"></div>
+    <div class="stop-note-wrap" id="stop-note-wrap-${s.id}" style="display:${s.note ? 'block' : 'none'}">
+      <textarea class="stop-note-input" id="stop-note-${s.id}" placeholder="Заметка к точке…" oninput="autoResizeNote(this)" onblur="saveStopNote('${s.id}',${day})">${s.note || ''}</textarea>
+    </div>`;
 
   div.addEventListener('dragstart', onDragStart);
   div.addEventListener('dragover',  onDragOver);
