@@ -330,12 +330,42 @@ function clearCloudSettings() {
 }
 
 async function saveCloudSettings() {
-  const token = document.getElementById('cs-token').value.trim();
-  const gist  = document.getElementById('cs-gist').value.trim();
-  const st    = document.getElementById('cs-status');
+  const token  = document.getElementById('cs-token').value.trim();
+  const gist   = document.getElementById('cs-gist').value.trim();
+  const fbKey  = document.getElementById('cs-firebase-key').value.trim();
+  const st     = document.getElementById('cs-status');
 
+  // Firebase key — сохраняем сразу без проверки (нужен всем, в т.ч. читателям)
+  if (fbKey) localStorage.setItem('travel_firebase_key', fbKey);
+
+  // Если ни токена ни gist — только firebase, закрываем
+  if (!token && !gist) {
+    if (fbKey) {
+      st.textContent = '✓ Firebase Key сохранён';
+      st.style.color = 'var(--green)';
+      setTimeout(() => closeCloudSettings(), 800);
+    } else {
+      st.textContent = '⚠ Заполните хотя бы одно поле';
+      st.style.color = '#f87171';
+    }
+    return;
+  }
+
+  // Если есть gist но нет токена — режим читателя, проверка не нужна
+  if (gist && !token) {
+    localStorage.setItem('travel_gist_id', gist);
+    st.textContent = '✓ Сохранено (режим чтения)';
+    st.style.color = 'var(--green)';
+    setTimeout(() => {
+      closeCloudSettings();
+      loadState().then(() => startPolling());
+    }, 800);
+    return;
+  }
+
+  // Есть и токен и gist — проверяем подключение
   if (!token || !gist) {
-    st.textContent = '⚠ Заполните оба поля';
+    st.textContent = '⚠ Для записи нужны оба поля (токен + Gist ID)';
     st.style.color = '#f87171';
     return;
   }
@@ -353,8 +383,6 @@ async function saveCloudSettings() {
 
     localStorage.setItem('travel_gist_token', token);
     localStorage.setItem('travel_gist_id',    gist);
-    const fbKey = document.getElementById('cs-firebase-key').value.trim();
-    if (fbKey) localStorage.setItem('travel_firebase_key', fbKey);
 
     st.textContent = '✓ Подключено! Загружаем данные…';
     st.style.color = 'var(--green)';
