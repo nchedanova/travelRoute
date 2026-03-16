@@ -62,7 +62,8 @@ header {
 .sidebar {
   width:370px; background:var(--surface);
   border-right:1px solid var(--border);
-  overflow-y:auto; flex-shrink:0;
+  overflow-y:hidden; flex-shrink:0;
+  display:flex; flex-direction:column;
   scrollbar-width:thin; scrollbar-color:var(--border) transparent;
   z-index:100;
   transition:transform 0.28s ease;
@@ -726,3 +727,364 @@ body.driving-active .stop-card.gps-nearest .stop-num {
   background: #60a5fa !important;
   color: #000 !important;
 }
+
+/* ════════════════════════════════════════════════════════════
+   SIDEBAR TABS
+   ════════════════════════════════════════════════════════════ */
+.sidebar-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  flex-shrink: 0;
+}
+.sidebar-tab {
+  flex: 1;
+  padding: 10px 4px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+  position: relative;
+}
+.sidebar-tab:hover { color: var(--text); }
+.sidebar-tab.active {
+  color: var(--text);
+  border-bottom-color: var(--amber);
+}
+.tab-dot {
+  position: absolute;
+  top: 7px;
+  right: 10px;
+  width: 7px;
+  height: 7px;
+  background: #e05c3a;
+  border-radius: 50%;
+}
+.tab-panel { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.tab-panel.active { display: flex; }
+#tabPanelRoute { overflow-y: auto; }
+
+/* На узких экранах прячем текст в табах */
+@media (max-width: 420px) {
+  .tab-label { display: none; }
+  .sidebar-tab { font-size: 16px; }
+}
+
+/* ════════════════════════════════════════════════════════════
+   NOTES PANEL
+   ════════════════════════════════════════════════════════════ */
+.notes-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.notes-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.notes-empty {
+  color: var(--muted);
+  font-size: 11px;
+  text-align: center;
+  padding: 24px 0;
+}
+.note-item {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.note-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.note-author {
+  font-size: 10px;
+  color: var(--amber);
+  font-weight: 600;
+}
+.note-date {
+  font-size: 10px;
+  color: var(--muted);
+  flex: 1;
+}
+.note-delete-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+  transition: color 0.15s;
+}
+.note-delete-btn:hover { color: var(--red); }
+.note-text {
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.notes-input-wrap {
+  border-top: 1px solid var(--border);
+  padding: 10px 12px;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.notes-textarea {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  padding: 8px 10px;
+  resize: none;
+  min-height: 60px;
+  max-height: 140px;
+  overflow-y: auto;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.notes-textarea:focus { border-color: var(--amber); }
+.notes-send-btn {
+  align-self: flex-end;
+  background: none;
+  border: 1px solid var(--green);
+  color: var(--green);
+  border-radius: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 6px 16px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.notes-send-btn:hover { background: rgba(74,222,128,0.1); }
+
+/* ════════════════════════════════════════════════════════════
+   CHAT PANEL
+   ════════════════════════════════════════════════════════════ */
+.chat-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.chat-header-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+.chat-name-display {
+  font-size: 11px;
+  color: var(--amber);
+  flex: 1;
+  font-family: 'JetBrains Mono', monospace;
+}
+.chat-change-name-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 2px 4px;
+  transition: color 0.15s;
+}
+.chat-change-name-btn:hover { color: var(--text); }
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--bg);
+}
+/* Message bubbles */
+.chat-msg { display: flex; flex-direction: column; max-width: 82%; }
+.chat-msg.mine  { align-self: flex-end; align-items: flex-end; }
+.chat-msg.theirs { align-self: flex-start; align-items: flex-start; }
+.chat-author {
+  font-size: 10px;
+  color: var(--muted);
+  margin-bottom: 2px;
+  padding-left: 2px;
+}
+.chat-bubble {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 4px 12px 12px 12px;
+  padding: 8px 11px;
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.45;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+.chat-msg.mine .chat-bubble {
+  background: #1a6640;
+  border-color: #1a6640;
+  color: #e6ffe6;
+  border-radius: 12px 4px 12px 12px;
+}
+.chat-bubble-img {
+  padding: 4px;
+  overflow: hidden;
+}
+.chat-photo {
+  display: block;
+  max-width: 200px;
+  max-height: 200px;
+  width: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.chat-photo:hover { opacity: 0.88; }
+.chat-photo-caption {
+  font-size: 11px;
+  color: var(--muted);
+  padding: 4px 4px 2px;
+}
+.chat-time {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 2px;
+  padding: 0 2px;
+}
+.chat-uploading {
+  font-size: 11px;
+  color: var(--muted);
+  font-style: italic;
+}
+/* Input bar */
+.chat-input-bar {
+  border-top: 1px solid var(--border);
+  padding: 8px 10px;
+  background: var(--surface);
+  display: flex;
+  align-items: flex-end;
+  gap: 7px;
+  flex-shrink: 0;
+}
+.chat-attach-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: border-color 0.15s, color 0.15s;
+  line-height: 1;
+}
+.chat-attach-btn:hover { border-color: var(--amber); color: var(--amber); }
+.chat-textarea {
+  flex: 1;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  padding: 8px 12px;
+  resize: none;
+  min-height: 34px;
+  max-height: 120px;
+  overflow-y: auto;
+  outline: none;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+  line-height: 1.4;
+}
+.chat-textarea:focus { border-color: var(--amber); }
+.chat-send-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #1a6640;
+  border: none;
+  color: #e6ffe6;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.chat-send-btn:hover { background: #1d9e75; }
+
+/* ════════════════════════════════════════════════════════════
+   STOP NOTE
+   ════════════════════════════════════════════════════════════ */
+.stop-note-wrap {
+  padding: 0 12px 10px;
+}
+.stop-note-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--amber);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 7px 9px;
+  resize: none;
+  min-height: 52px;
+  max-height: 200px;
+  overflow-y: auto;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.stop-note-input:focus { border-color: var(--amber); border-left-color: var(--amber); }
+.stop-note-readonly {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.5;
+  padding: 6px 0;
+  border-left: 2px solid var(--border);
+  padding-left: 8px;
+}
+
+/* ════════════════════════════════════════════════════════════
+   NICKNAME MODAL — center nicely
+   ════════════════════════════════════════════════════════════ */
+#nicknameModal { align-items: center; justify-content: center; }
+
