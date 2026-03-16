@@ -4,13 +4,12 @@
 //   Зритель  (canRead, !canWrite): читает позицию из Firebase, камера следит автоматически
 
 const FIREBASE_CONFIG = {
-  apiKey:            'AIzaSyC73GrtMCW0Uq5COCHQ8QM6yeJA1TAJ1Bk',
-  authDomain:        'travel-route-83d06.firebaseapp.com',
-  databaseURL:       'https://travel-route-83d06-default-rtdb.firebaseio.com',
-  projectId:         'travel-route-83d06',
-  storageBucket:     'travel-route-83d06.firebasestorage.app',
-  messagingSenderId: '880747819905',
-  appId:             '1:880747819905:web:376879499a62d9b7f0ee80'
+  authDomain:          'travel-route-83d06.firebaseapp.com',
+  databaseURL:         'https://travel-route-83d06-default-rtdb.firebaseio.com',
+  projectId:           'travel-route-83d06',
+  storageBucket:       'travel-route-83d06.firebasestorage.app',
+  messagingSenderId:   '880747819905',
+  appId:               '1:880747819905:web:376879499a62d9b7f0ee80'
 };
 
 // ── STATE ──────────────────────────────────────────────────────────────────────
@@ -30,8 +29,15 @@ function initGps() {
     return;
   }
 
-  if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+  if (!firebase.apps.length) {
+    const cfg = Object.assign({}, FIREBASE_CONFIG, { apiKey: localStorage.getItem('travel_firebase_key') || '' });
+    firebase.initializeApp(cfg);
+  }
   _db = firebase.database();
+
+  // Запускаем чат и заметки
+  initChat && initChat();
+  initNotes && initNotes();
 
   if (CLOUD_CONFIG.canWrite) {
     // Владелец: запускаем GPS-слежение устройства
