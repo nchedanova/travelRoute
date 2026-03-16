@@ -305,9 +305,10 @@ function copyShareLink() {
 
 // ── CLOUD SETTINGS UI ─────────────────────────────────────────────────────────
 function openCloudSettings() {
-  document.getElementById('cs-token').value = localStorage.getItem('travel_gist_token') || '';
-  document.getElementById('cs-gist').value  = localStorage.getItem('travel_gist_id')    || '';
-  document.getElementById('cs-status').textContent = '';
+  document.getElementById('cs-token').value        = localStorage.getItem('travel_gist_token') || '';
+  document.getElementById('cs-gist').value          = localStorage.getItem('travel_gist_id')    || '';
+  document.getElementById('cs-firebase-key').value  = localStorage.getItem('travel_firebase_key') || '';
+  document.getElementById('cs-status').textContent  = '';
   document.getElementById('cloudSettingsModal').classList.add('show');
 }
 
@@ -318,8 +319,10 @@ function closeCloudSettings() {
 function clearCloudSettings() {
   localStorage.removeItem('travel_gist_token');
   localStorage.removeItem('travel_gist_id');
-  document.getElementById('cs-token').value = '';
-  document.getElementById('cs-gist').value  = '';
+  localStorage.removeItem('travel_firebase_key');
+  document.getElementById('cs-token').value       = '';
+  document.getElementById('cs-gist').value        = '';
+  document.getElementById('cs-firebase-key').value = '';
   const st = document.getElementById('cs-status');
   st.textContent = '✓ Настройки очищены — работаем офлайн';
   st.style.color = 'var(--muted)';
@@ -350,6 +353,8 @@ async function saveCloudSettings() {
 
     localStorage.setItem('travel_gist_token', token);
     localStorage.setItem('travel_gist_id',    gist);
+    const fbKey = document.getElementById('cs-firebase-key').value.trim();
+    if (fbKey) localStorage.setItem('travel_firebase_key', fbKey);
 
     st.textContent = '✓ Подключено! Загружаем данные…';
     st.style.color = 'var(--green)';
