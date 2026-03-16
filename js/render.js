@@ -256,7 +256,11 @@ function makeStopCard(s, day) {
     </div>
     <div class="stop-edit-form" id="edit-form-${s.id}" style="display:none;"></div>
     <div class="stop-note-wrap" id="stop-note-wrap-${s.id}" style="display:${s.note ? 'block' : 'none'}">
-      <textarea class="stop-note-input" id="stop-note-${s.id}" placeholder="Заметка к точке…" oninput="autoResizeNote(this)" onblur="saveStopNote('${s.id}',${day})">${s.note || ''}</textarea>
+      ${CLOUD_CONFIG.canWrite
+        ? `<textarea class="stop-note-input" id="stop-note-${s.id}" placeholder="Заметка к точке…" oninput="autoResizeNote(this)" onblur="saveStopNote('${s.id}',${day})">${s.note || ''}</textarea>`
+        : (s.note ? `<div class="stop-note-readonly">${s.note.replace(/</g,'&lt;').replace(/
+/g,'<br>')}</div>` : '')
+      }
     </div>`;
 
   div.addEventListener('dragstart', onDragStart);
