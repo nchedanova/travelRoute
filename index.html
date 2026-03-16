@@ -11,6 +11,7 @@
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
 </head>
 <body>
 
@@ -27,7 +28,45 @@
 
 <div class="main">
   <div class="sidebar" id="sidebar">
+    <div class="sidebar-tabs">
+    <button class="sidebar-tab active" id="tabRoute" onclick="switchSidebarTab('route')">🗺 <span class="tab-label">Маршрут</span></button>
+    <button class="sidebar-tab" id="tabNotes" onclick="switchSidebarTab('notes')">📝 <span class="tab-label">Заметки</span></button>
+    <button class="sidebar-tab" id="tabChat" onclick="switchSidebarTab('chat')">💬 <span class="tab-label">Чат</span><span class="tab-dot" id="chatTabDot" style="display:none"></span></button>
+  </div>
+
+  <!-- ── МАРШРУТ ── -->
+  <div id="tabPanelRoute" class="tab-panel active">
     <div id="daySections"></div>
+  </div>
+
+  <!-- ── ЗАМЕТКИ ── -->
+  <div id="tabPanelNotes" class="tab-panel" style="display:none">
+    <div class="notes-panel">
+      <div id="notesList" class="notes-list"></div>
+      <div class="notes-input-wrap">
+        <textarea id="noteInput" class="notes-textarea" placeholder="Новая заметка… (Ctrl+Enter — отправить)" onkeydown="noteInputKeydown(event)" oninput="autoResizeNote(this)"></textarea>
+        <button class="notes-send-btn" onclick="addNote()">Добавить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ЧАТ ── -->
+  <div id="tabPanelChat" class="tab-panel" style="display:none">
+    <div class="chat-panel">
+      <div class="chat-header-bar">
+        <span id="chatNameDisplay" class="chat-name-display"></span>
+        <button class="chat-change-name-btn" onclick="changeChatName()" title="Изменить имя">✎</button>
+      </div>
+      <div id="chatMessages" class="chat-messages"></div>
+      <div class="chat-input-bar">
+        <input type="file" id="chatPhotoInput" accept="image/*" style="display:none" onchange="handlePhotoSelected(this)">
+        <button class="chat-attach-btn" onclick="openPhotoUpload()" title="Фото">＋</button>
+        <textarea id="chatInput" class="chat-textarea" placeholder="Сообщение…" rows="1"
+          onkeydown="chatInputKeydown(event)" oninput="autoResizeChatInput(this)"></textarea>
+        <button class="chat-send-btn" onclick="sendChatMessage()">↑</button>
+      </div>
+    </div>
+  </div>
   </div>
 
   <!-- Add Stop Modal -->
@@ -238,6 +277,10 @@
         <div class="modal-label">Gist ID (из URL gist.github.com после последнего /)</div>
         <input class="modal-input" id="cs-gist" type="text" placeholder="a1b2c3d4e5f67890abcd1234" autocomplete="off">
       </div>
+      <div class="modal-field">
+        <div class="modal-label">Firebase API Key — для GPS, чата и заметок</div>
+        <input class="modal-input" id="cs-firebase-key" type="password" placeholder="AIzaSy…" autocomplete="off">
+      </div>
       <div id="cs-status" style="font-size:10px;min-height:16px;margin-bottom:10px;"></div>
       <div class="modal-actions" style="flex-wrap:wrap;gap:8px;">
         <button class="modal-cancel" onclick="clearCloudSettings()" style="margin-right:auto;border-color:#f87171;color:#f87171;">Очистить</button>
@@ -247,6 +290,23 @@
           onclick="saveCloudSettings()">Сохранить</button>
       </div>
     </div>
+  </div>
+
+  <!-- Nickname modal -->
+  <div class="modal-overlay" id="nicknameModal">
+    <div class="modal" style="max-width:340px;">
+      <div class="modal-title">Как тебя зовут?</div>
+      <div class="modal-body" style="margin-bottom:12px;font-size:12px;color:var(--muted);">Имя будет видно в чате и заметках. Спросим один раз.</div>
+      <input class="modal-input" id="nicknameInput" type="text" placeholder="Например, Саша" maxlength="24" onkeydown="nicknameKeydown(event)" autocomplete="off">
+      <div class="modal-actions" style="margin-top:14px;">
+        <button class="modal-confirm" style="border-color:var(--green);color:var(--green);background:rgba(74,222,128,0.1);width:100%;" onclick="saveNickname()">Готово</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Photo viewer overlay -->
+  <div class="modal-overlay" id="photoViewerOverlay" onclick="closePhotoViewer()" style="background:rgba(0,0,0,0.88);z-index:9999;">
+    <img id="photoViewerImg" src="" alt="фото" style="max-width:94vw;max-height:92vh;border-radius:8px;object-fit:contain;">
   </div>
 
   <div id="map"></div>
@@ -274,7 +334,9 @@
 <script src="js/map.js?v=7"></script>
 <script src="js/render.js?v=7"></script>
 <script src="js/app.js?v=7"></script>
-<script src="js/gps.js?v=1"></script>
+<script src="js/gps.js?v=2"></script>
+<script src="js/chat.js?v=1"></script>
+<script src="js/notes.js?v=1"></script>
 <script>
   // Запускаем GPS после инициализации карты
   document.addEventListener('DOMContentLoaded', () => {
