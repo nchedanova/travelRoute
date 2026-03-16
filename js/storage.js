@@ -308,6 +308,7 @@ function openCloudSettings() {
   document.getElementById('cs-token').value        = localStorage.getItem('travel_gist_token') || '';
   document.getElementById('cs-gist').value          = localStorage.getItem('travel_gist_id')    || '';
   document.getElementById('cs-firebase-key').value  = localStorage.getItem('travel_firebase_key') || '';
+  document.getElementById('cs-imgur-id').value      = localStorage.getItem('travel_imgur_client_id') || '';
   document.getElementById('cs-status').textContent  = '';
   document.getElementById('cloudSettingsModal').classList.add('show');
 }
@@ -323,6 +324,8 @@ function clearCloudSettings() {
   document.getElementById('cs-token').value       = '';
   document.getElementById('cs-gist').value        = '';
   document.getElementById('cs-firebase-key').value = '';
+  localStorage.removeItem('travel_imgur_client_id');
+  document.getElementById('cs-imgur-id').value = '';
   const st = document.getElementById('cs-status');
   st.textContent = '✓ Настройки очищены — работаем офлайн';
   st.style.color = 'var(--muted)';
@@ -337,6 +340,8 @@ async function saveCloudSettings() {
 
   // Firebase key — сохраняем сразу без проверки (нужен всем, в т.ч. читателям)
   if (fbKey) localStorage.setItem('travel_firebase_key', fbKey);
+  const imgurId = document.getElementById('cs-imgur-id').value.trim();
+  if (imgurId) localStorage.setItem('travel_imgur_client_id', imgurId);
 
   // Если ни токена ни gist — только firebase, закрываем
   if (!token && !gist) {
