@@ -22,26 +22,26 @@
   --chat-mine-text: #e6ffe6;
 }
 
-/* ── THEME: MIDNIGHT BLUE ────────────────────────────────────────────────────*/
-[data-theme="midnight"] {
-  --bg: #0d0f12;
-  --surface: #13161b;
-  --surface2: #1a1e26;
-  --border: #2c3342;
-  --amber: #4f8ef7;
-  --amber-dim: #2563c9;
-  --green: #3dd68c;
-  --text: #e8eaf0;
-  --muted: #9aa0b4;
+/* ── THEME: EMERALD NIGHT ────────────────────────────────────────────────────*/
+[data-theme="emerald"] {
+  --bg: #0b0f0d;
+  --surface: #111a14;
+  --surface2: #172019;
+  --border: #1e3024;
+  --amber: #2dd4a0;
+  --amber-dim: #1a9e78;
+  --green: #34d399;
+  --text: #dff7ee;
+  --muted: #7bb89a;
   --red: #f07070;
-  --d2: #7b68ee;
-  --accent: #4f8ef7;
-  --accent-dim: #2563c9;
-  --accent-bg: rgba(79,142,247,0.14);
-  --accent-text-on: #fff;
-  --chat-mine-bg: #173b6e;
-  --chat-mine-border: #1d4a8a;
-  --chat-mine-text: #dceeff;
+  --d2: #60c8ff;
+  --accent: #2dd4a0;
+  --accent-dim: #1a9e78;
+  --accent-bg: rgba(45,212,160,0.12);
+  --accent-text-on: #000;
+  --chat-mine-bg: #0d3028;
+  --chat-mine-border: #1a5040;
+  --chat-mine-text: #b8f0de;
 }
 
 /* ── THEME: DEEP VIOLET ──────────────────────────────────────────────────────*/
@@ -116,16 +116,11 @@ header {
 .sidebar {
   width:370px; background:var(--surface);
   border-right:1px solid var(--border);
-  overflow-y:hidden; flex-shrink:0;
+  overflow:hidden; flex-shrink:0;
   display:flex; flex-direction:column;
-  scrollbar-width:thin; scrollbar-color:var(--border) transparent;
   z-index:100;
   transition:transform 0.28s ease;
 }
-.sidebar::-webkit-scrollbar { width:5px; }
-.sidebar::-webkit-scrollbar-track { background:transparent; }
-.sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
-.sidebar::-webkit-scrollbar-thumb:hover { background:var(--muted); }
 .day-section { display:none; }
 .day-section.visible { display:block; }
 
@@ -552,7 +547,7 @@ input.day-date-input {
     width:100%; border-right:none; border-bottom:1px solid var(--border);
     flex-shrink:0; max-height:0; overflow:hidden; transition:max-height 0.32s ease;
   }
-  .sidebar.open { max-height:55vh; overflow-y:auto; }
+  .sidebar.open { max-height:55vh; overflow:hidden; }
   #map { flex:1; min-height:0; }
   .time-grid { padding-left:40px; }
   .delete-stop-btn { display:none; }
@@ -599,15 +594,17 @@ input.day-date-input {
   .mode-badge.admin { color:var(--amber); border-color:var(--amber); }
   .mode-badge.viewer { color:#60a5fa; border-color:#60a5fa; }
 
-  /* Fix 5: sidebar overscroll — prevent back-gesture conflict */
   .sidebar.open {
     overscroll-behavior: contain;
     overscroll-behavior-y: contain;
   }
-  /* Bigger touch-friendly scrollbar for sidebar */
-  .sidebar.open::-webkit-scrollbar { width:6px; }
-  .sidebar.open::-webkit-scrollbar-track { background:transparent; }
-  .sidebar.open::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+  #tabPanelRoute {
+    max-height: calc(55vh - 90px);
+  }
+  /* Bigger touch-friendly scrollbar for route panel on mobile */
+  #tabPanelRoute::-webkit-scrollbar { width: 6px; }
+  #tabPanelRoute::-webkit-scrollbar-track { background: transparent; }
+  #tabPanelRoute::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 }
 
 /* ── PILL POPUP ───────────────────────────────────────── */
@@ -828,7 +825,15 @@ body.driving-active .stop-card.gps-nearest .stop-num {
 }
 .tab-panel { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .tab-panel.active { display: flex; }
-#tabPanelRoute { overflow-y: auto; }
+#tabPanelRoute {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+#tabPanelRoute::-webkit-scrollbar { width: 5px; }
+#tabPanelRoute::-webkit-scrollbar-track { background: transparent; }
+#tabPanelRoute::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+#tabPanelRoute::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 
 /* На узких экранах прячем текст в табах */
 @media (max-width: 420px) {
@@ -1434,7 +1439,7 @@ body.driving-active .stop-card.gps-nearest .stop-num {
 }
 .note-type-btn.active {
   border-color: var(--amber);
-  background: rgba(245,166,35,0.12);
+  background: var(--accent-bg);
 }
 .notes-add-btn {
   padding: 0 14px;
@@ -1504,7 +1509,7 @@ body.driving-active .stop-card.gps-nearest .stop-num {
 .note-type-btn.type-buy.active  { border-color:#e05c3a; background:rgba(224,92,58,0.15);  }
 .note-type-btn.type-take.active { border-color:#378add; background:rgba(55,138,221,0.15); }
 .note-type-btn.type-todo.active { border-color:#1d9e75; background:rgba(29,158,117,0.15); }
-.note-type-btn.type-other.active{ border-color:var(--amber); background:rgba(245,166,35,0.12); }
+.note-type-btn.type-other.active{ border-color:var(--muted); background:rgba(107,114,128,0.15); }
 
 /* ── EMOJI PICKER: 8 cols, larger ── */
 .emoji-picker {
