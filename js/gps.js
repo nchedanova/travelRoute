@@ -1,244 +1,407 @@
-// ── GPS MODULE ─────────────────────────────────────────────────────────────────
-// Роли:
-//   Владелец (canWrite): видит свой GPS маркер, кнопка "Еду" → пишет в Firebase + следит камера
-//   Зритель  (canRead, !canWrite): читает позицию из Firebase, камера следит автоматически
+// ── CLOUD STORAGE HELPERS (GitHub Gist API) ───────────────────────────────────
+const GIST_URL = 'https://api.github.com/gists';
 
-const FIREBASE_CONFIG = {
-  authDomain:          'travel-route-83d06.firebaseapp.com',
-  databaseURL:         'https://travel-route-83d06-default-rtdb.firebaseio.com',
-  projectId:           'travel-route-83d06',
-  storageBucket:       'travel-route-83d06.firebasestorage.app',
-  messagingSenderId:   '880747819905',
-  appId:               '1:880747819905:web:376879499a62d9b7f0ee80'
-};
-
-// ── STATE ──────────────────────────────────────────────────────────────────────
-let _db             = null;
-let _watchId        = null;   // navigator.geolocation watchId
-let _gpsMarker      = null;   // Leaflet marker — текущая позиция
-let _accuracyCircle = null;   // Leaflet circle — кружок погрешности
-let _drivingMode    = false;  // владелец нажал "Еду"
-let _followCamera   = false;  // камера следит за позицией
-let _userPanned     = false;  // пользователь двигал карту вручную
-let _nearestStopId  = null;   // id ближайшей остановки
-
-// ── INIT ───────────────────────────────────────────────────────────────────────
-function initGps() {
-  if (typeof firebase === 'undefined') {
-    console.warn('Firebase SDK не загружен');
-    return;
-  }
-
-  if (!firebase.apps.length) {
-    const cfg = Object.assign({}, FIREBASE_CONFIG, { apiKey: localStorage.getItem('travel_firebase_key') || '' });
-    firebase.initializeApp(cfg);
-  }
-  _db = firebase.database();
-
-  // Запускаем чат и заметки
-  initChat && initChat();
-  initNotes && initNotes();
-
-  if (CLOUD_CONFIG.canWrite) {
-    // Владелец: запускаем GPS-слежение устройства
-    _startGpsWatch();
-    _showEl('drivingBtn');
-  } else if (CLOUD_CONFIG.canRead) {
-    // Зритель: слушаем Firebase, камера сразу следит
-    _listenRemotePosition();
-    _followCamera = true;
-    _showEl('gpsFollowBtn');
-    _showEl('speedDisplay');
-  }
-
-  // Пауза слежения при ручном движении карты
-  map.on('mousedown touchstart', () => {
-    if (!_followCamera) return;
-    _userPanned = true;
-    document.getElementById('gpsFollowBtn')?.classList.add('paused');
-  });
+// cloudEnabled = можно хотя бы читать (gistId есть)
+function cloudEnabled() {
+  return CLOUD_CONFIG.canRead;
 }
 
-// ── GPS WATCH — только владелец ───────────────────────────────────────────────
-function _startGpsWatch() {
-  if (!navigator.geolocation) {
-    showToast('GPS недоступен в этом браузере');
-    return;
-  }
-  _watchId = navigator.geolocation.watchPosition(
-    _onPosition,
-    err => console.warn('GPS:', err.message),
-    { enableHighAccuracy: true, maximumAge: 3000, timeout: 15000 }
-  );
-}
-
-function _onPosition(pos) {
-  const { latitude: lat, longitude: lng, accuracy, speed } = pos.coords;
-  const kmh = speed != null ? Math.round(speed * 3.6) : null;
-
-  _updateGpsMarker(lat, lng, accuracy, false);
-  _highlightNearest(lat, lng);
-
-  if (_drivingMode) {
-    _updateSpeedDisplay(kmh);
-    _writePosition(lat, lng, kmh, accuracy);
-    if (_followCamera && !_userPanned) _panTo(lat, lng);
-  }
-}
-
-// ── FIREBASE READ — зрители ────────────────────────────────────────────────────
-function _listenRemotePosition() {
-  if (!_db) return;
-  _db.ref('gps').on('value', snap => {
-    const d = snap.val();
-    if (!d) {
-      // путешественник остановился — убираем подсветку и скорость
-      document.body.classList.remove('driving-active');
-      _updateSpeedDisplay(null);
-      const speedEl = document.getElementById('speedDisplay');
-      if (speedEl && !CLOUD_CONFIG.canWrite) speedEl.style.display = 'none';
-      return;
-    }
-    // есть позиция — включаем подсветку как в режиме "Еду"
-    document.body.classList.add('driving-active');
-    _updateGpsMarker(d.lat, d.lng, d.accuracy, true);
-    _highlightNearest(d.lat, d.lng);
-    _updateSpeedDisplay(d.speed);
-    if (_followCamera && !_userPanned) _panTo(d.lat, d.lng);
-  });
-}
-
-// ── FIREBASE WRITE — владелец едет ────────────────────────────────────────────
-function _writePosition(lat, lng, speed, accuracy) {
-  if (!_db) return;
-  _db.ref('gps').set({ lat, lng, speed, accuracy, ts: Date.now() });
-}
-
-// ── GPS МАРКЕР ─────────────────────────────────────────────────────────────────
-function _getDayColor() {
-  if (typeof currentDay !== 'undefined' && typeof DAYS_DATA !== 'undefined') {
-    return DAYS_DATA[currentDay]?.color || '#f5a623';
-  }
-  return '#f5a623';
-}
-
-function _makeCarIcon(isRemote) {
-  const ringColor = _getDayColor();
-  const html = `
-    <div style="position:relative;width:44px;height:44px;">
-      <div class="gps-ring" style="--gps-color:${ringColor};position:absolute;inset:0;border-radius:50%;background:${ringColor};opacity:0.25;"></div>
-      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:24px;line-height:1;">🚗</div>
-    </div>`;
-  return L.divIcon({
-    html, className: '', iconSize: [44, 44], iconAnchor: [22, 22]
-  });
-}
-function _updateGpsMarker(lat, lng, accuracy, isRemote) {
-  if (!map) return;
-  const ringColor = _getDayColor();
-
-  if (_accuracyCircle) {
-    _accuracyCircle.setLatLng([lat, lng]).setRadius(accuracy || 20);
-    _accuracyCircle.setStyle({ color: ringColor, fillColor: ringColor });
-  } else {
-    _accuracyCircle = L.circle([lat, lng], {
-      radius: accuracy || 20,
-      color: ringColor, fillColor: ringColor,
-      fillOpacity: 0.07, weight: 1, opacity: 0.25
-    }).addTo(map);
-  }
-
-  const icon = _makeCarIcon(isRemote);
-
-  if (_gpsMarker) {
-    _gpsMarker.setLatLng([lat, lng]).setIcon(icon);
-  } else {
-    _gpsMarker = L.marker([lat, lng], { icon, zIndexOffset: 1000 }).addTo(map);
-    _gpsMarker.bindTooltip(isRemote ? '🚗 Путешественник' : '📍 Вы здесь',
-      { permanent: false, direction: 'top', offset: [0, -14] });
-  }
-}
-
-// ── КАМЕРА ─────────────────────────────────────────────────────────────────────
-function _panTo(lat, lng) {
-  map.panTo([lat, lng], { animate: true, duration: 0.8, easeLinearity: 0.5 });
-}
-
-// Кнопка "вернуться к позиции" после ручного движения
-function resumeGpsFollow() {
-  _userPanned    = false;
-  _followCamera  = true;
-  document.getElementById('gpsFollowBtn')?.classList.remove('paused');
-  if (_gpsMarker) {
-    const ll = _gpsMarker.getLatLng();
-    _panTo(ll.lat, ll.lng);
-  }
-}
-
-// ── РЕЖИМ "ЕДУ" — только владелец ─────────────────────────────────────────────
-function toggleDrivingMode() {
-  _drivingMode  = !_drivingMode;
-  _followCamera = _drivingMode;
-  _userPanned   = false;
-
-  const btn = document.getElementById('drivingBtn');
-  if (btn) {
-    btn.classList.toggle('active', _drivingMode);
-    btn.innerHTML = _drivingMode ? '🛑 Стоп' : '🚗 Еду';
-  }
-  document.body.classList.toggle('driving-active', _drivingMode);
-
-  const speedEl = document.getElementById('speedDisplay');
-  if (speedEl) speedEl.style.display = _drivingMode ? 'flex' : 'none';
-
-  const followBtn = document.getElementById('gpsFollowBtn');
-  if (followBtn) {
-    followBtn.style.display = _drivingMode ? 'flex' : 'none';
-    followBtn.classList.remove('paused');
-  }
-
-  if (!_drivingMode) {
-    _updateSpeedDisplay(null);
-    if (_db) _db.ref('gps').remove(); // убираем маркер у зрителей
-  }
-}
-
-// ── БЛИЖАЙШАЯ ТОЧКА ────────────────────────────────────────────────────────────
-function _highlightNearest(lat, lng) {
-  if (typeof currentDay === 'undefined' || typeof DAYS_DATA === 'undefined') return;
-  const dayData = DAYS_DATA[currentDay];
-  if (!dayData?.stops?.length) return;
-
-  let minDist = Infinity, nearestId = null;
-  dayData.stops.forEach(s => {
-    if (!s.lat || !s.lng) return;
-    const d = Math.hypot(s.lat - lat, s.lng - lng);
-    if (d < minDist) { minDist = d; nearestId = s.id; }
-  });
-
-  if (nearestId === _nearestStopId) return;
-  _nearestStopId = nearestId;
-
-  document.querySelectorAll('.stop-card').forEach(el => el.classList.remove('gps-nearest'));
-  if (nearestId) {
-    const card = document.getElementById('card-' + nearestId);
-    if (card) {
-      card.classList.add('gps-nearest');
-      card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-  }
-}
-
-// ── СПИДОМЕТР ──────────────────────────────────────────────────────────────────
-function _updateSpeedDisplay(kmh) {
-  const el = document.getElementById('speedDisplay');
+function setSyncStatus(text, color) {
+  const el = document.getElementById('syncStatus');
   if (!el) return;
-  const val = kmh != null ? kmh : '—';
-  el.innerHTML = `<span class="spd-val">${val}</span><span class="spd-unit">км/ч</span>`;
+  el.textContent = text;
+  el.style.color = color || 'var(--muted)';
 }
 
-// ── HELPERS ────────────────────────────────────────────────────────────────────
-function _showEl(id) {
-  const el = document.getElementById(id);
-  if (el) el.style.display = 'flex';
+function setModeBadge() {
+  const badge = document.getElementById('modeBadge');
+  if (!badge) return;
+  if (!cloudEnabled()) {
+    badge.textContent = '⊘ офлайн';
+    badge.className = 'mode-badge';
+  } else if (CLOUD_CONFIG.canWrite) {
+    badge.textContent = '✏ админ';
+    badge.className = 'mode-badge admin';
+  } else {
+    badge.textContent = '👁 чтение';
+    badge.className = 'mode-badge viewer';
+  }
+}
+
+let _gistOwnerLogin = null; // кешируем логин владельца после первого API-запроса
+
+async function fetchCloudData() {
+  const headers = { 'Accept': 'application/vnd.github+json' };
+  if (CLOUD_CONFIG.apiKey) headers['Authorization'] = `token ${CLOUD_CONFIG.apiKey}`;
+
+  // Зрители (без токена): если знаем логин — читаем raw URL (нет лимитов API)
+  if (!CLOUD_CONFIG.apiKey && _gistOwnerLogin) {
+    const rawUrl = `https://gist.githubusercontent.com/${_gistOwnerLogin}/${CLOUD_CONFIG.binId}/raw/data.json?t=${Date.now()}`;
+    const r = await fetch(rawUrl, { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return await r.json();
+  }
+
+  // Первый запрос (или владелец с токеном) — через API, запоминаем логин
+  const r = await fetch(`${GIST_URL}/${CLOUD_CONFIG.binId}`, { headers, cache: 'no-store' });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const json = await r.json();
+
+  // Сохраняем логин для дальнейших запросов без токена
+  if (json.owner?.login) _gistOwnerLogin = json.owner.login;
+
+  const raw = json.files['data.json']?.content;
+  if (!raw) throw new Error('data.json not found in gist');
+  return JSON.parse(raw);
+}
+
+async function pushCloudData(payload) {
+  if (!CLOUD_CONFIG.canWrite) throw new Error('Нет токена — запись недоступна');
+  const r = await fetch(`${GIST_URL}/${CLOUD_CONFIG.binId}`, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': `token ${CLOUD_CONFIG.apiKey}`,
+      'Accept': 'application/vnd.github+json',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      files: { 'data.json': { content: JSON.stringify(payload) } }
+    })
+  });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+}
+
+// Debounce: откладывает облачное сохранение на 1.5с после последнего изменения
+let _saveCloudTimer = null;
+function scheduleCloudSave(payload) {
+  clearTimeout(_saveCloudTimer);
+  _saveCloudTimer = setTimeout(async () => {
+    setSyncStatus('☁ сохранение…', 'var(--amber)');
+    try {
+      await pushCloudData(payload);
+      setSyncStatus('☁ сохранено', 'var(--green)');
+      setTimeout(() => setSyncStatus('☁ ок', 'var(--muted)'), 2000);
+    } catch(e) {
+      console.error('Cloud save error', e);
+      setSyncStatus('☁ ошибка', '#f87171');
+    }
+    _saveCloudTimer = null;
+  }, 1500);
+}
+
+// ── APPLY SAVED PAYLOAD ───────────────────────────────────────────────────────
+function applyPayload(saved) {
+  state.actuals = saved.actuals || {};
+
+  if (saved.daysData) {
+    Object.keys(DAYS_DATA).forEach(k => delete DAYS_DATA[k]);
+    Object.entries(saved.daysData).forEach(([dayStr, dayData]) => {
+      DAYS_DATA[Number(dayStr)] = dayData;
+    });
+  } else {
+    // старый формат (обратная совместимость)
+    if (saved.stopsData) {
+      Object.entries(saved.stopsData).forEach(([dayStr, stops]) => {
+        const day = Number(dayStr);
+        if (DAYS_DATA[day]) DAYS_DATA[day].stops = stops.map(s => ({ ...s }));
+      });
+    }
+    if (saved.extraDays) {
+      saved.extraDays.forEach(ed => {
+        if (!DAYS_DATA[ed.day]) {
+          DAYS_DATA[ed.day] = {
+            color: ed.color, date: ed.date,
+            departP: ed.departP, departA: ed.departA || '',
+            start: ed.start, stops: ed.stops
+          };
+        }
+      });
+    }
+    if (saved.dates) {
+      dayKeys().forEach(day => {
+        if (saved.dates[day]) DAYS_DATA[day].date = saved.dates[day];
+      });
+    }
+  }
+
+  Object.entries(state.actuals).forEach(([id, a]) => {
+    dayKeys().forEach(day => {
+      DAYS_DATA[day].stops.forEach(s => {
+        if (s.id !== id) return;
+        if (a.arrA !== undefined) s.arrA = a.arrA;
+        if (a.depA !== undefined) s.depA = a.depA;
+      });
+    });
+  });
+
+  dayKeys().forEach(day => {
+    if (saved['dep' + day]) DAYS_DATA[day].departA = saved['dep' + day];
+  });
+}
+
+// ── LOAD STATE ────────────────────────────────────────────────────────────────
+async function loadState() {
+  // 1. Сначала грузим из localStorage (мгновенно — UI не ждёт)
+  try {
+    const raw = localStorage.getItem('travel_tracker_v3');
+    if (raw) applyPayload(JSON.parse(raw));
+  } catch(e) { console.error('loadState localStorage error', e); }
+
+  // 2. Затем пробуем облако (перезаписывает локальный кэш)
+  if (!cloudEnabled()) {
+    setSyncStatus('☁ офлайн', 'var(--muted)');
+    setModeBadge();
+    return;
+  }
+
+  // Если нет токена — режим «только чтение»
+  if (!CLOUD_CONFIG.canWrite) {
+    setSyncStatus('👁 только чтение', 'var(--amber)');
+  } else {
+    setSyncStatus('☁ загрузка…', 'var(--amber)');
+  }
+  setModeBadge();
+  try {
+    const saved = await fetchCloudData();
+    const json  = JSON.stringify(saved);
+    _lastCloudHash = strHash(json);
+    applyPayload(saved);
+    // Обновляем UI после загрузки облачных данных
+    dayKeys().forEach(d => redrawDay(d));
+    renderTabs();
+    renderAllDays();
+    updateProgress();
+    setSyncStatus('☁ загружено', 'var(--green)');
+    setTimeout(() => setSyncStatus(
+      CLOUD_CONFIG.canWrite ? '☁ ок' : '👁 только чтение',
+      CLOUD_CONFIG.canWrite ? 'var(--muted)' : 'var(--amber)'
+    ), 2000);
+  } catch(e) {
+    console.error('loadState cloud error', e);
+    setSyncStatus('☁ ошибка загрузки', '#f87171');
+  }
+}
+
+// ── SAVE DATA ─────────────────────────────────────────────────────────────────
+function saveData() {
+  try {
+    dayKeys().forEach(day => DAYS_DATA[day].stops.forEach(s => {
+      const aEl = document.getElementById('arr-' + s.id);
+      const dEl = document.getElementById('dep-' + s.id);
+      if (!state.actuals[s.id]) state.actuals[s.id] = {};
+      if (aEl) { s.arrA = aEl.value; state.actuals[s.id].arrA = aEl.value; }
+      if (dEl) { s.depA = dEl.value; state.actuals[s.id].depA = dEl.value; }
+    }));
+
+    const deps = {};
+    dayKeys().forEach(day => {
+      const el = document.getElementById('d' + day + '-depart');
+      deps['dep' + day] = el ? el.value : '';
+      DAYS_DATA[day].departA = deps['dep' + day];
+    });
+
+    const daysData = {};
+    dayKeys().forEach(day => {
+      daysData[day] = JSON.parse(JSON.stringify(DAYS_DATA[day]));
+    });
+
+    const payload = { actuals: state.actuals, daysData, ...deps };
+
+    // Всегда сохраняем в localStorage как кэш
+    localStorage.setItem('travel_tracker_v3', JSON.stringify(payload));
+
+    // Дополнительно — в облако (с дебаунсом), только если есть токен
+    if (CLOUD_CONFIG.canWrite) scheduleCloudSave(payload);
+
+  } catch(e) { console.error('saveData error', e); }
+  showToast();
+  updateProgress();
+}
+
+// ── AUTO-POLL (тихое обновление) ──────────────────────────────────────────────
+let _lastCloudHash = null;
+let _userIsTyping  = false;
+let _userHasFocus  = false;  // любой инпут сфокусирован
+let _typingTimer   = null;
+
+function strHash(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) { h = (Math.imul(31, h) + s.charCodeAt(i)) | 0; }
+  return h;
+}
+
+document.addEventListener('input', () => {
+  _userIsTyping = true;
+  clearTimeout(_typingTimer);
+  _typingTimer = setTimeout(() => { _userIsTyping = false; }, 5000);
+});
+
+document.addEventListener('focusin', e => {
+  if (e.target.matches('input, select, textarea')) _userHasFocus = true;
+});
+document.addEventListener('focusout', e => {
+  if (e.target.matches('input, select, textarea')) {
+    // небольшая задержка на случай перехода между полями
+    setTimeout(() => {
+      if (!document.activeElement?.matches('input, select, textarea')) _userHasFocus = false;
+    }, 200);
+  }
+});
+
+async function pollCloud() {
+  if (!cloudEnabled()) return;
+  // Владельцу поллинг не нужен — он сам пишет; зрителю блокируем только если активен инпут
+  if (CLOUD_CONFIG.canWrite) return;
+  if (_userIsTyping || _userHasFocus) return;
+  if (_saveCloudTimer) return;
+
+  try {
+    const saved = await fetchCloudData();
+    const json  = JSON.stringify(saved);
+    const hash  = strHash(json);
+    if (hash === _lastCloudHash) return;
+    _lastCloudHash = hash;
+
+    applyPayload(saved);
+    localStorage.setItem('travel_tracker_v3', json);
+
+    dayKeys().forEach(d => redrawDay(d));
+    renderTabs();
+    renderAllDays();
+    updateProgress();
+    const t = new Date().toLocaleTimeString('ru', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+    setSyncStatus(`🔄 обновлено ${t}`, 'var(--green)');
+    setTimeout(() => setSyncStatus('👁 только чтение', 'var(--amber)'), 3000);
+    showToast('🔄 Данные обновлены');
+  } catch(e) {
+    console.warn('poll error', e);
+  }
+}
+
+function startPolling(intervalMs = 15000) {
+  if (!cloudEnabled()) return;
+  // Все поллят — может быть несколько админов или один admin читает пока другой пишет
+  // Для админа используем более редкий интервал чтобы не перетирать несохранённые изменения
+  const interval = CLOUD_CONFIG.canWrite ? 30000 : intervalMs;
+  setInterval(() => {
+    // Не подгружаем если есть несохранённые изменения (идёт debounce)
+    if (CLOUD_CONFIG.canWrite && _saveCloudTimer) return;
+    pollCloud();
+  }, interval);
+}
+
+function copyShareLink() {
+  const gistId = CLOUD_CONFIG.binId;
+  if (!gistId) {
+    const st = document.getElementById('cs-status');
+    st.textContent = '⚠ Сначала сохраните Gist ID';
+    st.style.color = '#f87171';
+    return;
+  }
+  const url = new URL(window.location.href);
+  url.search = ''; // убираем старые params
+  url.searchParams.set('gist', gistId);
+  const fbKey = localStorage.getItem('travel_firebase_key') || '';
+  if (fbKey) url.searchParams.set('fbkey', fbKey);
+  navigator.clipboard.writeText(url.toString()).then(() => {
+    const st = document.getElementById('cs-status');
+    st.textContent = '✓ Ссылка скопирована! Gist должен быть публичным.';
+    st.style.color = 'var(--green)';
+  });
+}
+
+// ── CLOUD SETTINGS UI ─────────────────────────────────────────────────────────
+function openCloudSettings() {
+  document.getElementById('cs-token').value        = localStorage.getItem('travel_gist_token') || '';
+  document.getElementById('cs-gist').value          = localStorage.getItem('travel_gist_id')    || '';
+  document.getElementById('cs-firebase-key').value  = localStorage.getItem('travel_firebase_key') || '';
+
+  document.getElementById('cs-status').textContent  = '';
+  document.getElementById('cloudSettingsModal').classList.add('show');
+}
+
+function closeCloudSettings() {
+  document.getElementById('cloudSettingsModal').classList.remove('show');
+}
+
+function clearCloudSettings() {
+  localStorage.removeItem('travel_gist_token');
+  localStorage.removeItem('travel_gist_id');
+  localStorage.removeItem('travel_firebase_key');
+  document.getElementById('cs-token').value       = '';
+  document.getElementById('cs-gist').value        = '';
+  document.getElementById('cs-firebase-key').value = '';
+
+  const st = document.getElementById('cs-status');
+  st.textContent = '✓ Настройки очищены — работаем офлайн';
+  st.style.color = 'var(--muted)';
+  setSyncStatus('☁ офлайн', 'var(--muted)');
+}
+
+async function saveCloudSettings() {
+  const token  = document.getElementById('cs-token').value.trim();
+  const gist   = document.getElementById('cs-gist').value.trim();
+  const fbKey  = document.getElementById('cs-firebase-key').value.trim();
+  const st     = document.getElementById('cs-status');
+
+  // Firebase key — сохраняем сразу без проверки (нужен всем, в т.ч. читателям)
+  if (fbKey) localStorage.setItem('travel_firebase_key', fbKey);
+
+
+  // Если ни токена ни gist — только firebase, закрываем
+  if (!token && !gist) {
+    if (fbKey) {
+      st.textContent = '✓ Firebase Key сохранён';
+      st.style.color = 'var(--green)';
+      setTimeout(() => closeCloudSettings(), 800);
+    } else {
+      st.textContent = '⚠ Заполните хотя бы одно поле';
+      st.style.color = '#f87171';
+    }
+    return;
+  }
+
+  // Если есть gist но нет токена — режим читателя, проверка не нужна
+  if (gist && !token) {
+    localStorage.setItem('travel_gist_id', gist);
+    st.textContent = '✓ Сохранено (режим чтения)';
+    st.style.color = 'var(--green)';
+    setTimeout(() => {
+      closeCloudSettings();
+      loadState().then(() => startPolling());
+    }, 800);
+    return;
+  }
+
+  // Есть и токен и gist — проверяем подключение
+  if (!token || !gist) {
+    st.textContent = '⚠ Для записи нужны оба поля (токен + Gist ID)';
+    st.style.color = '#f87171';
+    return;
+  }
+
+  st.textContent = '⏳ Проверяем подключение…';
+  st.style.color = 'var(--amber)';
+
+  try {
+    const r = await fetch(`${GIST_URL}/${gist}`, {
+      headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github+json' }
+    });
+    if (r.status === 401) throw new Error('Токен неверный (401)');
+    if (r.status === 404) throw new Error('Gist не найден (404)');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+
+    localStorage.setItem('travel_gist_token', token);
+    localStorage.setItem('travel_gist_id',    gist);
+
+    st.textContent = '✓ Подключено! Загружаем данные…';
+    st.style.color = 'var(--green)';
+    setTimeout(() => {
+      closeCloudSettings();
+      loadState().then(() => startPolling());
+    }, 800);
+  } catch(e) {
+    st.textContent = '✗ Ошибка: ' + e.message;
+    st.style.color = '#f87171';
+  }
 }
