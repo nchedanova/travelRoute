@@ -17,6 +17,10 @@
 
 <header>
   <div class="logo">Дорожный журнал</div>
+  <button class="chat-header-btn" id="chatHeaderBtn" onclick="openChatFromHeader()" title="Чат">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span class="chat-header-dot" id="chatHeaderDot" style="display:none"></span>
+  </button>
   <div class="header-right">
     <div class="day-tabs" id="dayTabs"></div>
     <button class="undo-btn" id="undoBtn" onclick="undoAction()" disabled title="Отменить последнее действие">↩ отмена</button>
@@ -28,9 +32,9 @@
 
 <div class="main">
   <div class="sidebar" id="sidebar">
-    <div class="sidebar-tabs">
+    <div class="sidebar-tabs" id="sidebarTabs">
     <button class="sidebar-tab active" id="tabRoute" onclick="switchSidebarTab('route')">🗺 <span class="tab-label">Маршрут</span></button>
-    <button class="sidebar-tab" id="tabNotes" onclick="switchSidebarTab('notes')">📝 <span class="tab-label">Заметки</span></button>
+    <button class="sidebar-tab admin-only" id="tabNotes" onclick="switchSidebarTab('notes')">📝 <span class="tab-label">Заметки</span></button>
     <button class="sidebar-tab" id="tabChat" onclick="switchSidebarTab('chat')">💬 <span class="tab-label">Чат</span><span class="tab-dot" id="chatTabDot" style="display:none"></span></button>
   </div>
 
@@ -42,10 +46,25 @@
   <!-- ── ЗАМЕТКИ ── -->
   <div id="tabPanelNotes" class="tab-panel" style="display:none">
     <div class="notes-panel">
+      <div class="notes-filters">
+        <button class="notes-filter-btn active" data-type="all" onclick="setNotesFilter('all')">Все</button>
+        <button class="notes-filter-btn" data-type="buy" onclick="setNotesFilter('buy')">🛒 Купить</button>
+        <button class="notes-filter-btn" data-type="take" onclick="setNotesFilter('take')">📦 Взять</button>
+        <button class="notes-filter-btn" data-type="todo" onclick="setNotesFilter('todo')">☑️ Сделать</button>
+        <button class="notes-filter-btn" data-type="other" onclick="setNotesFilter('other')">📝 Другое</button>
+      </div>
       <div id="notesList" class="notes-list"></div>
       <div class="notes-input-wrap">
-        <textarea id="noteInput" class="notes-textarea" placeholder="Новая заметка… (Ctrl+Enter — отправить)" onkeydown="noteInputKeydown(event)" oninput="autoResizeNote(this)"></textarea>
-        <button class="notes-send-btn" onclick="addNote()">Добавить</button>
+        <div class="note-type-row">
+          <button class="note-type-btn" data-type="buy" onclick="setNoteType('buy')">🛒</button>
+          <button class="note-type-btn" data-type="take" onclick="setNoteType('take')">📦</button>
+          <button class="note-type-btn" data-type="todo" onclick="setNoteType('todo')">☑️</button>
+          <button class="note-type-btn active" data-type="other" onclick="setNoteType('other')">📝</button>
+        </div>
+        <div style="display:flex;gap:6px">
+          <textarea id="noteInput" class="notes-textarea" placeholder="Текст заметки…" onkeydown="noteInputKeydown(event)" oninput="autoResizeNote(this)"></textarea>
+          <button class="notes-add-btn" onclick="addNote()">+</button>
+        </div>
       </div>
     </div>
   </div>
@@ -61,20 +80,27 @@
       <!-- Context menu -->
       <div id="chatMsgMenu" class="chat-msg-menu" style="display:none" onclick="event.stopPropagation()">
         <div class="msg-menu-reactions"></div>
-        <div class="msg-menu-actions" style="display:none">
-          <button class="msg-menu-item msg-menu-edit">✎ Редактировать</button>
-          <button class="msg-menu-item msg-menu-delete danger">× Удалить</button>
-        </div>
+        <div class="msg-menu-actions" style="display:flex;flex-direction:column;gap:2px"></div>
       </div>
       <!-- Emoji picker -->
       <div id="emojiPicker" class="emoji-picker" style="display:none"></div>
+      <!-- Edit banner -->
+      <div id="chatEditBanner" class="chat-edit-banner" style="display:none">
+        <div class="edit-banner-inner">
+          <span class="edit-banner-label">✎ Редактирование</span>
+          <span class="edit-banner-preview"></span>
+        </div>
+        <button class="edit-banner-cancel" onclick="cancelEdit()" title="Отмена">×</button>
+      </div>
       <div class="chat-input-bar">
-        <input type="file" id="chatPhotoInput" accept="image/*" capture="environment" style="display:none" onchange="handlePhotoSelected(this)">
-        <button class="chat-attach-btn" onclick="openPhotoUpload()" title="Фото">＋</button>
         <button class="chat-emoji-btn" onclick="toggleEmojiPicker()" title="Смайлики">😊</button>
         <textarea id="chatInput" class="chat-textarea" placeholder="Сообщение…" rows="1"
           onkeydown="chatInputKeydown(event)" oninput="autoResizeChatInput(this)"></textarea>
-        <button class="chat-send-btn" onclick="sendChatMessage()">↑</button>
+        <button class="chat-send-btn" onclick="sendChatMessage()" title="Отправить">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18">
+            <path d="M5 12L19 12M19 12L13 6M19 12L13 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
       </div>
     </div>
   </div>
@@ -292,10 +318,7 @@
         <div class="modal-label">Firebase API Key — для GPS, чата и заметок</div>
         <input class="modal-input" id="cs-firebase-key" type="password" placeholder="AIzaSy…" autocomplete="off">
       </div>
-      <div class="modal-field">
-        <div class="modal-label">Imgur Client ID — для загрузки фото в чат (<a href="https://api.imgur.com/oauth2/addclient" target="_blank" style="color:var(--amber)">получить бесплатно</a>)</div>
-        <input class="modal-input" id="cs-imgur-id" type="text" placeholder="xxxxxxxxxxxxxxx" autocomplete="off">
-      </div>
+
       <div id="cs-status" style="font-size:10px;min-height:16px;margin-bottom:10px;"></div>
       <div class="modal-actions" style="flex-wrap:wrap;gap:8px;">
         <button class="modal-cancel" onclick="clearCloudSettings()" style="margin-right:auto;border-color:#f87171;color:#f87171;">Очистить</button>
@@ -357,6 +380,7 @@
   document.addEventListener('DOMContentLoaded', () => {
     // initGps вызываем после того как map готов (app.js уже вызвал initMap)
     setTimeout(initGps, 500);
+    initSidebarTabs();
   });
 </script>
 
