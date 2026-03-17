@@ -599,10 +599,12 @@ input.day-date-input {
     overscroll-behavior: contain;
     overscroll-behavior-y: contain;
   }
-  #tabPanelRoute {
+  #tabPanelRoute,
+  #tabPanelNotes,
+  #tabPanelChat {
     max-height: calc(55vh - 90px);
+    min-height: calc(55vh - 90px);
   }
-  /* Bigger touch-friendly scrollbar for route panel on mobile */
   #tabPanelRoute::-webkit-scrollbar { width: 6px; }
   #tabPanelRoute::-webkit-scrollbar-track { background: transparent; }
   #tabPanelRoute::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
@@ -988,7 +990,9 @@ body.driving-active .stop-card.gps-nearest .stop-num {
   flex-direction: column;
   gap: 10px;
   background: var(--bg);
+  scrollbar-width: none;
 }
+.chat-messages::-webkit-scrollbar { display: none; }
 /* Message bubbles */
 .chat-msg { display: flex; flex-direction: column; max-width: 82%; }
 .chat-msg.mine  { align-self: flex-end; align-items: flex-end; }
