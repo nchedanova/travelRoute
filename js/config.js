@@ -16,11 +16,15 @@ const TYPE_ICONS = {
 // в режиме «только чтение». Идеально для шаринга ссылки.
 
 // Читаем ?gist= из URL и сохраняем в localStorage при первом визите
-(function seedGistFromUrl() {
+(function seedFromUrl() {
   const params = new URLSearchParams(window.location.search);
   const urlGist = params.get('gist');
   if (urlGist && urlGist.trim()) {
     localStorage.setItem('travel_gist_id', urlGist.trim());
+  }
+  const urlFbKey = params.get('fbkey');
+  if (urlFbKey && urlFbKey.trim()) {
+    localStorage.setItem('travel_firebase_key', urlFbKey.trim());
   }
 })();
 
