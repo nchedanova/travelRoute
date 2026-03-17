@@ -32,7 +32,7 @@
   --amber-dim: #c8c8a0;
   --green: #a8d4a8;
   --text: #d8f0d8;
-  --muted: #4a7a4a;
+  --muted: #00a7ad;
   --red: #f07070;
   --d2: #a8d4a8;
   --accent: #F5F5DC;
@@ -1095,7 +1095,9 @@ body.driving-active .stop-card.gps-nearest .stop-num {
   transition: border-color 0.15s;
   box-sizing: border-box;
   line-height: 1.4;
+  scrollbar-width: none;
 }
+.chat-textarea::-webkit-scrollbar { display: none; }
 .chat-textarea:focus { border-color: var(--amber); }
 .chat-send-btn {
   width: 36px;
