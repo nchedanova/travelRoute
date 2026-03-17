@@ -36,3 +36,5 @@ const CLOUD_CONFIG = {
   // true — есть хотя бы gistId (читаем публичный gist без токена)
   get canRead()  { return !!this.binId; },
 };
+
+const GIST_URL = 'https://api.github.com/gists';
