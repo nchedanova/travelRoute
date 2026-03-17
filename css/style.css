@@ -1033,21 +1033,22 @@ body.driving-active .stop-card.gps-nearest .stop-num {
 }
 .chat-textarea:focus { border-color: var(--amber); }
 .chat-send-btn {
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   background: #1a6640;
   border: none;
   color: #e6ffe6;
-  font-size: 16px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: background 0.15s;
+  transition: background 0.15s, transform 0.1s;
+  padding: 0;
 }
-.chat-send-btn:hover { background: #1d9e75; }
+.chat-send-btn:hover  { background: #1d9e75; }
+.chat-send-btn:active { transform: scale(0.93); }
 
 /* ════════════════════════════════════════════════════════════
    STOP NOTE
@@ -1146,12 +1147,9 @@ body.driving-active .stop-card.gps-nearest .stop-num {
 .note-action-btn.danger:hover { color: var(--red); }
 
 /* ── CHAT TICKS (message status) ── */
-.chat-ticks {
-  font-size: 11px;
-  letter-spacing: -1px;
-  color: var(--muted);
-}
-.chat-ticks.pending   { color: var(--muted); opacity: 0.4; }
+.chat-ticks { display: inline-flex; align-items: center; }
+.tick-svg   { width: 18px; height: 10px; }
+.chat-ticks.pending   { color: var(--muted); opacity: 0.35; }
 .chat-ticks.delivered { color: var(--muted); }
 .chat-ticks.read      { color: var(--amber); }
 
@@ -1271,3 +1269,143 @@ body.driving-active .stop-card.gps-nearest .stop-num {
 
 /* Chat panel position:relative needed for context menu positioning */
 .chat-panel { position: relative; }
+
+/* ── EDIT BANNER ── */
+.chat-edit-banner {
+  border-top: 1px solid var(--border);
+  padding: 6px 12px;
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.edit-banner-inner {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  border-left: 2px solid var(--amber);
+  padding-left: 8px;
+}
+.edit-banner-label {
+  font-size: 10px;
+  color: var(--amber);
+  font-family: 'JetBrains Mono', monospace;
+}
+.edit-banner-preview {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.edit-banner-cancel {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 50%;
+  transition: color 0.15s, background 0.15s;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.edit-banner-cancel:hover { color: var(--text); background: var(--surface2); }
+
+/* Remove old hover edit/delete buttons from time row (now in context menu only) */
+.chat-msg-actions { display: none !important; }
+
+/* ── CHAT HEADER BUTTON ── */
+.chat-header-btn {
+  position: relative;
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0;
+  transition: border-color 0.15s, color 0.15s;
+}
+.chat-header-btn:hover { border-color: var(--amber); color: var(--amber); }
+.chat-header-dot {
+  position: absolute; top: -2px; right: -2px;
+  width: 8px; height: 8px;
+  background: #e05c3a; border-radius: 50%;
+  border: 1.5px solid var(--bg);
+}
+
+/* ── NOTES: filters ── */
+.notes-filters {
+  display: flex; gap: 6px; padding: 8px 10px;
+  border-bottom: 0.5px solid var(--border);
+  overflow-x: auto; flex-shrink: 0;
+  scrollbar-width: none;
+}
+.notes-filters::-webkit-scrollbar { display: none; }
+.notes-filter-btn {
+  flex-shrink: 0;
+  padding: 4px 10px; border-radius: 12px;
+  border: 1px solid var(--border);
+  background: none; color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.notes-filter-btn:hover { color: var(--text); border-color: var(--muted); }
+.notes-filter-btn.active {
+  border-color: var(--amber);
+  color: var(--amber);
+  background: rgba(245,166,35,0.1);
+}
+
+/* ── NOTES: type selector ── */
+.note-type-row {
+  display: flex; gap: 6px; margin-bottom: 7px;
+}
+.note-type-btn {
+  flex: 1; padding: 5px 0; font-size: 14px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.note-type-btn.active {
+  border-color: var(--amber);
+  background: rgba(245,166,35,0.12);
+}
+.notes-add-btn {
+  padding: 0 14px;
+  background: rgba(74,222,128,0.15);
+  border: 1px solid var(--green);
+  border-radius: 6px;
+  color: var(--green);
+  font-size: 20px; cursor: pointer;
+  align-self: stretch;
+  transition: background 0.15s;
+}
+.notes-add-btn:hover { background: rgba(74,222,128,0.25); }
+
+/* ── NOTES: item card ── */
+.note-item {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--border);
+  border-radius: 0 8px 8px 0;
+  padding: 8px 10px;
+}
+.note-type-badge {
+  font-size: 11px; color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+.note-checklist { display: flex; flex-direction: column; gap: 5px; margin-top: 6px; }
+.note-check-row {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 12px; color: var(--text); cursor: pointer;
+}
+.note-item-done { text-decoration: line-through; color: var(--muted); }
