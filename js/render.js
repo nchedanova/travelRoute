@@ -255,13 +255,10 @@ function makeStopCard(s, day) {
       ${depBlock}
     </div>
     <div class="stop-edit-form" id="edit-form-${s.id}" style="display:none;"></div>
+    ${CLOUD_CONFIG.canWrite ? `
     <div class="stop-note-wrap" id="stop-note-wrap-${s.id}" style="display:${s.note ? 'block' : 'none'}">
-      ${CLOUD_CONFIG.canWrite
-        ? `<textarea class="stop-note-input" id="stop-note-${s.id}" placeholder="Заметка к точке…" oninput="autoResizeNote(this)" onblur="saveStopNote('${s.id}',${day})">${s.note || ''}</textarea>`
-        : (s.note ? `<div class="stop-note-readonly">${s.note.replace(/</g,'&lt;').replace(/
-/g,'<br>')}</div>` : '')
-      }
-    </div>`;
+      <textarea class="stop-note-input" id="stop-note-${s.id}" placeholder="Заметка к точке…" oninput="autoResizeNote(this)" onblur="saveStopNote('${s.id}',${day})">${s.note || ''}</textarea>
+    </div>` : ''}`;
 
   div.addEventListener('dragstart', onDragStart);
   div.addEventListener('dragover',  onDragOver);
