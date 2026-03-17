@@ -932,6 +932,26 @@ setTimeout(() => {
 // ── SIDEBAR TABS ───────────────────────────────────────────────────────────────
 let _currentSidebarTab = 'route';
 
+// Открыть сайдбар на таб чата из кнопки в шапке
+function openChatFromHeader() {
+  const sb = document.getElementById('sidebar');
+  if (!sb.classList.contains('open')) {
+    sb.classList.add('open');
+    const btn = document.getElementById('toggleBtn');
+    if (btn) btn.textContent = '✕';
+    setTimeout(() => map && map.invalidateSize(), 340);
+  }
+  switchSidebarTab('chat');
+}
+
+// Скрыть вкладку Заметки для читателей
+function initSidebarTabs() {
+  if (!CLOUD_CONFIG.canWrite) {
+    const notesTab = document.getElementById('tabNotes');
+    if (notesTab) notesTab.style.display = 'none';
+  }
+}
+
 function switchSidebarTab(tab) {
   _currentSidebarTab = tab;
   ['route','notes','chat'].forEach(t => {
