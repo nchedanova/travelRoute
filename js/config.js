@@ -37,4 +37,4 @@ const CLOUD_CONFIG = {
   get canRead()  { return !!this.binId; },
 };
 
-const GIST_URL = 'https://api.github.com/gists';
+var GIST_URL = GIST_URL || 'https://api.github.com/gists';
