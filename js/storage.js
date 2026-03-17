@@ -1,5 +1,4 @@
 // ── CLOUD STORAGE HELPERS (GitHub Gist API) ───────────────────────────────────
-const GIST_URL = 'https://api.github.com/gists';
 
 // cloudEnabled = можно хотя бы читать (gistId есть)
 function cloudEnabled() {
@@ -278,11 +277,16 @@ async function pollCloud() {
   }
 }
 
-function startPolling(intervalMs = 10000) {
+function startPolling(intervalMs = 15000) {
   if (!cloudEnabled()) return;
-  // Владелец не поллит — он источник правды
-  if (CLOUD_CONFIG.canWrite) return;
-  setInterval(pollCloud, intervalMs);
+  // Все поллят — может быть несколько админов или один admin читает пока другой пишет
+  // Для админа используем более редкий интервал чтобы не перетирать несохранённые изменения
+  const interval = CLOUD_CONFIG.canWrite ? 30000 : intervalMs;
+  setInterval(() => {
+    // Не подгружаем если есть несохранённые изменения (идёт debounce)
+    if (CLOUD_CONFIG.canWrite && _saveCloudTimer) return;
+    pollCloud();
+  }, interval);
 }
 
 function copyShareLink() {
