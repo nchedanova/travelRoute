@@ -81,13 +81,7 @@ function _renderNotesList() {
         <button class="note-action-btn danger" onclick="deleteNote('${entry.key}')" title="Удалить">×</button>
       </div>
       ${itemsHtml}
-      <div class="note-edit-wrap" id="note-edit-${entry.key}" style="display:none">
-        <textarea class="notes-textarea" id="note-edit-ta-${entry.key}" style="min-height:52px">${_escN(entry.type==='other' ? (entry.text||'') : (entry.items||[]).map(i=>i.text).join('\n'))}</textarea>
-        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px">
-          <button class="notes-send-btn" style="border-color:var(--muted);color:var(--muted)" onclick="cancelEditNote('${entry.key}')">Отмена</button>
-          <button class="notes-send-btn" onclick="commitEditNote('${entry.key}')">Сохранить</button>
-        </div>
-      </div>`;
+`;
     list.appendChild(item);
   });
 }
@@ -115,6 +109,9 @@ function setNoteType(type) {
 }
 
 function addNote() {
+  // If editing — commit the edit
+  if (_editingNoteKey) { commitEditNote(_editingNoteKey); return; }
+
   if (!_notesInited) initNotes();
   const inp  = document.getElementById('noteInput');
   const text = inp ? inp.value.trim() : '';
@@ -149,47 +146,83 @@ function toggleNoteItem(noteKey, itemId, done) {
   _notesRef.child(noteKey).update({ items });
 }
 
-// ── EDIT ───────────────────────────────────────────────────────────────────────
+// ── EDIT (Telegram-style) ─────────────────────────────────────────────────────
+let _editingNoteKey = null;
+
 function startEditNote(key) {
   const entry = _notesData[key]; if (!entry) return;
-  const textWrap = document.getElementById('note-text-' + key);
-  const checklist = document.getElementById('note-checklist-' + key);
-  if (textWrap)   textWrap.style.display = 'none';
-  if (checklist)  checklist.style.display = 'none';
-  const wrap = document.getElementById('note-edit-' + key);
-  if (wrap) wrap.style.display = 'block';
-  const ta = document.getElementById('note-edit-ta-' + key);
-  if (ta) { autoResizeNote(ta); ta.focus(); }
+  _editingNoteKey = key;
+
+  // Fill input with current content
+  const inp = document.getElementById('noteInput');
+  if (inp) {
+    if (entry.type === 'other') {
+      inp.value = entry.text || '';
+    } else {
+      inp.value = (entry.items || []).map(i => i.text).join('\n');
+    }
+    autoResizeNote(inp);
+    inp.focus();
+  }
+
+  // Set type
+  setNoteType(entry.type || 'other');
+
+  // Show banner
+  const banner = document.getElementById('noteEditBanner');
+  if (banner) banner.style.display = 'flex';
+  const preview = document.getElementById('noteEditPreview');
+  if (preview) {
+    const txt = entry.type === 'other' ? (entry.text||'') : (entry.items||[]).map(i=>i.text).join(', ');
+    preview.textContent = txt.slice(0, 50);
+  }
+
+  // Change + btn to checkmark
+  const btn = document.getElementById('noteAddBtn');
+  if (btn) { btn.textContent = '✓'; btn.style.background = 'rgba(245,166,35,0.2)'; btn.style.borderColor = 'var(--amber)'; btn.style.color = 'var(--amber)'; }
 }
 
-function cancelEditNote(key) {
-  const textWrap  = document.getElementById('note-text-' + key);
-  const checklist = document.getElementById('note-checklist-' + key);
-  if (textWrap)  textWrap.style.display = '';
-  if (checklist) checklist.style.display = '';
-  const wrap = document.getElementById('note-edit-' + key);
-  if (wrap) wrap.style.display = 'none';
+function cancelEditNote() {
+  _editingNoteKey = null;
+  const inp = document.getElementById('noteInput');
+  if (inp) { inp.value = ''; inp.style.height = 'auto'; }
+  const banner = document.getElementById('noteEditBanner');
+  if (banner) banner.style.display = 'none';
+  const btn = document.getElementById('noteAddBtn');
+  if (btn) { btn.textContent = '+'; btn.style.background = ''; btn.style.borderColor = ''; btn.style.color = ''; }
 }
 
 function commitEditNote(key) {
-  const ta    = document.getElementById('note-edit-ta-' + key); if (!ta) return;
-  const text  = ta.value.trim(); if (!text) return;
+  const inp  = document.getElementById('noteInput'); if (!inp) return;
+  const text = inp.value.trim(); if (!text) return;
   const entry = _notesData[key]; if (!entry) return;
 
   if (entry.type === 'other') {
     _notesRef.child(key).update({ text });
   } else {
     const items = text.split('\n').filter(l=>l.trim()).map((l,i) => {
-      const old = entry.items && entry.items[i];
-      return { id: (old && old.id) || Math.random().toString(36).slice(2), text: l.trim(), done: (old && old.done) || false };
+      const oldItem = entry.items && entry.items[i];
+      return { id: (oldItem && oldItem.id) || Math.random().toString(36).slice(2), text: l.trim(), done: (oldItem && oldItem.done) || false };
     });
     _notesRef.child(key).update({ items });
   }
+  cancelEditNote();
 }
 
+let _deleteNoteKey = null;
+
 function deleteNote(key) {
-  if (!_notesRef) return;
-  _notesRef.child(key).remove();
+  _deleteNoteKey = key;
+  document.getElementById('deleteNoteModal')?.classList.add('show');
+}
+function closeDeleteNoteModal() {
+  _deleteNoteKey = null;
+  document.getElementById('deleteNoteModal')?.classList.remove('show');
+}
+function doDeleteNote() {
+  if (!_deleteNoteKey || !_notesRef) return;
+  _notesRef.child(_deleteNoteKey).remove();
+  closeDeleteNoteModal();
 }
 
 function onNotesTabOpen() { if (!_notesInited) initNotes(); }
