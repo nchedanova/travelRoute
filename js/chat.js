@@ -29,6 +29,46 @@ function getSessionId() {
   return id;
 }
 
+// ── SOUND ─────────────────────────────────────────────────────────────────────
+function isSoundEnabled() {
+  return localStorage.getItem('travel_chat_sound') !== 'off';
+}
+
+function toggleChatSound() {
+  const enabled = !isSoundEnabled();
+  localStorage.setItem('travel_chat_sound', enabled ? 'on' : 'off');
+  _updateSoundBtn();
+}
+
+function _updateSoundBtn() {
+  const btn = document.getElementById('chatSoundBtn');
+  if (btn) btn.textContent = isSoundEnabled() ? '🔔' : '🔕';
+}
+
+function _playDing() {
+  if (!isSoundEnabled()) return;
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    // First tone
+    const o1 = ctx.createOscillator();
+    const g1 = ctx.createGain();
+    o1.connect(g1); g1.connect(ctx.destination);
+    o1.type = 'sine'; o1.frequency.setValueAtTime(880, ctx.currentTime);
+    g1.gain.setValueAtTime(0.25, ctx.currentTime);
+    g1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+    o1.start(ctx.currentTime); o1.stop(ctx.currentTime + 0.3);
+    // Second tone (harmony)
+    const o2 = ctx.createOscillator();
+    const g2 = ctx.createGain();
+    o2.connect(g2); g2.connect(ctx.destination);
+    o2.type = 'sine'; o2.frequency.setValueAtTime(1100, ctx.currentTime + 0.08);
+    g2.gain.setValueAtTime(0, ctx.currentTime);
+    g2.gain.setValueAtTime(0.15, ctx.currentTime + 0.08);
+    g2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+    o2.start(ctx.currentTime + 0.08); o2.stop(ctx.currentTime + 0.4);
+  } catch(e) { /* AudioContext unavailable */ }
+}
+
 // ── INIT ───────────────────────────────────────────────────────────────────────
 function initChat() {
   if (_chatInited) return;
@@ -96,6 +136,7 @@ function _listenMessages() {
     _appendMessage(snap.key, msg);
     if (!_chatVisible && msg.ts > lastSeen && msg.ts > _chatLoadTs - 200) {
       _chatUnread++; _updateUnreadBadge();
+      _playDing();
     }
   });
   _chatRef.on('child_removed', snap => { document.getElementById('msg-' + snap.key)?.remove(); });
@@ -377,6 +418,7 @@ function _updateUnreadBadge() {
 
 function onChatTabOpen() {
   _chatVisible = true; _chatUnread = 0; _updateUnreadBadge();
+  _updateSoundBtn();
   localStorage.setItem('travel_chat_last_seen', Date.now().toString());
   _writePresence();
   clearInterval(_presenceTimer);
