@@ -58,9 +58,20 @@
         <button class="chat-change-name-btn" onclick="changeChatName()" title="Изменить имя">✎</button>
       </div>
       <div id="chatMessages" class="chat-messages"></div>
+      <!-- Context menu -->
+      <div id="chatMsgMenu" class="chat-msg-menu" style="display:none" onclick="event.stopPropagation()">
+        <div class="msg-menu-reactions"></div>
+        <div class="msg-menu-actions" style="display:none">
+          <button class="msg-menu-item msg-menu-edit">✎ Редактировать</button>
+          <button class="msg-menu-item msg-menu-delete danger">× Удалить</button>
+        </div>
+      </div>
+      <!-- Emoji picker -->
+      <div id="emojiPicker" class="emoji-picker" style="display:none"></div>
       <div class="chat-input-bar">
-        <input type="file" id="chatPhotoInput" accept="image/*" style="display:none" onchange="handlePhotoSelected(this)">
+        <input type="file" id="chatPhotoInput" accept="image/*" capture="environment" style="display:none" onchange="handlePhotoSelected(this)">
         <button class="chat-attach-btn" onclick="openPhotoUpload()" title="Фото">＋</button>
+        <button class="chat-emoji-btn" onclick="toggleEmojiPicker()" title="Смайлики">😊</button>
         <textarea id="chatInput" class="chat-textarea" placeholder="Сообщение…" rows="1"
           onkeydown="chatInputKeydown(event)" oninput="autoResizeChatInput(this)"></textarea>
         <button class="chat-send-btn" onclick="sendChatMessage()">↑</button>
