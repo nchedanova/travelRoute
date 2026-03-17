@@ -1409,3 +1409,51 @@ body.driving-active .stop-card.gps-nearest .stop-num {
   font-size: 12px; color: var(--text); cursor: pointer;
 }
 .note-item-done { text-decoration: line-through; color: var(--muted); }
+
+/* ── NOTES: variant V layout ── */
+.notes-filters-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 0.5px solid var(--border);
+  flex-shrink: 0;
+}
+.notes-type-row-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 7px;
+}
+.notes-type-row-wrap .note-type-row { flex: 1; margin: 0; }
+.notes-section-label {
+  font-size: 9px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.notes-filters {
+  display: flex;
+  gap: 5px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  flex: 1;
+}
+.notes-filters::-webkit-scrollbar { display: none; }
+
+/* ── NOTE TYPE BUTTONS — coloured ── */
+.note-type-btn.type-buy.active  { border-color:#e05c3a; background:rgba(224,92,58,0.15);  }
+.note-type-btn.type-take.active { border-color:#378add; background:rgba(55,138,221,0.15); }
+.note-type-btn.type-todo.active { border-color:#1d9e75; background:rgba(29,158,117,0.15); }
+.note-type-btn.type-other.active{ border-color:var(--amber); background:rgba(245,166,35,0.12); }
+
+/* ── EMOJI PICKER: 8 cols, larger ── */
+.emoji-picker {
+  grid-template-columns: repeat(8, 1fr) !important;
+  max-height: 200px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.emoji-pick-btn { font-size: 18px !important; padding: 5px !important; }
