@@ -67,9 +67,16 @@
             <button class="note-type-btn type-other active" data-type="other" onclick="setNoteType('other')">📝</button>
           </div>
         </div>
+        <div id="noteEditBanner" class="chat-edit-banner" style="display:none">
+          <div class="edit-banner-inner">
+            <span class="edit-banner-label">✎ Редактирование заметки</span>
+            <span class="edit-banner-preview" id="noteEditPreview"></span>
+          </div>
+          <button class="edit-banner-cancel" onclick="cancelEditNote()" title="Отмена">×</button>
+        </div>
         <div style="display:flex;gap:6px">
           <textarea id="noteInput" class="notes-textarea" placeholder="Текст заметки…" onkeydown="noteInputKeydown(event)" oninput="autoResizeNote(this)"></textarea>
-          <button class="notes-add-btn" onclick="addNote()">+</button>
+          <button class="notes-add-btn" id="noteAddBtn" onclick="addNote()">+</button>
         </div>
       </div>
     </div>
@@ -247,6 +254,18 @@
       <div class="modal-actions">
         <button class="modal-cancel" onclick="closeDeleteModal()">Отмена</button>
         <button class="modal-confirm" onclick="doDeleteStop()">Удалить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirm delete note modal -->
+  <div class="modal-overlay" id="deleteNoteModal" onclick="if(event.target===this)closeDeleteNoteModal()">
+    <div class="modal">
+      <div class="modal-title">Удалить заметку?</div>
+      <div class="modal-body">Заметка будет удалена без возможности восстановления.</div>
+      <div class="modal-actions">
+        <button class="modal-cancel" onclick="closeDeleteNoteModal()">Отмена</button>
+        <button class="modal-confirm" onclick="doDeleteNote()">Удалить</button>
       </div>
     </div>
   </div>
