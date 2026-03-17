@@ -48,6 +48,7 @@ function initGps() {
     _listenRemotePosition();
     _followCamera = true;
     _showEl('gpsFollowBtn');
+    _showEl('speedDisplay');
   }
 
   // Пауза слежения при ручном движении карты
@@ -91,8 +92,11 @@ function _listenRemotePosition() {
   _db.ref('gps').on('value', snap => {
     const d = snap.val();
     if (!d) {
-      // путешественник остановился — убираем подсветку
+      // путешественник остановился — убираем подсветку и скорость
       document.body.classList.remove('driving-active');
+      _updateSpeedDisplay(null);
+      const speedEl = document.getElementById('speedDisplay');
+      if (speedEl && !CLOUD_CONFIG.canWrite) speedEl.style.display = 'none';
       return;
     }
     // есть позиция — включаем подсветку как в режиме "Еду"
