@@ -26,6 +26,7 @@
     <button class="undo-btn" id="undoBtn" onclick="undoAction()" disabled title="Отменить последнее действие">↩ отмена</button>
     <span id="syncStatus" title="Статус облачного сохранения" style="font-size:10px;color:var(--muted);white-space:nowrap;flex-shrink:0;cursor:default;">☁ —</span>
     <button onclick="openCloudSettings()" title="Настройки облака" class="settings-btn">⚙</button>
+    <button class="theme-btn" onclick="toggleThemePicker()" title="Сменить тему" id="themeBtn">🎨</button>
     <button id="drivingBtn" class="driving-btn" onclick="toggleDrivingMode()" style="display:none">🚗 Еду</button>
   </div>
 </header>
@@ -410,5 +411,85 @@
   });
 </script>
 
+<!-- ── THEME PICKER ─────────────────────────────────────────────────────── -->
+<div class="theme-picker-overlay" id="themePickerOverlay" onclick="closeThemePicker()"></div>
+<div class="theme-picker-dropdown" id="themePickerDropdown" style="display:none;">
+  <div class="theme-picker-label">Тема оформления</div>
+
+  <div class="theme-option" id="topt-default" onclick="setTheme('default')">
+    <div class="theme-swatch">
+      <div class="theme-swatch-bg" style="background:#0e0f13;"></div>
+      <div class="theme-swatch-dot" style="background:#f5a623;"></div>
+    </div>
+    <div>
+      <div class="theme-name">Amber Terminal</div>
+      <div class="theme-desc">Текущая, тёплый янтарь</div>
+    </div>
+    <div class="theme-check">✓</div>
+  </div>
+
+  <div class="theme-option" id="topt-midnight" onclick="setTheme('midnight')">
+    <div class="theme-swatch">
+      <div class="theme-swatch-bg" style="background:#0d0f12;"></div>
+      <div class="theme-swatch-dot" style="background:#4f8ef7;"></div>
+    </div>
+    <div>
+      <div class="theme-name">Midnight Blue</div>
+      <div class="theme-desc">Синий акцент, строгий</div>
+    </div>
+    <div class="theme-check">✓</div>
+  </div>
+
+  <div class="theme-option" id="topt-violet" onclick="setTheme('violet')">
+    <div class="theme-swatch">
+      <div class="theme-swatch-bg" style="background:#0a0a0d;"></div>
+      <div class="theme-swatch-dot" style="background:#a78bfa;"></div>
+    </div>
+    <div>
+      <div class="theme-name">Deep Violet</div>
+      <div class="theme-desc">Фиолетовый, мессенджер</div>
+    </div>
+    <div class="theme-check">✓</div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var THEMES = ['default','midnight','violet'];
+
+  function applyTheme(t) {
+    if (!THEMES.includes(t)) t = 'default';
+    document.body.setAttribute('data-theme', t);
+    localStorage.setItem('travel_theme', t);
+    THEMES.forEach(function(n) {
+      var el = document.getElementById('topt-' + n);
+      if (el) el.classList.toggle('active', n === t);
+    });
+  }
+
+  window.setTheme = function(t) {
+    applyTheme(t);
+    closeThemePicker();
+  };
+
+  window.toggleThemePicker = function() {
+    var dd = document.getElementById('themePickerDropdown');
+    var ov = document.getElementById('themePickerOverlay');
+    var open = dd.style.display !== 'none';
+    dd.style.display = open ? 'none' : 'block';
+    ov.classList.toggle('show', !open);
+  };
+
+  window.closeThemePicker = function() {
+    var dd = document.getElementById('themePickerDropdown');
+    var ov = document.getElementById('themePickerOverlay');
+    if (dd) dd.style.display = 'none';
+    if (ov) ov.classList.remove('show');
+  };
+
+  // Apply saved theme immediately on load
+  applyTheme(localStorage.getItem('travel_theme') || 'default');
+})();
+</script>
 </body>
 </html>
