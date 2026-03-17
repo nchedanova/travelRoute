@@ -105,7 +105,8 @@ function setNotesFilter(type) {
 function setNoteType(type) {
   _noteType = type;
   document.querySelectorAll('.note-type-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.type === type);
+    const isActive = b.dataset.type === type;
+    b.classList.toggle('active', isActive);
   });
   const inp = document.getElementById('noteInput');
   if (inp) inp.placeholder = type === 'other'
