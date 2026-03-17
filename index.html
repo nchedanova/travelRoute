@@ -46,20 +46,26 @@
   <!-- ── ЗАМЕТКИ ── -->
   <div id="tabPanelNotes" class="tab-panel" style="display:none">
     <div class="notes-panel">
-      <div class="notes-filters">
-        <button class="notes-filter-btn active" data-type="all" onclick="setNotesFilter('all')">Все</button>
-        <button class="notes-filter-btn" data-type="buy" onclick="setNotesFilter('buy')">🛒 Купить</button>
-        <button class="notes-filter-btn" data-type="take" onclick="setNotesFilter('take')">📦 Взять</button>
-        <button class="notes-filter-btn" data-type="todo" onclick="setNotesFilter('todo')">☑️ Сделать</button>
-        <button class="notes-filter-btn" data-type="other" onclick="setNotesFilter('other')">📝 Другое</button>
+      <div class="notes-filters-row">
+        <span class="notes-section-label">Фильтр</span>
+        <div class="notes-filters">
+          <button class="notes-filter-btn active" data-type="all" onclick="setNotesFilter('all')">Все</button>
+          <button class="notes-filter-btn" data-type="buy" onclick="setNotesFilter('buy')">🛒</button>
+          <button class="notes-filter-btn" data-type="take" onclick="setNotesFilter('take')">📦</button>
+          <button class="notes-filter-btn" data-type="todo" onclick="setNotesFilter('todo')">☑️</button>
+          <button class="notes-filter-btn" data-type="other" onclick="setNotesFilter('other')">📝</button>
+        </div>
       </div>
       <div id="notesList" class="notes-list"></div>
       <div class="notes-input-wrap">
-        <div class="note-type-row">
-          <button class="note-type-btn" data-type="buy" onclick="setNoteType('buy')">🛒</button>
-          <button class="note-type-btn" data-type="take" onclick="setNoteType('take')">📦</button>
-          <button class="note-type-btn" data-type="todo" onclick="setNoteType('todo')">☑️</button>
-          <button class="note-type-btn active" data-type="other" onclick="setNoteType('other')">📝</button>
+        <div class="notes-type-row-wrap">
+          <span class="notes-section-label">Тип</span>
+          <div class="note-type-row">
+            <button class="note-type-btn type-buy" data-type="buy" onclick="setNoteType('buy')">🛒</button>
+            <button class="note-type-btn type-take" data-type="take" onclick="setNoteType('take')">📦</button>
+            <button class="note-type-btn type-todo" data-type="todo" onclick="setNoteType('todo')">☑️</button>
+            <button class="note-type-btn type-other active" data-type="other" onclick="setNoteType('other')">📝</button>
+          </div>
         </div>
         <div style="display:flex;gap:6px">
           <textarea id="noteInput" class="notes-textarea" placeholder="Текст заметки…" onkeydown="noteInputKeydown(event)" oninput="autoResizeNote(this)"></textarea>
