@@ -31,9 +31,14 @@ function highlightStop(id, d) {
 
 function toggleSidebar() {
   const sb = document.getElementById('sidebar');
+  const wasOpen = sb.classList.contains('open');
   sb.classList.toggle('open');
   const btn = document.getElementById('toggleBtn');
   if (btn) btn.textContent = sb.classList.contains('open') ? '✕' : '☰';
+  // Если закрыли сайдбар пока был открыт чат — корректно закрываем чат
+  if (wasOpen && _currentSidebarTab === 'chat') {
+    onChatTabClose && onChatTabClose();
+  }
   setTimeout(() => map && map.invalidateSize(), 340);
 }
 

@@ -249,8 +249,7 @@ document.addEventListener('focusout', e => {
 
 async function pollCloud() {
   if (!cloudEnabled()) return;
-  // Владельцу поллинг не нужен — он сам пишет; зрителю блокируем только если активен инпут
-  if (CLOUD_CONFIG.canWrite) return;
+  // Блокируем поллинг если пользователь активно вводит данные или идёт сохранение
   if (_userIsTyping || _userHasFocus) return;
   if (_saveCloudTimer) return;
 
@@ -270,7 +269,10 @@ async function pollCloud() {
     updateProgress();
     const t = new Date().toLocaleTimeString('ru', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
     setSyncStatus(`🔄 обновлено ${t}`, 'var(--green)');
-    setTimeout(() => setSyncStatus('👁 только чтение', 'var(--amber)'), 3000);
+    setTimeout(() => setSyncStatus(
+      CLOUD_CONFIG.canWrite ? '☁ ок' : '👁 только чтение',
+      CLOUD_CONFIG.canWrite ? 'var(--muted)' : 'var(--amber)'
+    ), 3000);
     showToast('🔄 Данные обновлены');
   } catch(e) {
     console.warn('poll error', e);
