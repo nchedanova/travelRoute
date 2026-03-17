@@ -1144,3 +1144,130 @@ body.driving-active .stop-card.gps-nearest .stop-num {
 }
 .note-action-btn:hover { color: var(--text); }
 .note-action-btn.danger:hover { color: var(--red); }
+
+/* ── CHAT TICKS (message status) ── */
+.chat-ticks {
+  font-size: 11px;
+  letter-spacing: -1px;
+  color: var(--muted);
+}
+.chat-ticks.pending   { color: var(--muted); opacity: 0.4; }
+.chat-ticks.delivered { color: var(--muted); }
+.chat-ticks.read      { color: var(--amber); }
+
+/* ── REACTIONS ── */
+.chat-reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+  min-height: 0;
+}
+.reaction-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 2px 7px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--text);
+  transition: background 0.12s, border-color 0.12s;
+  line-height: 1.4;
+}
+.reaction-btn:hover  { border-color: var(--amber); }
+.reaction-btn.active { background: rgba(245,166,35,0.15); border-color: var(--amber); }
+
+/* ── CONTEXT MENU ── */
+.chat-msg-menu {
+  position: absolute;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  padding: 8px;
+  z-index: 500;
+  min-width: 200px;
+}
+.msg-menu-reactions {
+  display: flex;
+  gap: 2px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 6px;
+}
+.msg-menu-emoji {
+  background: none;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+  padding: 4px 5px;
+  border-radius: 8px;
+  transition: background 0.12s;
+  line-height: 1;
+}
+.msg-menu-emoji:hover { background: var(--surface2); }
+.msg-menu-actions { flex-direction: column; gap: 2px; }
+.msg-menu-item {
+  background: none;
+  border: none;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: background 0.12s;
+}
+.msg-menu-item:hover        { background: var(--surface2); }
+.msg-menu-item.danger       { color: var(--red); }
+.msg-menu-item.danger:hover { background: rgba(248,113,113,0.1); }
+
+/* ── EMOJI PICKER ── */
+.emoji-picker {
+  position: absolute;
+  bottom: 60px;
+  left: 8px;
+  right: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 8px;
+  z-index: 400;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 2px;
+}
+.emoji-pick-btn {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  line-height: 1;
+  transition: background 0.1s;
+  text-align: center;
+}
+.emoji-pick-btn:hover { background: var(--surface2); }
+
+/* ── EMOJI BUTTON ── */
+.chat-emoji-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: none;
+  border: 1px solid var(--border);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: border-color 0.15s;
+  line-height: 1;
+}
+.chat-emoji-btn:hover { border-color: var(--amber); }
+
+/* Chat panel position:relative needed for context menu positioning */
+.chat-panel { position: relative; }
