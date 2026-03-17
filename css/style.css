@@ -22,26 +22,26 @@
   --chat-mine-text: #e6ffe6;
 }
 
-/* ── THEME: FOREST + BEIGE ───────────────────────────────────────────────────*/
+/* ── THEME: INK + WARM WHITE ─────────────────────────────────────────────────*/
 [data-theme="emerald"] {
-  --bg: #060c07;
-  --surface: #0b150c;
-  --surface2: #111e12;
-  --border: #1a2e1b;
-  --amber: #F5F5DC;
-  --amber-dim: #c8c8a0;
-  --green: #a8d4a8;
-  --text: #d8f0d8;
-  --muted: #00a7ad;
+  --bg: #0f0f0f;
+  --surface: #171717;
+  --surface2: #202020;
+  --border: #2c2c2c;
+  --amber: #e8d5b0;
+  --amber-dim: #c4a87a;
+  --green: #a8c890;
+  --text: #f5f0e8;
+  --muted: #666050;
   --red: #f07070;
-  --d2: #a8d4a8;
-  --accent: #F5F5DC;
-  --accent-dim: #c8c8a0;
-  --accent-bg: rgba(245,245,220,0.10);
-  --accent-text-on: #0b150c;
-  --chat-mine-bg: #0f2a10;
-  --chat-mine-border: #1a4a1b;
-  --chat-mine-text: #d8f0d8;
+  --d2: #a8c890;
+  --accent: #e8d5b0;
+  --accent-dim: #c4a87a;
+  --accent-bg: rgba(232,213,176,0.10);
+  --accent-text-on: #0f0f0f;
+  --chat-mine-bg: #2a2418;
+  --chat-mine-border: #3d3525;
+  --chat-mine-text: #f5f0e8;
 }
 
 /* ── THEME: DEEP VIOLET ──────────────────────────────────────────────────────*/
