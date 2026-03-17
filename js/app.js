@@ -963,3 +963,9 @@ function autoResizeChatInput(el) {
   el.style.height = 'auto';
   el.style.height = Math.min(el.scrollHeight, 120) + 'px';
 }
+
+// Close chat context menu and emoji picker on outside click
+document.addEventListener('click', e => {
+  if (!e.target.closest('#chatMsgMenu') && !e.target.closest('.chat-msg')) closeMsgMenu && closeMsgMenu();
+  if (!e.target.closest('#emojiPicker') && !e.target.closest('.chat-emoji-btn')) closeEmojiPicker && closeEmojiPicker();
+});
