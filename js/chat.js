@@ -265,24 +265,18 @@ function triggerPhotoUpload() {
 
 async function _uploadPhoto(file) {
   if (!navigator.onLine) { showToast('📴 Для фото нужен интернет'); return; }
-  // Show pending message
   const ts = Date.now();
   const pendingKey = 'photo-' + ts;
   _appendMessage(pendingKey, { name: getChatName(), role: getChatRole(), ts, uploading: true });
 
   try {
-    // Compress via canvas
-    const compressed = await _compressImage(file, 1200, 0.7);
-    // Upload to Firebase Storage
-    const storageRef = firebase.storage().ref('chat_photos/' + ts + '.jpg');
-    const snap = await storageRef.put(compressed, { contentType: 'image/jpeg' });
-    const imgUrl = await snap.ref.getDownloadURL();
-    // Save message with photo URL
+    // Сжимаем через canvas → base64 (без Firebase Storage)
+    const base64url = await _compressToBase64(file, 800, 0.6);
     const caption = document.getElementById('chatInput')?.value.trim() || '';
     document.getElementById('chatInput').value = '';
     document.getElementById('msg-' + pendingKey)?.remove();
     const ref = _chatRef.push();
-    const msgData = { name: getChatName(), role: getChatRole(), text: caption, imgUrl, ts };
+    const msgData = { name: getChatName(), role: getChatRole(), text: caption, imgUrl: base64url, ts };
     ref.set(msgData);
   } catch(e) {
     console.error('Photo upload error:', e);
@@ -291,7 +285,7 @@ async function _uploadPhoto(file) {
   }
 }
 
-function _compressImage(file, maxDim, quality) {
+function _compressToBase64(file, maxDim, quality) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
@@ -305,7 +299,17 @@ function _compressImage(file, maxDim, quality) {
       const canvas = document.createElement('canvas');
       canvas.width = w; canvas.height = h;
       canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      canvas.toBlob(blob => blob ? resolve(blob) : reject('toBlob failed'), 'image/jpeg', quality);
+      const dataUrl = canvas.toDataURL('image/jpeg', quality);
+      // Проверка размера (~100KB лимит для Realtime DB)
+      const sizeKB = Math.round(dataUrl.length * 0.75 / 1024);
+      if (sizeKB > 200) {
+        // Пережимаем сильнее
+        canvas.width = Math.round(w * 0.7); canvas.height = Math.round(h * 0.7);
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', 0.5));
+      } else {
+        resolve(dataUrl);
+      }
     };
     img.onerror = reject;
     img.src = url;
