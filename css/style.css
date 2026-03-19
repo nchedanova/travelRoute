@@ -433,12 +433,12 @@ input.time-in.late   { color:var(--red);    border-color:rgba(248,113,113,0.4); 
 
 .add-stop-btn {
   width:100%; padding:10px; border:none;
-  background:transparent; border-top:1px dashed var(--border);
+  background:var(--surface2); border-radius:6px;
   color:var(--muted); font-family:'JetBrains Mono',monospace;
   font-size:11px; letter-spacing:0.06em; cursor:pointer;
   transition:all 0.2s; text-align:center;
 }
-.add-stop-btn:hover { background:var(--surface2); color:var(--text); }
+.add-stop-btn:hover { background:var(--surface); color:var(--text); }
 
 /* ── ADD STOP MODAL ──────────────────────────────────── */
 .modal-lg { max-width:420px; }
@@ -1103,9 +1103,9 @@ body.driving-active .stop-card.gps-nearest .stop-num {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: #1a6640;
+  background: var(--amber);
   border: none;
-  color: #e6ffe6;
+  color: #000;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -1113,8 +1113,9 @@ body.driving-active .stop-card.gps-nearest .stop-num {
   flex-shrink: 0;
   transition: background 0.15s, transform 0.1s;
   padding: 0;
+  font-size: 18px;
 }
-.chat-send-btn:hover  { background: #1d9e75; }
+.chat-send-btn:hover  { opacity: 0.85; }
 .chat-send-btn:active { transform: scale(0.93); }
 
 /* ════════════════════════════════════════════════════════════
@@ -1451,15 +1452,15 @@ body.driving-active .stop-card.gps-nearest .stop-num {
 }
 .notes-add-btn {
   padding: 0 14px;
-  background: rgba(74,222,128,0.15);
-  border: 1px solid var(--green);
+  background: var(--amber);
+  border: none;
   border-radius: 6px;
-  color: var(--green);
-  font-size: 20px; cursor: pointer;
+  color: #000;
+  font-size: 20px; font-weight: bold; cursor: pointer;
   align-self: stretch;
-  transition: background 0.15s;
+  transition: opacity 0.15s;
 }
-.notes-add-btn:hover { background: rgba(74,222,128,0.25); }
+.notes-add-btn:hover { opacity: 0.85; }
 
 /* ── NOTES: item card ── */
 .note-item {

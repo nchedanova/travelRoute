@@ -59,13 +59,27 @@ async function exportGpx(dayNum) {
 
   gpx += `</gpx>`;
 
-  // ── Download ──────────────────────────────────────────────────────────────
+  // ── Share / Download ────────────────────────────────────────────────────
   const slug = `день-${dayNum}` + (day.date ? `-${day.date.replace(/\s/g, '-')}` : '');
+  const fileName = `${slug}.gpx`;
   const blob = new Blob([gpx], { type: 'application/gpx+xml' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href     = url;
-  a.download = `${slug}.gpx`;
+  const file = new File([blob], fileName, { type: 'application/gpx+xml' });
+
+  // На мобилке: Web Share API → системный диалог "Открыть в..."
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: dayLabel });
+      showToast(`📥 GPX (${day.stops.length} точек${track.length ? ' + трек' : ''})`);
+      return;
+    } catch(e) {
+      if (e.name === 'AbortError') return; // пользователь отменил
+    }
+  }
+  // Фоллбек: обычное скачивание
+  const url = URL.createObjectURL(blob);
+  const a   = document.createElement('a');
+  a.href    = url;
+  a.download = fileName;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

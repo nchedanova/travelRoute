@@ -113,14 +113,10 @@
       </div>
       <div class="chat-input-bar">
         <button class="chat-emoji-btn" onclick="toggleEmojiPicker()" title="Смайлики">😊</button>
-        <button class="chat-emoji-btn" onclick="triggerPhotoUpload()" title="Фото">📷</button>
+        <button class="chat-emoji-btn" onclick="triggerPhotoUpload()" title="Фото">🖼</button>
         <textarea id="chatInput" class="chat-textarea" placeholder="Сообщение…" rows="1"
           onkeydown="chatInputKeydown(event)" oninput="autoResizeChatInput(this)"></textarea>
-        <button class="chat-send-btn" onclick="sendChatMessage()" title="Отправить">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18">
-            <path d="M5 12L19 12M19 12L13 6M19 12L13 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
+        <button class="chat-send-btn" onclick="sendChatMessage()" title="Отправить">➤</button>
       </div>
     </div>
   </div>

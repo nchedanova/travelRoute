@@ -174,10 +174,18 @@ function getTilesAlongRoute(stops, zooms, paddingTiles) {
   return [...urls];
 }
 
-function prefetchRouteTiles(dayNum) {
-  if (!navigator.serviceWorker?.controller) {
-    showToast && showToast('⚠ Service Worker не активен');
+async function prefetchRouteTiles(dayNum) {
+  if (!navigator.serviceWorker) {
+    showToast && showToast('⚠ Service Worker не поддерживается');
     return;
+  }
+  // Ждём пока SW будет готов (на первом визите controller = null)
+  let sw = navigator.serviceWorker.controller;
+  if (!sw) {
+    showToast && showToast('⏳ Ждём Service Worker…');
+    const reg = await navigator.serviceWorker.ready;
+    sw = reg.active;
+    if (!sw) { showToast && showToast('⚠ Service Worker не активен, перезагрузите страницу'); return; }
   }
   const day = typeof DAYS_DATA !== 'undefined' ? DAYS_DATA[dayNum] : null;
   if (!day) return;
@@ -190,10 +198,7 @@ function prefetchRouteTiles(dayNum) {
   console.log(`[tiles] Prefetching ${tiles.length} tiles for day ${dayNum}`);
   showToast && showToast(`📥 Загрузка карты: ${tiles.length} тайлов…`);
 
-  navigator.serviceWorker.controller.postMessage({
-    type: 'PREFETCH_TILES',
-    tiles
-  });
+  sw.postMessage({ type: 'PREFETCH_TILES', tiles });
 }
 
 // Listen for progress from SW
@@ -201,12 +206,15 @@ if (navigator.serviceWorker) {
   navigator.serviceWorker.addEventListener('message', e => {
     if (e.data?.type === 'PREFETCH_PROGRESS') {
       const pct = Math.round(e.data.done / e.data.total * 100);
-      setSyncStatus && setSyncStatus(`📥 карта: ${pct}%`, 'var(--amber)');
+      const msg = `📥 Карта: ${pct}% (${e.data.done}/${e.data.total})`;
+      setSyncStatus && setSyncStatus(msg, 'var(--amber)');
+      // Обновляем toast каждые 25%
+      if (pct % 25 === 0) showToast && showToast(msg);
     }
     if (e.data?.type === 'PREFETCH_DONE') {
-      setSyncStatus && setSyncStatus('📥 карта загружена', 'var(--green)');
-      showToast && showToast(`✅ Карта сохранена (${e.data.done} тайлов)`);
-      setTimeout(() => setSyncStatus && setSyncStatus('☁ ок', 'var(--muted)'), 3000);
+      setSyncStatus && setSyncStatus('✅ Карта загружена', 'var(--green)');
+      showToast && showToast(`✅ Карта сохранена! (${e.data.done} тайлов)`);
+      setTimeout(() => setSyncStatus && setSyncStatus('☁ ок', 'var(--muted)'), 5000);
     }
   });
 }

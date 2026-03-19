@@ -369,7 +369,7 @@ function triggerPhotoUpload() {
   let inp = document.getElementById('chatPhotoInput');
   if (!inp) {
     inp = document.createElement('input');
-    inp.type = 'file'; inp.accept = 'image/*'; inp.capture = 'environment';
+    inp.type = 'file'; inp.accept = 'image/*';
     inp.id = 'chatPhotoInput'; inp.style.display = 'none';
     inp.onchange = () => { if (inp.files[0]) _uploadPhoto(inp.files[0]); inp.value = ''; };
     document.body.appendChild(inp);
