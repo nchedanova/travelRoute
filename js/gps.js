@@ -26,6 +26,14 @@ let _keepAliveOsc   = null;
 
 // ── INIT ───────────────────────────────────────────────────────────────────────
 function initGps() {
+  // ── ДЕМО-РЕЖИМ ──────────────────────────────────────────────────────────────
+  if (typeof isDemoMode === 'function' && isDemoMode()) {
+    initChat && initChat();
+    initNotes && initNotes();
+    _showEl('drivingBtn');
+    return;
+  }
+
   if (typeof firebase === 'undefined') {
     console.warn('Firebase SDK не загружен');
     return;
@@ -187,6 +195,10 @@ function resumeGpsFollow() {
 
 // ── РЕЖИМ "ЕДУ" — только владелец ─────────────────────────────────────────────
 function toggleDrivingMode() {
+  if (typeof isDemoMode === 'function' && isDemoMode()) {
+    showToast && showToast('📱 Это демо-режим. Настройте Firebase в ⚙ для GPS-трекинга');
+    return;
+  }
   _drivingMode  = !_drivingMode;
   _followCamera = _drivingMode;
   _userPanned   = false;

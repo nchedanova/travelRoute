@@ -15,7 +15,10 @@ function setSyncStatus(text, color) {
 function setModeBadge() {
   const badge = document.getElementById('modeBadge');
   if (!badge) return;
-  if (!cloudEnabled()) {
+  if (typeof isDemoMode === 'function' && isDemoMode()) {
+    badge.textContent = '📱 демо';
+    badge.className = 'mode-badge viewer';
+  } else if (!cloudEnabled()) {
     badge.textContent = '⊘ офлайн';
     badge.className = 'mode-badge';
   } else if (CLOUD_CONFIG.canWrite) {

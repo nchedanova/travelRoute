@@ -174,6 +174,14 @@ let _reconnectTimer = null;
 
 function initChat() {
   if (_chatInited) return;
+
+  // ── ДЕМО-РЕЖИМ ──────────────────────────────────────────────────────────────
+  if (typeof isDemoMode === 'function' && isDemoMode()) {
+    _chatInited = true;
+    _renderDemoChat();
+    return;
+  }
+
   if (typeof firebase === 'undefined' || !firebase.apps.length) return;
   _chatDb      = firebase.database();
   _chatRef     = _chatDb.ref('chat');
@@ -183,6 +191,26 @@ function initChat() {
   _ensureNickname(() => _listenMessages());
   _monitorConnection();
   _monitorVisibility();
+}
+
+function _renderDemoChat() {
+  const list = document.getElementById('chatMessages');
+  if (!list) return;
+  // Баннер
+  list.innerHTML = '<div style="text-align:center;padding:10px 12px;font-size:11px;color:var(--muted);background:var(--surface2);border-radius:8px;margin:8px 12px;">📱 Демо-режим · Это пример чата. Настройте Firebase в ⚙ для реального общения</div>';
+  // Фейковые сообщения
+  if (typeof DEMO_CHAT === 'undefined') return;
+  DEMO_CHAT.forEach((msg, i) => {
+    _appendMessage('demo-' + i, msg);
+  });
+  // Блокируем ввод
+  const inp = document.getElementById('chatInput');
+  if (inp) { inp.placeholder = 'Чат доступен после настройки ⚙'; inp.disabled = true; }
+  const sendBtn = document.querySelector('.chat-send-btn');
+  if (sendBtn) sendBtn.disabled = true;
+  // Показываем заголовок
+  const nameEl = document.getElementById('chatNameDisplay');
+  if (nameEl) nameEl.textContent = 'Демо 📱';
 }
 
 // ── CONNECTION MONITORING ──────────────────────────────────────────────────────

@@ -18,11 +18,34 @@ let _noteType    = 'other'; // выбранный тип в форме
 
 function initNotes() {
   if (_notesInited) return;
+
+  // ── ДЕМО-РЕЖИМ: заметки в localStorage ───────────────────────────────────
+  if (typeof isDemoMode === 'function' && isDemoMode()) {
+    _notesInited = true;
+    _loadDemoNotes();
+    return;
+  }
+
   if (typeof firebase === 'undefined' || !firebase.apps.length) return;
   _notesDb     = firebase.database();
   _notesRef    = _notesDb.ref('notes');
   _notesInited = true;
   _listenNotes();
+}
+
+// ── DEMO NOTES (localStorage) ─────────────────────────────────────────────
+function _isDemoNotes() { return _notesInited && !_notesRef; }
+
+function _loadDemoNotes() {
+  try {
+    _notesData = JSON.parse(localStorage.getItem('travel_demo_notes') || '{}');
+  } catch { _notesData = {}; }
+  _renderNotesList();
+}
+
+function _saveDemoNotes() {
+  localStorage.setItem('travel_demo_notes', JSON.stringify(_notesData));
+  _renderNotesList();
 }
 
 // ── LISTEN ─────────────────────────────────────────────────────────────────────
@@ -131,8 +154,15 @@ function addNote() {
     if (!payload.items.length) return;
   }
 
-  _notesRef.push(payload);
+  if (_isDemoNotes()) { _demoAddNote(payload); } else { _notesRef.push(payload); }
   inp.value = ''; inp.style.height = 'auto';
+}
+
+// Demo-mode addNote fallback
+function _demoAddNote(payload) {
+  const key = 'd' + Date.now().toString(36);
+  _notesData[key] = payload;
+  _saveDemoNotes();
 }
 
 function noteInputKeydown(e) {
@@ -143,7 +173,8 @@ function noteInputKeydown(e) {
 function toggleNoteItem(noteKey, itemId, done) {
   const entry = _notesData[noteKey]; if (!entry || !entry.items) return;
   const items = entry.items.map(i => i.id === itemId ? {...i, done} : i);
-  _notesRef.child(noteKey).update({ items });
+  if (_isDemoNotes()) { _notesData[noteKey].items = items; _saveDemoNotes(); }
+  else { _notesRef.child(noteKey).update({ items }); }
 }
 
 // ── EDIT (Telegram-style) ─────────────────────────────────────────────────────
@@ -198,13 +229,15 @@ function commitEditNote(key) {
   const entry = _notesData[key]; if (!entry) return;
 
   if (entry.type === 'other') {
-    _notesRef.child(key).update({ text });
+    if (_isDemoNotes()) { _notesData[key].text = text; _saveDemoNotes(); }
+    else { _notesRef.child(key).update({ text }); }
   } else {
     const items = text.split('\n').filter(l=>l.trim()).map((l,i) => {
       const oldItem = entry.items && entry.items[i];
       return { id: (oldItem && oldItem.id) || Math.random().toString(36).slice(2), text: l.trim(), done: (oldItem && oldItem.done) || false };
     });
-    _notesRef.child(key).update({ items });
+    if (_isDemoNotes()) { _notesData[key].items = items; _saveDemoNotes(); }
+    else { _notesRef.child(key).update({ items }); }
   }
   cancelEditNote();
 }
@@ -220,8 +253,9 @@ function closeDeleteNoteModal() {
   document.getElementById('deleteNoteModal')?.classList.remove('show');
 }
 function doDeleteNote() {
-  if (!_deleteNoteKey || !_notesRef) return;
-  _notesRef.child(_deleteNoteKey).remove();
+  if (!_deleteNoteKey) return;
+  if (_isDemoNotes()) { delete _notesData[_deleteNoteKey]; _saveDemoNotes(); }
+  else if (_notesRef) { _notesRef.child(_deleteNoteKey).remove(); }
   closeDeleteNoteModal();
 }
 
