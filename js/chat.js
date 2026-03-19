@@ -34,20 +34,84 @@ function getSessionId() {
   return id;
 }
 
-// ── SOUND ─────────────────────────────────────────────────────────────────────
-function isSoundEnabled() {
-  return localStorage.getItem('travel_chat_sound') !== 'off';
+// ── SOUND & NOTIFICATION MODE ─────────────────────────────────────────────────
+// 3 состояния: 'on' = 🔔 обычные, 'off' = 🔕 выключены, 'pin' = 📌 keep-alive
+function getNotifyMode() {
+  return localStorage.getItem('travel_chat_notify') || 'on';
 }
+function isSoundEnabled() { return getNotifyMode() !== 'off'; }
 
 function toggleChatSound() {
-  const enabled = !isSoundEnabled();
-  localStorage.setItem('travel_chat_sound', enabled ? 'on' : 'off');
+  const modes = ['on', 'off', 'pin'];
+  const cur = getNotifyMode();
+  const next = modes[(modes.indexOf(cur) + 1) % modes.length];
+  localStorage.setItem('travel_chat_notify', next);
   _updateSoundBtn();
+  // Keep-alive management
+  if (next === 'pin') {
+    if (typeof startKeepAlive === 'function') startKeepAlive();
+  } else if (cur === 'pin') {
+    // Выключаем keep-alive только если "Еду" не активен
+    if (typeof _drivingMode !== 'undefined' && !_drivingMode && typeof stopKeepAlive === 'function') {
+      stopKeepAlive();
+    }
+  }
 }
 
 function _updateSoundBtn() {
   const btn = document.getElementById('chatSoundBtn');
-  if (btn) btn.textContent = isSoundEnabled() ? '🔔' : '🔕';
+  if (!btn) return;
+  const mode = getNotifyMode();
+  btn.textContent = mode === 'off' ? '🔕' : mode === 'pin' ? '📌' : '🔔';
+  btn.title = mode === 'off' ? 'Уведомления выключены' : mode === 'pin' ? 'Не засыпать (keep-alive)' : 'Звук уведомлений';
+}
+
+// ── NOTIFICATIONS ─────────────────────────────────────────────────────────────
+let _titleBlinkTimer = null;
+const _originalTitle = document.title;
+
+function _requestNotificationPermission() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+}
+
+function _showNotification(name, text) {
+  if (getNotifyMode() === 'off') return;
+  // Browser Notification (works when tab is in background)
+  if ('Notification' in window && Notification.permission === 'granted') {
+    try {
+      new Notification('🧭 ' + name, {
+        body: text || '',
+        icon: './icon.svg',
+        tag: 'travel-chat-' + Date.now(),
+        silent: false
+      });
+    } catch(e) {} // iOS Safari may throw
+  }
+  // Vibrate
+  if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+  // Title blink (desktop)
+  _startTitleBlink(name, text);
+  // PWA badge
+  if (navigator.setAppBadge) {
+    navigator.setAppBadge(_chatUnread).catch(() => {});
+  }
+}
+
+function _startTitleBlink(name, text) {
+  if (_titleBlinkTimer) return; // already blinking
+  let on = true;
+  _titleBlinkTimer = setInterval(() => {
+    document.title = on ? `💬 ${name}: ${(text || '').slice(0, 30)}` : _originalTitle;
+    on = !on;
+  }, 1000);
+}
+
+function _stopTitleBlink() {
+  if (_titleBlinkTimer) { clearInterval(_titleBlinkTimer); _titleBlinkTimer = null; }
+  document.title = _originalTitle;
+  if (navigator.clearAppBadge) navigator.clearAppBadge().catch(() => {});
 }
 
 function _playDing() {
@@ -134,6 +198,7 @@ function _writePresence() {
 // ── LISTEN ─────────────────────────────────────────────────────────────────────
 function _listenMessages() {
   if (!_chatRef) return;
+  _requestNotificationPermission();
   const lastSeen = parseInt(localStorage.getItem('travel_chat_last_seen') || '0');
   _chatLoadTs = Date.now();
   _chatRef.limitToLast(200).on('child_added', snap => {
@@ -142,6 +207,7 @@ function _listenMessages() {
     if (!_chatVisible && msg.ts > lastSeen && msg.ts > _chatLoadTs - 200) {
       _chatUnread++; _updateUnreadBadge();
       _playDing();
+      _showNotification(msg.name, msg.text);
     }
   });
   _chatRef.on('child_removed', snap => { document.getElementById('msg-' + snap.key)?.remove(); });
@@ -162,14 +228,88 @@ function sendChatMessage() {
   const text = inp ? inp.value.trim() : '';
   if (!text) return;
   if (!getChatName()) { _showNicknameModal(() => sendChatMessage()); return; }
-  const ref = _chatRef.push();
-  const ts  = Date.now();
-  _appendMessage(ref.key, { name: getChatName(), role: getChatRole(), text, ts, _pending: true });
-  ref.set({ name: getChatName(), role: getChatRole(), text, ts }).then(() => {
-    document.getElementById('ticks-' + ref.key)?.classList.remove('pending');
-  });
+
+  const ts = Date.now();
+  const msgData = { name: getChatName(), role: getChatRole(), text, ts };
+
+  if (!navigator.onLine) {
+    // Оффлайн: сохраняем в очередь, показываем локально
+    if (typeof queueChatMessage === 'function') queueChatMessage(msgData);
+    _appendMessage('pending-' + ts, { ...msgData, _pending: true });
+    showToast && showToast('📴 Сообщение отправится при появлении сети');
+  } else {
+    const ref = _chatRef.push();
+    _appendMessage(ref.key, { ...msgData, _pending: true });
+    ref.set(msgData).then(() => {
+      document.getElementById('ticks-' + ref.key)?.classList.remove('pending');
+    });
+  }
   inp.value = ''; inp.style.height = 'auto';
   closeEmojiPicker();
+}
+
+// ── PHOTO UPLOAD ──────────────────────────────────────────────────────────────
+function triggerPhotoUpload() {
+  if (!_chatInited) { initChat(); return; }
+  if (!getChatName()) { _showNicknameModal(() => triggerPhotoUpload()); return; }
+  let inp = document.getElementById('chatPhotoInput');
+  if (!inp) {
+    inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = 'image/*'; inp.capture = 'environment';
+    inp.id = 'chatPhotoInput'; inp.style.display = 'none';
+    inp.onchange = () => { if (inp.files[0]) _uploadPhoto(inp.files[0]); inp.value = ''; };
+    document.body.appendChild(inp);
+  }
+  inp.click();
+}
+
+async function _uploadPhoto(file) {
+  if (!navigator.onLine) { showToast('📴 Для фото нужен интернет'); return; }
+  // Show pending message
+  const ts = Date.now();
+  const pendingKey = 'photo-' + ts;
+  _appendMessage(pendingKey, { name: getChatName(), role: getChatRole(), ts, uploading: true });
+
+  try {
+    // Compress via canvas
+    const compressed = await _compressImage(file, 1200, 0.7);
+    // Upload to Firebase Storage
+    const storageRef = firebase.storage().ref('chat_photos/' + ts + '.jpg');
+    const snap = await storageRef.put(compressed, { contentType: 'image/jpeg' });
+    const imgUrl = await snap.ref.getDownloadURL();
+    // Save message with photo URL
+    const caption = document.getElementById('chatInput')?.value.trim() || '';
+    document.getElementById('chatInput').value = '';
+    document.getElementById('msg-' + pendingKey)?.remove();
+    const ref = _chatRef.push();
+    const msgData = { name: getChatName(), role: getChatRole(), text: caption, imgUrl, ts };
+    ref.set(msgData);
+  } catch(e) {
+    console.error('Photo upload error:', e);
+    document.getElementById('msg-' + pendingKey)?.remove();
+    showToast('⚠ Ошибка загрузки фото');
+  }
+}
+
+function _compressImage(file, maxDim, quality) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let w = img.width, h = img.height;
+      if (w > maxDim || h > maxDim) {
+        const ratio = Math.min(maxDim / w, maxDim / h);
+        w = Math.round(w * ratio); h = Math.round(h * ratio);
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      canvas.toBlob(blob => blob ? resolve(blob) : reject('toBlob failed'), 'image/jpeg', quality);
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
 }
 
 function chatInputKeydown(e) {
@@ -306,8 +446,6 @@ function closeMsgMenu() {
   _menuKey = null;
 }
 
-// Фото: не поддерживается в текущей версии
-
 // ── EMOJI PICKER ───────────────────────────────────────────────────────────────
 function toggleEmojiPicker() {
   const p = document.getElementById('emojiPicker');
@@ -423,6 +561,7 @@ function _updateUnreadBadge() {
 
 function onChatTabOpen() {
   _chatVisible = true; _chatUnread = 0; _updateUnreadBadge();
+  _stopTitleBlink();
   _updateSoundBtn();
   localStorage.setItem('travel_chat_last_seen', Date.now().toString());
   _writePresence();

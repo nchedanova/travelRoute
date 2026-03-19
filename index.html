@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Дорожный журнал · Балашиха → Авсаллар</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧭</text></svg>">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0e0f13">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icon.svg">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
@@ -109,6 +114,7 @@
       </div>
       <div class="chat-input-bar">
         <button class="chat-emoji-btn" onclick="toggleEmojiPicker()" title="Смайлики">😊</button>
+        <button class="chat-emoji-btn" onclick="triggerPhotoUpload()" title="Фото">📷</button>
         <textarea id="chatInput" class="chat-textarea" placeholder="Сообщение…" rows="1"
           onkeydown="chatInputKeydown(event)" oninput="autoResizeChatInput(this)"></textarea>
         <button class="chat-send-btn" onclick="sendChatMessage()" title="Отправить">
@@ -312,15 +318,16 @@
         <div class="nav-link-row">
           <div class="nav-link-icon">🟢</div>
           <div class="nav-link-info">
-            <div class="nav-link-title">2ГИС <span style="font-size:9px;color:var(--muted);">(маршрут до последней точки)</span></div>
-            <div class="nav-link-sub">Откроет маршрут к финальной точке</div>
+            <div class="nav-link-title">GPX для Organic Maps</div>
+            <div class="nav-link-sub">Откроет маршрут в любом навигаторе</div>
           </div>
-          <a id="share-2gis-link" href="#" target="_blank" class="nav-link-btn">Открыть →</a>
+          <button class="nav-link-btn" onclick="exportGpx(currentDay)">📥 Скачать</button>
         </div>
 
       </div>
       <div class="modal-actions" style="flex-wrap:wrap;gap:8px;">
-        <button id="copy-coords-btn" class="nav-link-btn" onclick="copyShareText()" style="margin-right:auto;padding:6px 14px;">📋 Копировать координаты</button>
+        <button class="nav-link-btn" onclick="prefetchRouteTiles(currentDay)" style="padding:6px 14px;">📥 Скачать карту</button>
+        <button id="copy-coords-btn" class="nav-link-btn" onclick="copyShareText()" style="padding:6px 14px;">📋 Координаты</button>
         <button class="modal-cancel" onclick="closeShareModal()">Закрыть</button>
       </div>
     </div>
@@ -393,21 +400,32 @@
 
 <!-- Scripts: порядок важен — config и data первыми -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="js/config.js?v=7"></script>
-<script src="js/data.js?v=7"></script>
-<script src="js/storage.js?v=7"></script>
-<script src="js/map.js?v=7"></script>
-<script src="js/render.js?v=7"></script>
-<script src="js/app.js?v=7"></script>
-<script src="js/gps.js?v=3"></script>
-<script src="js/chat.js?v=1"></script>
-<script src="js/notes.js?v=1"></script>
+<script src="js/config.js?v=8"></script>
+<script src="js/data.js?v=8"></script>
+<script src="js/storage.js?v=8"></script>
+<script src="js/offline.js?v=1"></script>
+<script src="js/map.js?v=8"></script>
+<script src="js/render.js?v=8"></script>
+<script src="js/app.js?v=8"></script>
+<script src="js/gps.js?v=4"></script>
+<script src="js/chat.js?v=2"></script>
+<script src="js/notes.js?v=2"></script>
+<script src="js/gpx.js?v=1"></script>
 <script>
+  // Service Worker registration
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').then(reg => {
+      console.log('[SW] Registered:', reg.scope);
+    }).catch(err => console.warn('[SW] Registration failed:', err));
+  }
+
   // Запускаем GPS после инициализации карты
   document.addEventListener('DOMContentLoaded', () => {
     // initGps вызываем после того как map готов (app.js уже вызвал initMap)
     setTimeout(initGps, 500);
     initSidebarTabs();
+    // Инициализируем оффлайн-синхронизацию
+    if (typeof initOfflineSync === 'function') initOfflineSync();
   });
 </script>
 

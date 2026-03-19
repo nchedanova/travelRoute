@@ -21,6 +21,8 @@ let _drivingMode    = false;  // владелец нажал "Еду"
 let _followCamera   = false;  // камера следит за позицией
 let _userPanned     = false;  // пользователь двигал карту вручную
 let _nearestStopId  = null;   // id ближайшей остановки
+let _keepAliveCtx   = null;   // AudioContext для keep-alive
+let _keepAliveOsc   = null;
 
 // ── INIT ───────────────────────────────────────────────────────────────────────
 function initGps() {
@@ -81,7 +83,15 @@ function _onPosition(pos) {
 
   if (_drivingMode) {
     _updateSpeedDisplay(kmh);
-    _writePosition(lat, lng, kmh, accuracy);
+    const point = { lat, lng, speed: kmh, accuracy, ts: Date.now() };
+    // Всегда пишем в IndexedDB (для GPX-экспорта и оффлайн)
+    if (typeof saveGpsPoint === 'function') saveGpsPoint(point);
+    // Пишем в Firebase (с оффлайн-буфером)
+    if (typeof bufferGpsForSync === 'function' && bufferGpsForSync(point)) {
+      // Буферизировано — нет сети
+    } else {
+      _writePosition(lat, lng, kmh, accuracy);
+    }
     if (_followCamera && !_userPanned) _panTo(lat, lng);
   }
 }
@@ -197,10 +207,47 @@ function toggleDrivingMode() {
     followBtn.classList.remove('paused');
   }
 
-  if (!_drivingMode) {
+  // Keep-alive: держим WebSocket живым для уведомлений
+  if (_drivingMode) {
+    startKeepAlive();
+  } else {
+    stopKeepAlive();
     _updateSpeedDisplay(null);
-    if (_db) _db.ref('gps').remove(); // убираем маркер у зрителей
+    if (_db) _db.ref('gps').remove();
   }
+}
+
+// ── KEEP-ALIVE (AudioContext) ─────────────────────────────────────────────────
+// Тихий осциллятор не даёт браузеру заморозить вкладку.
+// Включается при "Еду" или вручную через 📌 в чате.
+
+function startKeepAlive() {
+  if (_keepAliveCtx) return; // уже запущен
+  try {
+    _keepAliveCtx = new (window.AudioContext || window.webkitAudioContext)();
+    _keepAliveOsc = _keepAliveCtx.createOscillator();
+    const gain    = _keepAliveCtx.createGain();
+    gain.gain.value = 0.001; // практически беззвучно
+    _keepAliveOsc.connect(gain);
+    gain.connect(_keepAliveCtx.destination);
+    _keepAliveOsc.start();
+    console.log('[keep-alive] Started');
+  } catch(e) { console.warn('[keep-alive] Failed:', e); }
+}
+
+function stopKeepAlive() {
+  if (!_keepAliveCtx) return;
+  try {
+    _keepAliveOsc.stop();
+    _keepAliveCtx.close();
+  } catch(e) {}
+  _keepAliveCtx = null;
+  _keepAliveOsc = null;
+  console.log('[keep-alive] Stopped');
+}
+
+function isKeepAliveActive() {
+  return !!_keepAliveCtx;
 }
 
 // ── БЛИЖАЙШАЯ ТОЧКА ────────────────────────────────────────────────────────────

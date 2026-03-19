@@ -864,9 +864,6 @@ function openShareDay(day) {
   const gPath = pts10.map(p => `${p.lat},${p.lng}`).join('/');
   const googleUrl = `https://www.google.com/maps/dir/${gPath}/`;
 
-  // 2GIS — only supports single destination, so we link to first stop
-  const twoGisUrl = `https://2gis.ru/routeSearch/rsType/car/to/${points[points.length-1].lng},${points[points.length-1].lat}`;
-
   // Text list
   const textList = points.map((p, i) =>
     (i === 0 ? '🚗 Старт: ' : `${i}. `) + p.name + ` (${p.lat.toFixed(5)}, ${p.lng.toFixed(5)})`
@@ -879,7 +876,6 @@ function openShareDay(day) {
   document.getElementById('share-yandex-sub').textContent = yandexUrl.slice(0, 60) + '…';
   document.getElementById('share-google-link').href = googleUrl;
   document.getElementById('share-google-sub').textContent = googleUrl.slice(0, 60) + '…';
-  document.getElementById('share-2gis-link').href = twoGisUrl;
 
   // Store text for copy
   modal.dataset.textList = textList;

@@ -1,0 +1,18 @@
+{
+  "name": "Дорожный журнал · Балашиха → Авсаллар",
+  "short_name": "Дорожный журнал",
+  "description": "Трекер маршрута с GPS, чатом и оффлайн-картами",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0e0f13",
+  "theme_color": "#f5a623",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
