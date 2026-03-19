@@ -190,62 +190,61 @@ function initChat() {
 
 function _monitorConnection() {
   if (!_chatDb) return;
-  _chatDb.ref('.info/connected').on('value', snap => {
-    const wasConnected = _fbConnected;
-    _fbConnected = snap.val() === true;
-    console.log('[chat] Firebase connected:', _fbConnected);
-    if (_fbConnected && !wasConnected) {
-      // Переподключились — проверяем пропущенные сообщения
-      console.log('[chat] Reconnected — checking missed messages');
-      _checkMissedMessages();
-    }
-    if (!_fbConnected) {
-      // Соединение потеряно — запускаем polling-фоллбек
-      _startPollFallback();
-    } else {
-      _stopPollFallback();
-    }
-  });
+  try {
+    _chatDb.ref('.info/connected').on('value', snap => {
+      const wasConnected = _fbConnected;
+      _fbConnected = snap.val() === true;
+      console.log('[chat] Firebase connected:', _fbConnected);
+      if (_fbConnected && !wasConnected) {
+        console.log('[chat] Reconnected — checking missed messages');
+        _checkMissedMessages();
+      }
+      if (!_fbConnected) {
+        _startPollFallback();
+      } else {
+        _stopPollFallback();
+      }
+    });
+  } catch(e) { console.warn('[chat] monitorConnection error:', e); }
 }
 
-// Когда вкладка снова в фокусе — принудительно будим Firebase
+// Когда вкладка снова в фокусе — проверяем пропущенные
 function _monitorVisibility() {
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
-      console.log('[chat] Tab visible — reconnecting Firebase');
-      // Принудительный goOnline пробуждает WebSocket
-      if (_chatDb) {
-        firebase.database().goOffline();
-        setTimeout(() => firebase.database().goOnline(), 100);
-      }
+      console.log('[chat] Tab visible — checking missed');
       _checkMissedMessages();
       // Resume AudioContext (мобильный Chrome требует)
-      const ctx = _ensureAudioCtx();
-      if (ctx && ctx.state === 'suspended') ctx.resume();
+      try {
+        const ctx = _ensureAudioCtx();
+        if (ctx && ctx.state === 'suspended') ctx.resume();
+      } catch(e) {}
     }
   });
 }
 
-// Проверяем пропущенные сообщения через REST-подобный once()
+// Проверяем пропущенные сообщения
 function _checkMissedMessages() {
   if (!_chatRef || !_lastMsgTs) return;
-  _chatRef.orderByChild('ts').startAfter(_lastMsgTs).once('value', snap => {
-    const data = snap.val();
-    if (!data) return;
-    let count = 0;
-    Object.entries(data).forEach(([key, msg]) => {
-      if (document.getElementById('msg-' + key)) return; // уже есть
-      _appendMessage(key, msg);
-      if (!_chatVisible && msg.ts > _lastMsgTs) {
-        _chatUnread++; count++;
-        _showNotification(msg.name, msg.text);
+  try {
+    _chatRef.orderByChild('ts').startAt(_lastMsgTs + 1).once('value', snap => {
+      const data = snap.val();
+      if (!data) return;
+      let count = 0;
+      Object.entries(data).forEach(([key, msg]) => {
+        if (document.getElementById('msg-' + key)) return;
+        _appendMessage(key, msg);
+        if (!_chatVisible && msg.ts > _lastMsgTs) {
+          _chatUnread++; count++;
+          _showNotification(msg.name, msg.text);
+        }
+      });
+      if (count > 0) {
+        _updateUnreadBadge();
+        _playDing();
       }
     });
-    if (count > 0) {
-      _updateUnreadBadge();
-      _playDing();
-    }
-  });
+  } catch(e) { console.warn('[chat] checkMissed error:', e); }
 }
 
 // Polling-фоллбек: если WebSocket мёртв, проверяем раз в 15 сек
