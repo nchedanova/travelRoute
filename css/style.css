@@ -17,9 +17,9 @@
   --accent-dim: #b87716;
   --accent-bg: rgba(245,166,35,0.12);
   --accent-text-on: #000;
-  --chat-mine-bg: #1a6640;
-  --chat-mine-border: #1a6640;
-  --chat-mine-text: #e6ffe6;
+  --chat-mine-bg: #64400F;
+  --chat-mine-border: #593c0d;
+  --chat-mine-text: #f5e8d0;
 }
 
 /* ── THEME: INK + WARM WHITE ─────────────────────────────────────────────────*/
