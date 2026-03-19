@@ -167,6 +167,11 @@ function _playDing() {
 }
 
 // ── INIT ───────────────────────────────────────────────────────────────────────
+let _fbConnected   = true;
+let _lastMsgTs     = 0;       // timestamp последнего полученного сообщения
+let _pollFallback  = null;    // interval для polling-фоллбека
+let _reconnectTimer = null;
+
 function initChat() {
   if (_chatInited) return;
   if (typeof firebase === 'undefined' || !firebase.apps.length) return;
@@ -176,6 +181,86 @@ function initChat() {
   _chatInited  = true;
   _listenPresence();
   _ensureNickname(() => _listenMessages());
+  _monitorConnection();
+  _monitorVisibility();
+}
+
+// ── CONNECTION MONITORING ──────────────────────────────────────────────────────
+// Firebase WebSocket умирает на мобилке в фоне. Детектим и переподключаем.
+
+function _monitorConnection() {
+  if (!_chatDb) return;
+  _chatDb.ref('.info/connected').on('value', snap => {
+    const wasConnected = _fbConnected;
+    _fbConnected = snap.val() === true;
+    console.log('[chat] Firebase connected:', _fbConnected);
+    if (_fbConnected && !wasConnected) {
+      // Переподключились — проверяем пропущенные сообщения
+      console.log('[chat] Reconnected — checking missed messages');
+      _checkMissedMessages();
+    }
+    if (!_fbConnected) {
+      // Соединение потеряно — запускаем polling-фоллбек
+      _startPollFallback();
+    } else {
+      _stopPollFallback();
+    }
+  });
+}
+
+// Когда вкладка снова в фокусе — принудительно будим Firebase
+function _monitorVisibility() {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      console.log('[chat] Tab visible — reconnecting Firebase');
+      // Принудительный goOnline пробуждает WebSocket
+      if (_chatDb) {
+        firebase.database().goOffline();
+        setTimeout(() => firebase.database().goOnline(), 100);
+      }
+      _checkMissedMessages();
+      // Resume AudioContext (мобильный Chrome требует)
+      const ctx = _ensureAudioCtx();
+      if (ctx && ctx.state === 'suspended') ctx.resume();
+    }
+  });
+}
+
+// Проверяем пропущенные сообщения через REST-подобный once()
+function _checkMissedMessages() {
+  if (!_chatRef || !_lastMsgTs) return;
+  _chatRef.orderByChild('ts').startAfter(_lastMsgTs).once('value', snap => {
+    const data = snap.val();
+    if (!data) return;
+    let count = 0;
+    Object.entries(data).forEach(([key, msg]) => {
+      if (document.getElementById('msg-' + key)) return; // уже есть
+      _appendMessage(key, msg);
+      if (!_chatVisible && msg.ts > _lastMsgTs) {
+        _chatUnread++; count++;
+        _showNotification(msg.name, msg.text);
+      }
+    });
+    if (count > 0) {
+      _updateUnreadBadge();
+      _playDing();
+    }
+  });
+}
+
+// Polling-фоллбек: если WebSocket мёртв, проверяем раз в 15 сек
+function _startPollFallback() {
+  if (_pollFallback) return;
+  console.log('[chat] Starting poll fallback');
+  _pollFallback = setInterval(() => _checkMissedMessages(), 15000);
+}
+
+function _stopPollFallback() {
+  if (_pollFallback) {
+    clearInterval(_pollFallback);
+    _pollFallback = null;
+    console.log('[chat] Stopped poll fallback');
+  }
 }
 
 // ── NICKNAME ───────────────────────────────────────────────────────────────────
@@ -231,6 +316,7 @@ function _listenMessages() {
   _chatLoadTs = Date.now();
   _chatRef.limitToLast(200).on('child_added', snap => {
     const msg = snap.val(); if (!msg) return;
+    if (msg.ts > _lastMsgTs) _lastMsgTs = msg.ts; // отслеживаем для reconnect
     _appendMessage(snap.key, msg);
     if (!_chatVisible && msg.ts > lastSeen && msg.ts > _chatLoadTs - 200) {
       _chatUnread++; _updateUnreadBadge();
