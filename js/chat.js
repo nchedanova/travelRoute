@@ -12,6 +12,7 @@ let _chatLoadTs   = 0;
 let _otherReadTs  = 0;
 let _presenceTimer = null;
 let _editingKey   = null;   // key сообщения в режиме редактирования
+let _replyingTo   = null;   // { key, name, text } — цитируемое сообщение
 
 const REACTIONS = ['👍','❤️','🆗','🙂','🥰','👀','💯','🤝','🎉','😱','😔'];
 const EMOJI_LIST = [
@@ -373,6 +374,7 @@ function sendChatMessage() {
 
   const ts = Date.now();
   const msgData = { name: getChatName(), role: getChatRole(), text, ts };
+  if (_replyingTo) { msgData.replyTo = _replyingTo; cancelReply(); }
 
   if (!navigator.onLine) {
     // Оффлайн: сохраняем в очередь, показываем локально
@@ -467,7 +469,54 @@ function chatInputKeydown(e) {
   if (e.key === 'Escape' && _editingKey) { cancelEdit(); }
 }
 
-// ── TELEGRAM-STYLE EDIT ────────────────────────────────────────────────────────
+// ── CLEAR CHAT (только Admin) ──────────────────────────────────────────────────
+function openClearChatConfirm() {
+  const ov = document.getElementById('clearChatModal');
+  if (ov) ov.classList.add('show');
+}
+function closeClearChatConfirm() {
+  const ov = document.getElementById('clearChatModal');
+  if (ov) ov.classList.remove('show');
+}
+function confirmClearChat() {
+  if (!_chatRef || !CLOUD_CONFIG.canWrite) return;
+  closeClearChatConfirm();
+  _chatRef.remove().then(() => {
+    const list = document.getElementById('chatMessages');
+    if (list) list.innerHTML = '';
+    showToast && showToast('🗑 Чат очищен');
+  }).catch(e => {
+    console.error('[chat] clearChat error:', e);
+    showToast && showToast('⚠ Ошибка очистки чата');
+  });
+}
+
+// ── REPLY TO MESSAGE ──────────────────────────────────────────────────────────
+function startReply(key, name, text) {
+  closeMsgMenu();
+  _replyingTo = { key, name, text };
+  // Cancel any active edit
+  if (_editingKey) cancelEdit();
+
+  const banner = document.getElementById('chatReplyBanner');
+  if (banner) {
+    banner.style.display = 'flex';
+    const nameEl = banner.querySelector('.reply-banner-name');
+    const prevEl = banner.querySelector('.reply-banner-preview');
+    if (nameEl) nameEl.textContent = name;
+    if (prevEl) prevEl.textContent = (text || '').slice(0, 80);
+  }
+  const inp = document.getElementById('chatInput');
+  if (inp) { inp.focus(); }
+}
+
+function cancelReply() {
+  _replyingTo = null;
+  const banner = document.getElementById('chatReplyBanner');
+  if (banner) banner.style.display = 'none';
+}
+
+
 function startEditMessage(key) {
   closeMsgMenu();
   _chatRef.child(key).once('value', snap => {
@@ -560,6 +609,16 @@ function openMsgMenu(e, key, isMine) {
   const canDelete = CLOUD_CONFIG.canWrite || isMine;
   const actions   = menu.querySelector('.msg-menu-actions');
   actions.innerHTML = '';
+
+  // Reply — доступно всем
+  _chatRef.child(key).once('value', snap => {
+    const msgData = snap.val() || {};
+    const replyBtn = document.createElement('button');
+    replyBtn.className = 'msg-menu-item';
+    replyBtn.textContent = '↩ Ответить';
+    replyBtn.onclick = () => startReply(key, msgData.name || '?', msgData.text || '');
+    actions.insertBefore(replyBtn, actions.firstChild);
+  });
   if (canEdit) {
     const btn = document.createElement('button');
     btn.className = 'msg-menu-item';
@@ -653,6 +712,14 @@ function _appendMessageAt(key, msg, beforeNode) {
   let inner = '';
   if (!isMine) inner += `<div class="chat-author">${_esc(msg.name)} ${badge}</div>`;
 
+  // Цитата (ответ на сообщение)
+  if (msg.replyTo) {
+    inner += `<div class="chat-reply-quote" onclick="scrollToMessage('${_esc(msg.replyTo.key)}')">
+      <span class="chat-reply-quote-name">${_esc(msg.replyTo.name)}</span>
+      <span class="chat-reply-quote-text">${_esc((msg.replyTo.text || '').slice(0, 80))}</span>
+    </div>`;
+  }
+
   if (msg.uploading) {
     inner += `<div class="chat-bubble"><span class="chat-uploading">Загрузка фото…</span></div>`;
   } else if (msg.imgUrl) {
@@ -697,6 +764,14 @@ function _esc(s) {
 }
 function _scrollToBottom() { const l = document.getElementById('chatMessages'); if (l) l.scrollTop = l.scrollHeight; }
 
+function scrollToMessage(key) {
+  const el = document.getElementById('msg-' + key);
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  el.classList.add('msg-highlight');
+  setTimeout(() => el.classList.remove('msg-highlight'), 1500);
+}
+
 function openChatPhoto(url) {
   const ov = document.getElementById('photoViewerOverlay'), img = document.getElementById('photoViewerImg');
   if (ov && img) { img.src = url; ov.classList.add('show'); }
@@ -729,5 +804,8 @@ function onChatTabClose() { _chatVisible = false; clearInterval(_presenceTimer);
 function renderChatHeader() {
   const el = document.getElementById('chatNameDisplay');
   if (el) el.textContent = getChatName() ? getChatName() + ' ' + getRoleBadge() : '';
+  // Кнопка "Очистить чат" — только для Admin (canWrite)
+  const clearBtn = document.getElementById('chatClearBtn');
+  if (clearBtn) clearBtn.style.display = CLOUD_CONFIG.canWrite ? 'inline-flex' : 'none';
 }
 function changeChatName() { localStorage.removeItem('travel_chat_name'); _showNicknameModal(() => renderChatHeader()); }

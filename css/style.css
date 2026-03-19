@@ -1655,3 +1655,118 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
   opacity: 0;
 }
 .theme-option.active .theme-check { opacity: 1; }
+
+/* ── CLEAR CHAT BUTTON (Admin only) ──────────────────────────────────────────── */
+.chat-clear-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+.chat-clear-btn:hover { color: #f87171; background: rgba(248,113,113,0.1); opacity: 1; }
+
+/* ── REPLY BANNER (над полем ввода) ──────────────────────────────────────────── */
+.chat-reply-banner {
+  border-top: 1px solid var(--border);
+  padding: 6px 12px;
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.reply-banner-inner {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+  border-left: 2px solid var(--blue, #60a5fa);
+  padding-left: 8px;
+}
+.reply-banner-icon {
+  font-size: 13px;
+  color: var(--blue, #60a5fa);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.reply-banner-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.reply-banner-name {
+  font-size: 10px;
+  color: var(--blue, #60a5fa);
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+}
+.reply-banner-preview {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.reply-banner-cancel {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 50%;
+  transition: color 0.15s, background 0.15s;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.reply-banner-cancel:hover { color: var(--text); background: var(--surface2); }
+
+/* ── REPLY QUOTE (внутри пузыря) ─────────────────────────────────────────────── */
+.chat-reply-quote {
+  border-left: 2px solid var(--blue, #60a5fa);
+  padding: 4px 8px;
+  margin-bottom: 5px;
+  background: rgba(96, 165, 250, 0.08);
+  border-radius: 0 6px 6px 0;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  transition: background 0.15s;
+}
+.chat-reply-quote:hover { background: rgba(96, 165, 250, 0.16); }
+.chat-reply-quote-name {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--blue, #60a5fa);
+  font-family: 'JetBrains Mono', monospace;
+}
+.chat-reply-quote-text {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+
+/* ── HIGHLIGHT при скролле к сообщению ───────────────────────────────────────── */
+@keyframes msgHighlight {
+  0%   { background: rgba(96, 165, 250, 0.22); }
+  100% { background: transparent; }
+}
+.msg-highlight .chat-bubble {
+  animation: msgHighlight 1.5s ease-out forwards;
+}

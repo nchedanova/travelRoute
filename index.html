@@ -94,6 +94,7 @@
         <span id="chatNameDisplay" class="chat-name-display"></span>
         <button class="chat-change-name-btn" onclick="changeChatName()" title="Изменить имя">✎</button>
         <button class="chat-sound-btn" id="chatSoundBtn" onclick="toggleChatSound()" title="Звук уведомлений">🔔</button>
+        <button class="chat-clear-btn" id="chatClearBtn" onclick="openClearChatConfirm()" title="Очистить чат" style="display:none">🗑</button>
       </div>
       <div id="chatMessages" class="chat-messages"></div>
       <!-- Context menu -->
@@ -110,6 +111,17 @@
           <span class="edit-banner-preview"></span>
         </div>
         <button class="edit-banner-cancel" onclick="cancelEdit()" title="Отмена">×</button>
+      </div>
+      <!-- Reply banner -->
+      <div id="chatReplyBanner" class="chat-reply-banner" style="display:none">
+        <div class="reply-banner-inner">
+          <span class="reply-banner-icon">↩</span>
+          <div class="reply-banner-content">
+            <span class="reply-banner-name"></span>
+            <span class="reply-banner-preview"></span>
+          </div>
+        </div>
+        <button class="reply-banner-cancel" onclick="cancelReply()" title="Отмена">×</button>
       </div>
       <div class="chat-input-bar">
         <button class="chat-emoji-btn" onclick="toggleEmojiPicker()" title="Смайлики">😊</button>
@@ -313,10 +325,10 @@
         <div class="nav-link-row">
           <div class="nav-link-icon">🟢</div>
           <div class="nav-link-info">
-            <div class="nav-link-title">GPX для Organic Maps</div>
-            <div class="nav-link-sub">Откроет маршрут в любом навигаторе</div>
+            <div class="nav-link-title">Organic Maps / OsmAnd</div>
+            <div class="nav-link-sub" id="organic-maps-sub">На телефоне откроет маршрут прямо в приложении</div>
           </div>
-          <button class="nav-link-btn" onclick="exportGpx(currentDay)">📥 Скачать</button>
+          <button class="nav-link-btn" id="organic-maps-btn" onclick="exportGpxAndOpen(currentDay)">📲 Открыть в картах</button>
         </div>
 
       </div>
@@ -504,5 +516,20 @@
   applyTheme(localStorage.getItem('travel_theme') || 'default');
 })();
 </script>
+
+<!-- Clear Chat Confirmation Modal -->
+<div class="modal-overlay" id="clearChatModal" onclick="if(event.target===this)closeClearChatConfirm()">
+  <div class="modal" style="max-width:320px;text-align:center;">
+    <div class="modal-title">🗑 Очистить чат?</div>
+    <div class="modal-body" style="margin-bottom:16px;font-size:13px;color:var(--muted);">
+      Все сообщения будут удалены безвозвратно.<br>Это действие нельзя отменить.
+    </div>
+    <div class="modal-actions" style="justify-content:center;gap:10px;">
+      <button class="modal-cancel" onclick="closeClearChatConfirm()">Отмена</button>
+      <button class="modal-confirm" onclick="confirmClearChat()" style="border-color:#f87171;color:#f87171;background:rgba(248,113,113,0.1);">Очистить</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
