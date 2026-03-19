@@ -25,7 +25,7 @@ const DAYS_DATA = {
     color:'#f5a623',
     date:'1 августа',
     departP:'03:00', departA:'',
-    start:{ lat:55.751244, lng:37.618423, name:'Москва (центр)', icon:'🏙' },
+    start:{ lat:55.751244, lng:37.618423, name:'Москва (центр)', icon:'🌃' },
     stops:[
       // 253 км ÷ 90 = 2ч 49мин → arr 05:49
       { id:'d1s1', num:1, icon:'⛽', type:'Заправка', name:'Газпромнефть · Ефремов',
