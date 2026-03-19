@@ -514,7 +514,8 @@ function handleMsgDblClick(key) { toggleReaction(key, '❤️'); }
 let _menuKey = null;
 
 function openMsgMenu(e, key, isMine) {
-  e.preventDefault(); e.stopPropagation();
+  if (e.preventDefault) e.preventDefault();
+  if (e.stopPropagation) e.stopPropagation();
   closeMsgMenu();
   _menuKey = key;
   const menu = document.getElementById('chatMsgMenu');
@@ -546,14 +547,20 @@ function openMsgMenu(e, key, isMine) {
   }
   actions.style.display = (canEdit || canDelete) ? 'flex' : 'none';
 
-  // Position
-  const rect   = (e.currentTarget || e.target).getBoundingClientRect();
-  const sbRect = document.getElementById('sidebar').getBoundingClientRect();
+  // Position — используем элемент сообщения, а не event target
+  const msgEl  = document.getElementById('msg-' + key);
+  const anchor = msgEl || e.currentTarget || e.target;
+  const rect   = anchor.getBoundingClientRect();
+  const panel  = menu.closest('.chat-panel') || document.getElementById('sidebar');
+  const panelRect = panel.getBoundingClientRect();
   menu.style.display = 'block';
-  let top  = rect.top - sbRect.top - menu.offsetHeight - 6;
-  let left = isMine ? rect.right - sbRect.left - menu.offsetWidth : rect.left - sbRect.left;
-  if (top < 4) top = rect.bottom - sbRect.top + 6;
-  left = Math.max(4, Math.min(left, sbRect.width - menu.offsetWidth - 4));
+  let top  = rect.top - panelRect.top - menu.offsetHeight - 6;
+  let left = isMine ? rect.right - panelRect.left - menu.offsetWidth : rect.left - panelRect.left;
+  if (top < 4) top = rect.bottom - panelRect.top + 6;
+  const maxTop = panelRect.height - menu.offsetHeight - 4;
+  if (top > maxTop) top = maxTop;
+  if (top < 4) top = 4;
+  left = Math.max(4, Math.min(left, panelRect.width - menu.offsetWidth - 4));
   menu.style.top = top + 'px'; menu.style.left = left + 'px';
 }
 

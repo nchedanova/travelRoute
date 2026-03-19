@@ -840,9 +840,13 @@ body.driving-active .stop-card.gps-nearest .stop-num {
 #tabPanelRoute::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 
 /* На узких экранах прячем текст в табах */
+.icon-mobile { display: none; }
+.icon-desktop { display: inline; }
 @media (max-width: 420px) {
   .tab-label { display: none; }
   .sidebar-tab { font-size: 16px; }
+  .icon-mobile { display: inline; }
+  .icon-desktop { display: none; }
 }
 
 /* ════════════════════════════════════════════════════════════
