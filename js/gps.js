@@ -220,11 +220,20 @@ function toggleDrivingMode() {
 // ── KEEP-ALIVE (AudioContext) ─────────────────────────────────────────────────
 // Тихий осциллятор не даёт браузеру заморозить вкладку.
 // Включается при "Еду" или вручную через 📌 в чате.
+// Переиспользует общий AudioContext из chat.js (_dingCtx) если есть.
 
 function startKeepAlive() {
   if (_keepAliveCtx) return; // уже запущен
   try {
-    _keepAliveCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // Переиспользуем общий AudioContext если есть (chat.js создаёт его)
+    if (typeof _dingCtx !== 'undefined' && _dingCtx && _dingCtx.state !== 'closed') {
+      _keepAliveCtx = _dingCtx;
+    } else {
+      _keepAliveCtx = new (window.AudioContext || window.webkitAudioContext)();
+      // Делаем доступным для chat.js
+      if (typeof _dingCtx !== 'undefined') _dingCtx = _keepAliveCtx;
+    }
+    if (_keepAliveCtx.state === 'suspended') _keepAliveCtx.resume();
     _keepAliveOsc = _keepAliveCtx.createOscillator();
     const gain    = _keepAliveCtx.createGain();
     gain.gain.value = 0.001; // практически беззвучно
@@ -236,13 +245,13 @@ function startKeepAlive() {
 }
 
 function stopKeepAlive() {
-  if (!_keepAliveCtx) return;
+  if (!_keepAliveOsc) return;
   try {
     _keepAliveOsc.stop();
-    _keepAliveCtx.close();
   } catch(e) {}
-  _keepAliveCtx = null;
   _keepAliveOsc = null;
+  // НЕ закрываем AudioContext — он нужен для звука уведомлений
+  _keepAliveCtx = null;
   console.log('[keep-alive] Stopped');
 }
 

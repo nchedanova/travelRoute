@@ -114,10 +114,38 @@ function _stopTitleBlink() {
   if (navigator.clearAppBadge) navigator.clearAppBadge().catch(() => {});
 }
 
+// ── SHARED AUDIO CONTEXT ──────────────────────────────────────────────────────
+// Мобильные браузеры убивают новые AudioContext без жеста пользователя.
+// Создаём один раз, переиспользуем всегда.
+let _dingCtx = null;
+
+function _ensureAudioCtx() {
+  if (_dingCtx && _dingCtx.state !== 'closed') return _dingCtx;
+  // Если keep-alive уже создал контекст — переиспользуем его
+  if (typeof _keepAliveCtx !== 'undefined' && _keepAliveCtx && _keepAliveCtx.state !== 'closed') {
+    _dingCtx = _keepAliveCtx;
+    return _dingCtx;
+  }
+  try {
+    _dingCtx = new (window.AudioContext || window.webkitAudioContext)();
+  } catch(e) {}
+  return _dingCtx;
+}
+
+// Инициализируем AudioContext при первом касании (жест пользователя)
+document.addEventListener('click', function _initAudio() {
+  const ctx = _ensureAudioCtx();
+  if (ctx && ctx.state === 'suspended') ctx.resume();
+  document.removeEventListener('click', _initAudio);
+}, { once: true });
+
 function _playDing() {
   if (!isSoundEnabled()) return;
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = _ensureAudioCtx();
+    if (!ctx) return;
+    // Resume если suspended (обязательно на мобилках)
+    if (ctx.state === 'suspended') ctx.resume();
     // First tone
     const o1 = ctx.createOscillator();
     const g1 = ctx.createGain();
@@ -135,7 +163,7 @@ function _playDing() {
     g2.gain.setValueAtTime(0.15, ctx.currentTime + 0.08);
     g2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
     o2.start(ctx.currentTime + 0.08); o2.stop(ctx.currentTime + 0.4);
-  } catch(e) { /* AudioContext unavailable */ }
+  } catch(e) { console.warn('_playDing error:', e); }
 }
 
 // ── INIT ───────────────────────────────────────────────────────────────────────
