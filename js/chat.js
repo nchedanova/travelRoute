@@ -686,7 +686,9 @@ function _appendMessageAt(key, msg, beforeNode) {
   if (!list || document.getElementById('msg-' + key)) return;
 
   const sid    = getSessionId();
-  const isMine = (msg.name === getChatName() && msg.role === getChatRole());
+  // В демо-режиме совпадение только по имени (роль в DEMO_CHAT может отличаться)
+  const isMine = (msg.name === getChatName()) &&
+    (msg.role === getChatRole() || (typeof isDemoMode === 'function' && isDemoMode()));
   const time   = msg.ts ? new Date(msg.ts).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' }) : '';
   const badge  = msg.role === 'admin' ? '✏' : '👁';
 
