@@ -1259,8 +1259,9 @@ body.driving-active .stop-card.gps-nearest .stop-num {
   box-shadow: 0 4px 20px rgba(0,0,0,0.3);
   padding: 8px;
   z-index: 500;
-  min-width: 180px;
-  max-width: 260px;
+  min-width: 200px;
+  max-width: 280px;
+  overflow: hidden;
 }
 .msg-menu-reactions {
   display: flex;
@@ -1272,12 +1273,14 @@ body.driving-active .stop-card.gps-nearest .stop-num {
   margin-bottom: 6px;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  /* Убеждаемся что строка реакций не вылезает за меню */
+  width: 100%;
 }
 .msg-menu-reactions::-webkit-scrollbar { display: none; }
 .msg-menu-emoji {
   background: none;
   border: none;
-  font-size: 22px;
+  font-size: 20px;
   cursor: pointer;
   padding: 4px 5px;
   border-radius: 8px;
