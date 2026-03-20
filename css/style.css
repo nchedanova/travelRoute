@@ -79,11 +79,18 @@ header {
   border-bottom:1px solid var(--border);
   padding:8px 16px;
   display:flex; align-items:center; gap:10px;
-  flex-shrink:0; z-index:200; overflow:visible;
+  flex-shrink:0; z-index:200; overflow:hidden;
+  flex-wrap:nowrap;
 }
 .logo { font-family:'Unbounded',sans-serif; font-size:14px; letter-spacing:0.02em; color:var(--amber); white-space:nowrap; flex-shrink:0; }
 .logo span { color:var(--muted); font-size:11px; font-family:'JetBrains Mono'; margin-left:6px; }
-.header-right { display:flex; align-items:center; gap:8px; margin-left:auto; min-width:0; }
+.header-right {
+  display:flex; align-items:center; gap:8px; margin-left:auto; min-width:0;
+  overflow-x:auto; -webkit-overflow-scrolling:touch;
+  scrollbar-width:none; -ms-overflow-style:none;
+  flex-shrink:1;
+}
+.header-right::-webkit-scrollbar { display:none; }
 .day-tabs { display:flex; gap:6px; }
 .day-tab {
   padding:5px 12px; border-radius:4px;
@@ -533,11 +540,7 @@ input.day-date-input {
   .logo { font-size:14px; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .logo span { display:none; }
   .sidebar-toggle { display:none; }
-  .header-right {
-    display:flex; align-items:center; gap:6px;
-    overflow-x:auto; -webkit-overflow-scrolling:touch;
-    flex-shrink:1; min-width:0;
-  }
+  .header-right { gap:6px; }
   .day-tabs { display:flex; flex-wrap:nowrap; gap:5px; min-width:min-content; }
   .day-tab { flex:0 0 auto; padding:5px 10px; font-size:11px; white-space:nowrap; }
   .day-tab-add { flex:0 0 auto; white-space:nowrap; }
