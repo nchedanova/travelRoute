@@ -265,7 +265,7 @@ function makeStopCard(s, day) {
           onblur="saveStopNote('${s.id}',${day})"
           ontouchstart="event.stopPropagation()"
           onmousedown="event.stopPropagation()">${s.note || ''}</textarea>
-        <button class="stop-note-add-btn" onclick="addStopNoteLine('${s.id}',${day})" title="Добавить строку">+</button>
+        <button class="stop-note-add-btn" data-note-save="${s.id}" onclick="saveStopNoteBtn('${s.id}',${day})" title="Сохранить заметку">✓</button>
       </div>
     </div>` : ''}`;
 

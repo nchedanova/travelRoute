@@ -637,8 +637,7 @@ function openMsgMenu(e, key, isMine) {
   // Блок всегда виден — Reply доступен всем
   actions.style.display = 'flex';
 
-  // Position — используем элемент сообщения, а не event target
-  const msgEl  = document.getElementById('msg-' + key);
+  // Position — используем элемент сообщения (msgEl уже объявлен выше)
   const anchor = msgEl || e.currentTarget || e.target;
   const rect   = anchor.getBoundingClientRect();
   const panel  = menu.closest('.chat-panel') || document.getElementById('sidebar');

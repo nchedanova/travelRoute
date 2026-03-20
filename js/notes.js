@@ -330,14 +330,18 @@ function loadDemoStopNotes() {
   } catch(e) {}
 }
 
-// + кнопка в заметке точки — добавить новую строку в конец
-function addStopNoteLine(stopId, day) {
-  const ta = document.getElementById('stop-note-' + stopId);
-  if (!ta) return;
-  const val = ta.value;
-  ta.value = val + (val && !val.endsWith('\n') ? '\n' : '') + '';
-  ta.focus();
-  ta.setSelectionRange(ta.value.length, ta.value.length);
-  autoResizeNote(ta);
+
+// ✓ кнопка в заметке точки — сохранить заметку
+function saveStopNoteBtn(stopId, day) {
+  saveStopNote(stopId, day);
+  const btn = document.querySelector('[data-note-save="' + stopId + '"]');
+  if (btn) {
+    const orig = btn.textContent;
+    btn.textContent = '✓';
+    btn.style.color = 'var(--green, #34d399)';
+    btn.style.borderColor = 'var(--green, #34d399)';
+    setTimeout(() => { btn.textContent = orig; btn.style.color = ''; btn.style.borderColor = ''; }, 1200);
+  }
+  typeof showToast === 'function' && showToast('💾 Сохранено');
 }
 
