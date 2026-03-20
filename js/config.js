@@ -18,13 +18,25 @@ const TYPE_ICONS = {
 // Читаем ?gist= из URL и сохраняем в localStorage при первом визите
 (function seedFromUrl() {
   const params = new URLSearchParams(window.location.search);
-  const urlGist = params.get('gist');
+  const urlGist  = params.get('gist');
+  const urlFbKey = params.get('fbkey');
+  let changed = false;
   if (urlGist && urlGist.trim()) {
     localStorage.setItem('travel_gist_id', urlGist.trim());
+    changed = true;
   }
-  const urlFbKey = params.get('fbkey');
   if (urlFbKey && urlFbKey.trim()) {
     localStorage.setItem('travel_firebase_key', urlFbKey.trim());
+    changed = true;
+  }
+  // Убираем токены из адресной строки — они уже сохранены в localStorage
+  if (changed && window.history && window.history.replaceState) {
+    params.delete('gist');
+    params.delete('fbkey');
+    const clean = params.toString()
+      ? window.location.pathname + '?' + params.toString()
+      : window.location.pathname;
+    window.history.replaceState({}, '', clean);
   }
 })();
 

@@ -1256,18 +1256,21 @@ body.driving-active .stop-card.gps-nearest .stop-num {
   box-shadow: 0 4px 20px rgba(0,0,0,0.3);
   padding: 8px;
   z-index: 500;
-  min-width: 200px;
-  max-width: 240px;
+  min-width: 180px;
+  max-width: 260px;
 }
 .msg-menu-reactions {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
   gap: 2px;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--border);
   margin-bottom: 6px;
-  max-width: 220px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
+.msg-menu-reactions::-webkit-scrollbar { display: none; }
 .msg-menu-emoji {
   background: none;
   border: none;
@@ -1277,6 +1280,7 @@ body.driving-active .stop-card.gps-nearest .stop-num {
   border-radius: 8px;
   transition: background 0.12s;
   line-height: 1;
+  flex-shrink: 0;
 }
 .msg-menu-emoji:hover { background: var(--surface2); }
 .msg-menu-actions { flex-direction: column; gap: 2px; }
@@ -1560,10 +1564,7 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
     width: auto !important;
     top: 54px !important;
   }
-  /* Реакции в меню — 5 в ряд на узких экранах */
-  .msg-menu-reactions {
-    max-width: 180px;
-  }
+  /* Реакции — одна строка со скроллом на мобилках */
   .msg-menu-emoji {
     font-size: 20px;
     padding: 5px 4px;
@@ -1769,4 +1770,15 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 }
 .msg-highlight .chat-bubble {
   animation: msgHighlight 1.5s ease-out forwards;
+}
+
+/* ── CHAT LINKS ───────────────────────────────────────────────────────────────── */
+.chat-link {
+  color: var(--blue, #60a5fa);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  word-break: break-all;
+}
+.chat-msg.mine .chat-link {
+  color: rgba(255,255,255,0.9);
 }

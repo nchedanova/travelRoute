@@ -586,7 +586,6 @@ function toggleReaction(key, emoji) {
   });
 }
 
-function handleMsgDblClick(key) { toggleReaction(key, '❤️'); }
 
 // ── CONTEXT MENU ───────────────────────────────────────────────────────────────
 let _menuKey = null;
@@ -694,13 +693,26 @@ function _appendMessageAt(key, msg, beforeNode) {
   wrap.className   = 'chat-msg ' + (isMine ? 'mine' : 'theirs');
   wrap.dataset.ts  = msg.ts || 0;
 
-  // Double tap/click → ❤️
+  // Double tap/click → копировать текст
   let tapCount = 0, tapTimer = null;
   wrap.addEventListener('click', e => {
     if (e.target.closest('button,a,textarea,img')) return;
     tapCount++;
     if (tapCount === 1) tapTimer = setTimeout(() => { tapCount = 0; }, 350);
-    if (tapCount === 2) { clearTimeout(tapTimer); tapCount = 0; handleMsgDblClick(key); }
+    if (tapCount === 2) {
+      clearTimeout(tapTimer); tapCount = 0;
+      const text = msg.text || '';
+      if (!text) return;
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(() => { showToast && showToast('📋 Скопировано'); }).catch(() => {});
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = text; ta.style.cssText = 'position:fixed;opacity:0';
+        document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); showToast && showToast('📋 Скопировано'); } catch(e) {}
+        document.body.removeChild(ta);
+      }
+    }
   });
   // Long press / right-click → menu
   let pressTimer = null;
@@ -725,10 +737,10 @@ function _appendMessageAt(key, msg, beforeNode) {
   } else if (msg.imgUrl) {
     inner += `<div class="chat-bubble chat-bubble-img">
       <img src="${_esc(msg.imgUrl)}" class="chat-photo" onclick="openChatPhoto('${_esc(msg.imgUrl)}')" alt="фото">
-      ${msg.text ? `<div class="chat-photo-caption">${_esc(msg.text)}</div>` : ''}
+      ${msg.text ? `<div class="chat-photo-caption">${_linkify(msg.text)}</div>` : ''}
     </div>`;
   } else {
-    inner += `<div class="chat-bubble">${_esc(msg.text || '')}${msg.edited ? '<span class="chat-edited"> (ред.)</span>' : ''}</div>`;
+    inner += `<div class="chat-bubble">${_linkify(msg.text || '')}${msg.edited ? '<span class="chat-edited"> (ред.)</span>' : ''}</div>`;
   }
 
   inner += _renderReactions(key, msg.reactions || {}, sid);
@@ -761,6 +773,16 @@ function _updateTicks(key, ts) {
 function _esc(s) {
   if (!s) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Превращает URL в кликабельные ссылки (после экранирования HTML)
+function _linkify(s) {
+  if (!s) return '';
+  const escaped = _esc(s);
+  return escaped.replace(
+    /(https?:\/\/[^\s<>"']+)/g,
+    '<a href="$1" target="_blank" rel="noopener noreferrer" class="chat-link">$1</a>'
+  );
 }
 function _scrollToBottom() { const l = document.getElementById('chatMessages'); if (l) l.scrollTop = l.scrollHeight; }
 
