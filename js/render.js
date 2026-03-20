@@ -194,11 +194,10 @@ function makeStopCard(s, day) {
         </div>
         <div class="time-input-wrap">
           <div class="time-mini-label">факт</div>
-          ${isAdmin()
-            ? `<input class="time-in ${s.depA ? '' : 'empty'}" id="dep-${s.id}"
-                type="text" maxlength="5" value="${s.depA || ''}" placeholder="${s.depP || '--:--'}"
-                autocomplete="off" oninput="applyMask(this)" onblur="padTime(this)">`
-            : `<div class="planned-time ${s.depA ? '' : 'empty'}" id="dep-${s.id}">${s.depA || '—'}</div>`}
+          <input class="time-in ${s.depA ? '' : 'empty'}" id="dep-${s.id}"
+            type="text" maxlength="5" value="${s.depA || ''}" placeholder="${s.depP || '--:--'}"
+            autocomplete="off"
+            ${isAdmin() ? `oninput="applyMask(this)" onblur="padTime(this)"` : `readonly style="pointer-events:none;border-style:solid;"`}>
         </div>
       </div>
     </div>` : `<div></div>`;
@@ -249,11 +248,10 @@ function makeStopCard(s, day) {
           </div>
           <div class="time-input-wrap">
             <div class="time-mini-label">факт</div>
-            ${isAdmin()
-              ? `<input class="time-in ${s.arrA ? '' : 'empty'}" id="arr-${s.id}"
-                  type="text" maxlength="5" value="${s.arrA || ''}" placeholder="${s.arrP || '--:--'}"
-                  autocomplete="off" oninput="applyMask(this)" onblur="padTime(this)">`
-              : `<div class="planned-time ${s.arrA ? '' : 'empty'}" id="arr-${s.id}">${s.arrA || '—'}</div>`}
+            <input class="time-in ${s.arrA ? '' : 'empty'}" id="arr-${s.id}"
+              type="text" maxlength="5" value="${s.arrA || ''}" placeholder="${s.arrP || '--:--'}"
+              autocomplete="off"
+              ${isAdmin() ? `oninput="applyMask(this)" onblur="padTime(this)"` : `readonly style="pointer-events:none;border-style:solid;"`}>
           </div>
         </div>
       </div>
@@ -336,11 +334,10 @@ function renderDaySection(d) {
         <div class="time-sep">→</div>
         <div class="time-pair">
           <div class="time-label">факт</div>
-          ${isAdmin()
-            ? `<input class="time-in ${data.departA ? '' : 'empty'}" id="d${d}-depart"
-                type="text" maxlength="5" value="${data.departA || ''}" placeholder="--:--"
-                autocomplete="off" oninput="applyMask(this)" onblur="padTime(this)">`
-            : `<div class="planned-time ${data.departA ? '' : 'empty'}" id="d${d}-depart">${data.departA || '—'}</div>`}
+          <input class="time-in ${data.departA ? '' : 'empty'}" id="d${d}-depart"
+            type="text" maxlength="5" value="${data.departA || ''}" placeholder="--:--"
+            autocomplete="off"
+            ${isAdmin() ? `oninput="applyMask(this)" onblur="padTime(this)"` : `readonly style="pointer-events:none;border-style:solid;"`}>
         </div>
       </div>
     </div>
