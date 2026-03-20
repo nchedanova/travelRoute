@@ -979,6 +979,13 @@ function toggleStopNote(stopId) {
   }
 }
 
+// ── DEMO: подгрузить заметки к точкам из localStorage при старте ───────────────
+if (typeof isDemoMode === 'function' && isDemoMode()) {
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof loadDemoStopNotes === 'function') loadDemoStopNotes();
+  });
+}
+
 // ── AUTO RESIZE HELPERS ────────────────────────────────────────────────────────
 function autoResizeChatInput(el) {
   el.style.height = 'auto';

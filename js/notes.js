@@ -87,13 +87,13 @@ function _renderNotesList() {
     if (hasItems) {
       itemsHtml = '<div class="note-checklist" id="note-checklist-' + entry.key + '">' +
         entry.items.map(it => `
-          <label class="note-check-row">
+          <label class="note-check-row" onclick="if(event.target.tagName==='A')event.preventDefault()">
             <input type="checkbox" ${it.done?'checked':''} onchange="toggleNoteItem('${entry.key}','${it.id}',this.checked)" style="accent-color:var(--amber)">
-            <span class="${it.done?'note-item-done':''}">${_escN(it.text)}</span>
+            <span class="${it.done?'note-item-done':''}">${_linkifyN(it.text)}</span>
           </label>`).join('') +
         '</div>';
     } else if (entry.type === 'other') {
-      itemsHtml = `<div class="note-text" id="note-text-${entry.key}">${_escN(entry.text||'').replace(/\n/g,'<br>')}</div>`;
+      itemsHtml = `<div class="note-text" id="note-text-${entry.key}">${_linkifyN(entry.text||'').replace(/\n/g,'<br>')}</div>`;
     }
 
     item.innerHTML = `
@@ -263,6 +263,10 @@ function onNotesTabOpen() { if (!_notesInited) initNotes(); }
 
 // ── STOP NOTES (admin only) ────────────────────────────────────────────────────
 function saveStopNote(stopId, day) {
+  // В демо-режиме — сохраняем локально
+  if (typeof isDemoMode === 'function' && isDemoMode()) {
+    saveStopNoteDemo(stopId, day); return;
+  }
   const inp = document.getElementById('stop-note-' + stopId); if (!inp) return;
   const s   = DAYS_DATA[day]?.stops?.find(x => x.id === stopId); if (!s) return;
   s.note = inp.value.trim();
@@ -282,3 +286,58 @@ function _escN(s) {
   if (!s) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
+// Делает URL кликабельными в тексте заметок
+function _linkifyN(s) {
+  if (!s) return '';
+  return _escN(s).replace(
+    /(https?:\/\/[^\s<>"']+)/g,
+    '<a href="$1" target="_blank" rel="noopener noreferrer" class="note-link" onclick="event.stopPropagation()">$1</a>'
+  );
+}
+
+// ── STOP NOTE DEMO SUPPORT ────────────────────────────────────────────────────
+// В демо-режиме заметки к точкам хранятся в DAYS_DATA и localStorage
+
+function saveStopNoteDemo(stopId, day) {
+  const inp = document.getElementById('stop-note-' + stopId);
+  const d   = DAYS_DATA[day]; if (!d) return;
+  const s   = (d.stops || []).find(x => x.id === stopId); if (!s) return;
+  s.note = inp ? inp.value.trim() : '';
+  // Скрыть wrap если заметка пустая и нет фокуса
+  if (!s.note) {
+    const wrap = document.getElementById('stop-note-wrap-' + stopId);
+    if (wrap) wrap.style.display = 'none';
+  }
+  // Сохраняем в localStorage для демо
+  try {
+    const stored = JSON.parse(localStorage.getItem('travel_demo_stop_notes') || '{}');
+    stored[stopId] = s.note;
+    localStorage.setItem('travel_demo_stop_notes', JSON.stringify(stored));
+  } catch(e) {}
+}
+
+function loadDemoStopNotes() {
+  try {
+    const stored = JSON.parse(localStorage.getItem('travel_demo_stop_notes') || '{}');
+    Object.entries(stored).forEach(([stopId, note]) => {
+      // Найти точку во всех днях
+      Object.keys(DAYS_DATA).forEach(day => {
+        const s = (DAYS_DATA[day].stops || []).find(x => x.id === stopId);
+        if (s) s.note = note;
+      });
+    });
+  } catch(e) {}
+}
+
+// + кнопка в заметке точки — добавить новую строку в конец
+function addStopNoteLine(stopId, day) {
+  const ta = document.getElementById('stop-note-' + stopId);
+  if (!ta) return;
+  const val = ta.value;
+  ta.value = val + (val && !val.endsWith('\n') ? '\n' : '') + '';
+  ta.focus();
+  ta.setSelectionRange(ta.value.length, ta.value.length);
+  autoResizeNote(ta);
+}
+

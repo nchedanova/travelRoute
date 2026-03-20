@@ -1785,3 +1785,57 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 .chat-msg.mine .chat-link {
   color: rgba(255,255,255,0.9);
 }
+
+/* ── STOP NOTE: input row with + button ─────────────────────────────────────── */
+.stop-note-input-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+.stop-note-input-row .stop-note-input {
+  flex: 1;
+  min-width: 0;
+}
+.stop-note-add-btn {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--amber);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 5px;
+  transition: background 0.15s, border-color 0.15s;
+  padding: 0;
+}
+.stop-note-add-btn:hover { background: rgba(245,166,35,0.15); border-color: var(--amber); }
+
+/* ── NOTE LINKS (in notes and stop notes) ────────────────────────────────────── */
+.note-link {
+  color: var(--blue, #60a5fa);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  word-break: break-all;
+}
+/* В вычеркнутом пункте ссылка тоже серая */
+.note-item-done .note-link { color: var(--muted); }
+
+/* Stop note linkified display (readonly view) */
+.stop-note-display {
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text);
+  line-height: 1.5;
+  padding: 7px 9px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--amber);
+  border-radius: 4px;
+  word-break: break-word;
+}

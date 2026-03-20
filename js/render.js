@@ -217,11 +217,14 @@ function makeStopCard(s, day) {
     <div class="drag-handle" title="Перетащить">⠿</div>
     <button class="dots-btn" id="dots-${s.id}" onclick="toggleStopMenu('${s.id}', ${day}); event.stopPropagation();">···</button>
     <div class="stop-dropdown" id="dd-${s.id}">
+      ${CLOUD_CONFIG.canWrite ? `
       <button class="stop-dropdown-item" onclick="closeStopMenus(); editStop('${s.id}', ${day});"><span class="di-icon">✎</span> Редактировать</button>
-      <button class="stop-dropdown-item" onclick="closeStopMenus(); editStopTime('${s.id}', ${day});"><span class="di-icon">⏱</span> Изменить время</button>
-      <button class="stop-dropdown-item" onclick="closeStopMenus(); toggleStopNote('${s.id}');"><span class="di-icon">📝</span> Заметка</button>
+      <button class="stop-dropdown-item" onclick="closeStopMenus(); editStopTime('${s.id}', ${day});"><span class="di-icon">⏱</span> Изменить время</button>` : ''}
+      ${(CLOUD_CONFIG.canWrite || (typeof isDemoMode === 'function' && isDemoMode())) ? `
+      <button class="stop-dropdown-item" onclick="closeStopMenus(); toggleStopNote('${s.id}');"><span class="di-icon">📝</span> Заметка</button>` : ''}
+      ${CLOUD_CONFIG.canWrite ? `
       <div class="stop-dropdown-divider"></div>
-      <button class="stop-dropdown-item danger" onclick="closeStopMenus(); deleteStop(${day}, '${s.id}');"><span class="di-icon">×</span> Удалить точку</button>
+      <button class="stop-dropdown-item danger" onclick="closeStopMenus(); deleteStop(${day}, '${s.id}');"><span class="di-icon">×</span> Удалить точку</button>` : ''}
     </div>
     <div class="stop-main" id="stop-main-${s.id}">
       <div class="stop-num">${s.num}</div>
@@ -255,9 +258,17 @@ function makeStopCard(s, day) {
       ${depBlock}
     </div>
     <div class="stop-edit-form" id="edit-form-${s.id}" style="display:none;"></div>
-    ${CLOUD_CONFIG.canWrite ? `
+    ${(CLOUD_CONFIG.canWrite || (typeof isDemoMode === 'function' && isDemoMode())) ? `
     <div class="stop-note-wrap" id="stop-note-wrap-${s.id}" style="display:${s.note ? 'block' : 'none'}">
-      <textarea class="stop-note-input" id="stop-note-${s.id}" placeholder="Заметка к точке…" oninput="autoResizeNote(this)" onblur="saveStopNote('${s.id}',${day})">${s.note || ''}</textarea>
+      <div class="stop-note-input-row">
+        <textarea class="stop-note-input" id="stop-note-${s.id}"
+          placeholder="Заметка к точке…"
+          oninput="autoResizeNote(this)"
+          onblur="saveStopNote('${s.id}',${day})"
+          ontouchstart="event.stopPropagation()"
+          onmousedown="event.stopPropagation()">${s.note || ''}</textarea>
+        <button class="stop-note-add-btn" onclick="addStopNoteLine('${s.id}',${day})" title="Добавить строку">+</button>
+      </div>
     </div>` : ''}`;
 
   div.addEventListener('dragstart', onDragStart);
