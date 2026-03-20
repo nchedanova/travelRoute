@@ -214,15 +214,13 @@ function makeStopCard(s, day) {
   });
 
   div.innerHTML = `
-    <div class="drag-handle" title="Перетащить">⠿</div>
-    <button class="dots-btn" id="dots-${s.id}" onclick="toggleStopMenu('${s.id}', ${day}); event.stopPropagation();">···</button>
+    ${isAdmin() ? `<div class="drag-handle" title="Перетащить">⠿</div>` : ''}
+    ${isAdmin() ? `<button class="dots-btn" id="dots-${s.id}" onclick="toggleStopMenu('${s.id}', ${day}); event.stopPropagation();">···</button>` : ''}
     <div class="stop-dropdown" id="dd-${s.id}">
-      ${CLOUD_CONFIG.canWrite ? `
+      ${isAdmin() ? `
       <button class="stop-dropdown-item" onclick="closeStopMenus(); editStop('${s.id}', ${day});"><span class="di-icon">✎</span> Редактировать</button>
-      <button class="stop-dropdown-item" onclick="closeStopMenus(); editStopTime('${s.id}', ${day});"><span class="di-icon">⏱</span> Изменить время</button>` : ''}
-      ${(CLOUD_CONFIG.canWrite || (typeof isDemoMode === 'function' && isDemoMode())) ? `
-      <button class="stop-dropdown-item" onclick="closeStopMenus(); toggleStopNote('${s.id}');"><span class="di-icon">📝</span> Заметка</button>` : ''}
-      ${CLOUD_CONFIG.canWrite ? `
+      <button class="stop-dropdown-item" onclick="closeStopMenus(); editStopTime('${s.id}', ${day});"><span class="di-icon">⏱</span> Изменить время</button>
+      <button class="stop-dropdown-item" onclick="closeStopMenus(); toggleStopNote('${s.id}');"><span class="di-icon">📝</span> Заметка</button>
       <div class="stop-dropdown-divider"></div>
       <button class="stop-dropdown-item danger" onclick="closeStopMenus(); deleteStop(${day}, '${s.id}');"><span class="di-icon">×</span> Удалить точку</button>` : ''}
     </div>
@@ -258,7 +256,7 @@ function makeStopCard(s, day) {
       ${depBlock}
     </div>
     <div class="stop-edit-form" id="edit-form-${s.id}" style="display:none;"></div>
-    ${(CLOUD_CONFIG.canWrite || (typeof isDemoMode === 'function' && isDemoMode())) ? `
+    ${isAdmin() ? `
     <div class="stop-note-wrap" id="stop-note-wrap-${s.id}" style="display:${s.note ? 'block' : 'none'}">
       <div class="stop-note-input-row">
         <textarea class="stop-note-input" id="stop-note-${s.id}"
@@ -271,11 +269,15 @@ function makeStopCard(s, day) {
       </div>
     </div>` : ''}`;
 
-  div.addEventListener('dragstart', onDragStart);
-  div.addEventListener('dragover',  onDragOver);
-  div.addEventListener('dragleave', onDragLeave);
-  div.addEventListener('drop',      onDrop);
-  div.addEventListener('dragend',   onDragEnd);
+  if (typeof isAdmin === 'function' && isAdmin()) {
+    div.addEventListener('dragstart', onDragStart);
+    div.addEventListener('dragover',  onDragOver);
+    div.addEventListener('dragleave', onDragLeave);
+    div.addEventListener('drop',      onDrop);
+    div.addEventListener('dragend',   onDragEnd);
+  } else {
+    div.draggable = false;
+  }
   return div;
 }
 
@@ -302,30 +304,30 @@ function renderDaySection(d) {
       <div style="flex:1;min-width:0">
         <div class="day-label" style="color:${data.color};">
           День ${ordinal} ·
-          <span class="day-date-wrap" onclick="editDate(${d}, this)" title="Нажмите для изменения даты">
+          <span class="day-date-wrap" ${isAdmin() ? `onclick="editDate(${d}, this)" title="Нажмите для изменения даты"` : ''}>
             <span class="day-date-text">${data.date}</span>
-            <span class="day-date-edit-icon">✎</span>
+            ${isAdmin() ? `<span class="day-date-edit-icon">✎</span>` : ''}
           </span>
         </div>
         <div class="day-route" id="d${d}-route"></div>
       </div>
       <button class="nav-day-btn" onclick="openShareDay(${d})" title="Открыть маршрут в навигаторе">🗺 НАВИГАТОР</button>
+      ${isAdmin() ? `
       <button class="delete-day-btn" onclick="confirmDeleteDay(${d})" title="Удалить день">✕ ДЕНЬ</button>
-      <button class="reset-btn" onclick="confirmReset(${d})">⟳ СБРОС</button>
+      <button class="reset-btn" onclick="confirmReset(${d})">⟳ СБРОС</button>` : ''}
     </div>
     <div class="depart-row">
       <div class="depart-icon">🚗</div>
-      <div class="depart-label" style="cursor:pointer;display:flex;align-items:center;gap:4px;"
-           onclick="openEditStart(${d})" title="Изменить точку старта">
+      <div class="depart-label" style="${isAdmin() ? 'cursor:pointer;' : ''}display:flex;align-items:center;gap:4px;"
+           ${isAdmin() ? `onclick="openEditStart(${d})" title="Изменить точку старта"` : ''}>
         <span id="d${d}-start-name">${data.start.icon} ${data.start.name}</span>
-        <span style="font-size:9px;color:var(--border)">✎</span>
+        ${isAdmin() ? `<span style="font-size:9px;color:var(--border)">✎</span>` : ''}
       </div>
       <div class="depart-times">
         <div class="time-pair">
           <div class="time-label">план</div>
-          <div class="time-val time-val-editable" id="d${d}-departP-display"
-               onclick="editDepartTime(${d}, this)"
-               title="Нажмите для изменения времени выезда">${data.departP || '—'}</div>
+          <div class="${isAdmin() ? 'time-val time-val-editable' : 'time-val'}" id="d${d}-departP-display"
+               ${isAdmin() ? `onclick="editDepartTime(${d}, this)" title="Нажмите для изменения времени выезда"` : ''}>${data.departP || '—'}</div>
         </div>
         <div class="time-sep">→</div>
         <div class="time-pair">
@@ -346,11 +348,12 @@ function renderDaySection(d) {
       <div class="stat-box"><div class="stat-val" id="d${d}-delta-val">—</div><div class="stat-key">ОТКЛОНЕНИЕ</div></div>
     </div>
     <div id="d${d}-stops"></div>
+    ${isAdmin() ? `
     <div style="display:flex;gap:8px;padding:8px 12px 4px;">
       <button class="add-stop-btn" style="flex:1;" onclick="openAddStop(${d})">＋ ДОБАВИТЬ ТОЧКУ</button>
       <button class="add-stop-btn" id="mapAddBtn" style="flex:0 0 auto;"
         onclick="toggleMapAddMode(${d})" title="Кликни на карте чтобы добавить точку">📍 НА КАРТЕ</button>
-    </div>
+    </div>` : ''}
   `;
   return sec;
 }
@@ -391,9 +394,11 @@ function renderTabs() {
     }
     tabsEl.appendChild(btn);
   });
-  const addBtn = document.createElement('button');
-  addBtn.className  = 'day-tab-add';
-  addBtn.textContent = '＋ день';
-  addBtn.onclick    = addNewDay;
-  tabsEl.appendChild(addBtn);
+  if (typeof isAdmin === 'function' && isAdmin()) {
+    const addBtn = document.createElement('button');
+    addBtn.className  = 'day-tab-add';
+    addBtn.textContent = '＋ день';
+    addBtn.onclick    = addNewDay;
+    tabsEl.appendChild(addBtn);
+  }
 }

@@ -72,3 +72,14 @@ const DEMO_CHAT = [
   { name: 'Саша', role: 'viewer', text: 'Скачал карту по маршруту, 2000 тайлов 📥', ts: Date.now() - 1800000 },
   { name: DEMO_MY_NAME, role: 'viewer', text: 'Всё готово, завтра выезжаем! 🚗💨', ts: Date.now() - 600000, reactions: { '🎉': ['s1','s2','s3'], '🚗': ['s1'] } },
 ];
+
+// ── РОЛИ ──────────────────────────────────────────────────────────────────────
+// isAdmin() = true  → Полный доступ (AdminWrite ИЛИ демо-режим)
+// isViewer() = true → Только чтение (нет gist, нет демо → никогда не бывает,
+//                     но если gist есть без токена — читатель)
+function isAdmin() {
+  return CLOUD_CONFIG.canWrite || (typeof isDemoMode === 'function' && isDemoMode());
+}
+function isViewer() {
+  return !isAdmin();
+}

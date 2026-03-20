@@ -947,7 +947,7 @@ function openChatFromHeader() {
 
 // Скрыть вкладку Заметки для читателей
 function initSidebarTabs() {
-  if (!CLOUD_CONFIG.canWrite && !(typeof isDemoMode === 'function' && isDemoMode())) {
+  if (typeof isViewer === 'function' && isViewer()) {
     const notesTab = document.getElementById('tabNotes');
     if (notesTab) notesTab.style.display = 'none';
   }

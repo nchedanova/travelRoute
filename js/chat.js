@@ -294,8 +294,8 @@ function _stopPollFallback() {
 
 // ── NICKNAME ───────────────────────────────────────────────────────────────────
 function getChatName()  { return localStorage.getItem('travel_chat_name') || ''; }
-function getChatRole()  { return CLOUD_CONFIG.canWrite ? 'admin' : 'viewer'; }
-function getRoleBadge() { return CLOUD_CONFIG.canWrite ? '✏' : '👁'; }
+function getChatRole()  { return (typeof isAdmin === 'function' && isAdmin()) ? 'admin' : 'viewer'; }
+function getRoleBadge() { return (typeof isAdmin === 'function' && isAdmin()) ? '✏' : '👁'; }
 
 function _ensureNickname(cb) {
   if (getChatName()) { cb && cb(); return; }
@@ -605,19 +605,21 @@ function openMsgMenu(e, key, isMine) {
 
   // Actions — admin sees all; viewer sees own only
   const canEdit   = isMine;
-  const canDelete = CLOUD_CONFIG.canWrite || isMine;
+  const canDelete = (typeof isAdmin === 'function' && isAdmin()) || isMine;
   const actions   = menu.querySelector('.msg-menu-actions');
   actions.innerHTML = '';
 
-  // Reply — доступно всем
-  _chatRef.child(key).once('value', snap => {
-    const msgData = snap.val() || {};
-    const replyBtn = document.createElement('button');
-    replyBtn.className = 'msg-menu-item';
-    replyBtn.textContent = '↩ Ответить';
-    replyBtn.onclick = () => startReply(key, msgData.name || '?', msgData.text || '');
-    actions.insertBefore(replyBtn, actions.firstChild);
-  });
+  // Reply — доступно всем, читаем данные из DOM (уже отрендерено)
+  const msgEl = document.getElementById('msg-' + key);
+  const replyName = msgEl?.querySelector('.chat-author')?.textContent?.replace(/[✏👁]/g,'').trim()
+    || getChatName() || '?';
+  const replyText = msgEl?.querySelector('.chat-bubble')?.textContent?.trim() || '';
+  const replyBtn = document.createElement('button');
+  replyBtn.className = 'msg-menu-item';
+  replyBtn.textContent = '↩ Ответить';
+  replyBtn.onclick = () => startReply(key, replyName, replyText);
+  actions.appendChild(replyBtn);
+
   if (canEdit) {
     const btn = document.createElement('button');
     btn.className = 'msg-menu-item';
@@ -632,7 +634,8 @@ function openMsgMenu(e, key, isMine) {
     btn.onclick = () => deleteChatMessage(key);
     actions.appendChild(btn);
   }
-  actions.style.display = (canEdit || canDelete) ? 'flex' : 'none';
+  // Блок всегда виден — Reply доступен всем
+  actions.style.display = 'flex';
 
   // Position — используем элемент сообщения, а не event target
   const msgEl  = document.getElementById('msg-' + key);
@@ -828,6 +831,6 @@ function renderChatHeader() {
   if (el) el.textContent = getChatName() ? getChatName() + ' ' + getRoleBadge() : '';
   // Кнопка "Очистить чат" — только для Admin (canWrite)
   const clearBtn = document.getElementById('chatClearBtn');
-  if (clearBtn) clearBtn.style.display = CLOUD_CONFIG.canWrite ? 'inline-flex' : 'none';
+  if (clearBtn) clearBtn.style.display = (typeof isAdmin === 'function' && isAdmin()) ? 'inline-flex' : 'none';
 }
 function changeChatName() { localStorage.removeItem('travel_chat_name'); _showNicknameModal(() => renderChatHeader()); }
