@@ -1,5 +1,5 @@
 // ── SERVICE WORKER · Дорожный журнал ───────────────────────────────────────────
-const CACHE_STATIC  = 'travel-static-v3';
+const CACHE_STATIC  = 'travel-static-v4';
 const CACHE_TILES   = 'travel-tiles-v1';
 const CACHE_FONTS   = 'travel-fonts-v1';
 
@@ -19,7 +19,13 @@ const PRECACHE = [
   './js/notes.js',
   './js/offline.js',
   './js/gpx.js',
-  './manifest.json'
+  './manifest.json',
+  './icon-192.png',
+  './icon-512.png',
+  './icon-maskable-192.png',
+  './icon-maskable-512.png',
+  './apple-touch-icon.png',
+  './favicon-32.png'
 ];
 
 // ── INSTALL ───────────────────────────────────────────────────────────────────
