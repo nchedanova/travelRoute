@@ -1,6 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- Full bleed amber background — Android обрежет в круг/squircle сам -->
-  <rect width="512" height="512" fill="#f5a623"/>
-  <!-- Эмодзи в safe zone: центр, ~60% от размера канваса -->
-  <text x="256" y="256" font-size="240" text-anchor="middle" dominant-baseline="central">🧭</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 112 112">
+  <defs>
+    <filter id="d">
+      <feDropShadow dx="0" dy="0" stdDeviation="9" flood-color="#000" flood-opacity="1"/>
+    </filter>
+    <filter id="di">
+      <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#000" flood-opacity="0.85"/>
+    </filter>
+  </defs>
+  <rect x="10" y="10" width="92" height="92" rx="22" fill="#c97d00" filter="url(#d)"/>
+  <text x="56" y="60" font-size="64" text-anchor="middle" dominant-baseline="central" filter="url(#di)">🧭</text>
 </svg>
