@@ -282,6 +282,22 @@ function autoResizeNote(el) {
   el.style.height = el.scrollHeight + 'px';
 }
 
+function updateStopNotePreview(stopId) {
+  var ta = document.getElementById('stop-note-' + stopId);
+  var preview = document.getElementById('stop-note-preview-' + stopId);
+  if (!ta || !preview) return;
+  var text = ta.value.trim();
+  var row = ta.closest('.stop-note-input-row');
+  if (text) {
+    preview.innerHTML = _linkifyN(text).replace(/\n/g, '<br>');
+    preview.style.display = 'block';
+    if (row) row.style.display = 'none';
+  } else {
+    preview.style.display = 'none';
+    if (row) row.style.display = '';
+  }
+}
+
 function _escN(s) {
   if (!s) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');

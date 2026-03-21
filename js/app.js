@@ -409,32 +409,191 @@ function doEditStart() {
 }
 
 // ── EDITABLE DATE ─────────────────────────────────────────────────────────────
-function editDate(day, wrapEl) {
-  const current = DAYS_DATA[day].date;
-  const inp     = document.createElement('input');
+function editDateISO(day, wrapEl) {
+  var current = DAYS_DATA[day].dateISO || '';
+  var inp = document.createElement('input');
+  inp.type = 'date';
   inp.className = 'day-date-input';
-  inp.value     = current;
-  inp.style.color           = DAYS_DATA[day].color;
+  inp.value = current;
+  inp.style.color = DAYS_DATA[day].color;
   inp.style.borderBottomColor = DAYS_DATA[day].color;
+  inp.style.width = '140px';
   wrapEl.replaceWith(inp);
-  inp.focus(); inp.select();
-  const commit = () => {
-    const val    = inp.value.trim() || current;
-    DAYS_DATA[day].date = val;
-    const newWrap = document.createElement('span');
+  inp.focus();
+  var commit = function() {
+    var val = inp.value || current;
+    DAYS_DATA[day].dateISO = val;
+    var newWrap = document.createElement('span');
     newWrap.className = 'day-date-wrap';
-    newWrap.title    = 'Нажмите для изменения даты';
-    newWrap.onclick  = () => editDate(day, newWrap);
-    newWrap.innerHTML = `<span class="day-date-text">${val}</span><span class="day-date-edit-icon">✎</span>`;
+    newWrap.title = 'Нажмите для изменения даты';
+    newWrap.onclick = function() { editDateISO(day, newWrap); };
+    newWrap.innerHTML = '<span class="day-date-text">' + (typeof fmtDateFull === 'function' ? fmtDateFull(val) : val) + '</span><span class="day-date-edit-icon">✎</span>';
     inp.replaceWith(newWrap);
     renderTabs();
     saveData();
   };
-  inp.onblur   = commit;
-  inp.onkeydown = e => {
-    if (e.key === 'Enter')  inp.blur();
+  inp.onblur = commit;
+  inp.onchange = function() { inp.blur(); };
+  inp.onkeydown = function(e) {
     if (e.key === 'Escape') { inp.value = current; inp.blur(); }
   };
+}
+
+function editDesc(day, wrapEl) {
+  var current = DAYS_DATA[day].date || '';
+  var inp = document.createElement('input');
+  inp.className = 'day-date-input';
+  inp.value = current;
+  inp.placeholder = 'Описание маршрута…';
+  inp.style.color = DAYS_DATA[day].color;
+  inp.style.borderBottomColor = DAYS_DATA[day].color;
+  inp.style.width = '180px';
+  wrapEl.replaceWith(inp);
+  inp.focus(); inp.select();
+  var commit = function() {
+    var val = inp.value.trim() || current;
+    DAYS_DATA[day].date = val;
+    var newWrap = document.createElement('span');
+    newWrap.className = 'day-desc-wrap';
+    newWrap.title = 'Нажмите для изменения описания';
+    newWrap.onclick = function() { editDesc(day, newWrap); };
+    newWrap.innerHTML = '<span class="day-desc-text">' + val + '</span><span class="day-date-edit-icon">✎</span>';
+    inp.replaceWith(newWrap);
+    saveData();
+  };
+  inp.onblur = commit;
+  inp.onkeydown = function(e) {
+    if (e.key === 'Enter') inp.blur();
+    if (e.key === 'Escape') { inp.value = current; inp.blur(); }
+  };
+}
+
+// ── SWAP DAYS (drag-and-drop tabs) ────────────────────────────────────────────
+var _tabDragSource = null;
+
+function swapDays(fromDay, toDay) {
+  var keys = dayKeys();
+  var fromIdx = keys.indexOf(fromDay);
+  var toIdx   = keys.indexOf(toDay);
+  if (fromIdx < 0 || toIdx < 0) return;
+
+  // Reorder keys array
+  keys.splice(fromIdx, 1);
+  keys.splice(toIdx, 0, fromDay);
+
+  // Rebuild DAYS_DATA with new numeric keys
+  var newData = {};
+  keys.forEach(function(oldKey, i) {
+    var newKey = i + 1;
+    newData[newKey] = JSON.parse(JSON.stringify(DAYS_DATA[oldKey]));
+  });
+
+  // Clear and repopulate
+  Object.keys(DAYS_DATA).forEach(function(k) { delete DAYS_DATA[k]; });
+  Object.keys(newData).forEach(function(k) { DAYS_DATA[Number(k)] = newData[k]; });
+
+  // Reassign stop IDs to avoid conflicts
+  dayKeys().forEach(function(d) {
+    DAYS_DATA[d].stops.forEach(function(s, i) {
+      s.id = 'd' + d + 's' + (i + 1);
+      s.num = i + 1;
+    });
+  });
+
+  // Re-render map layers
+  Object.keys(layers).forEach(function(k) {
+    if (map.hasLayer(layers[k])) map.removeLayer(layers[k]);
+    delete layers[k];
+  });
+  Object.keys(segmentLayers).forEach(function(k) { delete segmentLayers[k]; });
+  dayKeys().forEach(function(d) {
+    layers[d] = L.layerGroup();
+    segmentLayers[d] = [];
+    redrawDay(d);
+  });
+
+  renderTabs();
+  renderAllDays();
+  updateProgress();
+  switchDay(currentDay <= dayKeys().length ? currentDay : 1);
+  saveData();
+  showToast('📅 Дни переставлены');
+}
+
+// ── REVERSE DAY ROUTE ─────────────────────────────────────────────────────────
+function reverseDay(d) {
+  var day = DAYS_DATA[d];
+  if (!day) return;
+
+  // Collect accommodation stops (Отель, Жильё)
+  var accomStops = day.stops.filter(function(s) {
+    return s.type === 'Отель' || s.type === 'Жильё';
+  });
+
+  // Last stop = new start
+  var lastStop = day.stops[day.stops.length - 1];
+  if (!lastStop) { showToast('⚠ Нет точек для обратного маршрута'); return; }
+
+  var newStart = {
+    lat: lastStop.lat, lng: lastStop.lng,
+    name: lastStop.name, icon: lastStop.icon || '📍'
+  };
+
+  // Build reversed stops: accommodation in reverse + original start as final
+  var newStops = [];
+  for (var i = accomStops.length - 1; i >= 0; i--) {
+    var s = accomStops[i];
+    newStops.push({
+      id: '', num: 0, icon: s.icon || '🛎', type: s.type,
+      name: s.name, lat: s.lat, lng: s.lng,
+      arrP: '', depP: '', arrA: '', depA: ''
+    });
+  }
+
+  // Add original start as final destination
+  newStops.push({
+    id: '', num: 0, icon: day.start.icon || '🚗', type: 'Жильё',
+    name: day.start.name, lat: day.start.lat, lng: day.start.lng,
+    arrP: '', depP: '', arrA: '', depA: ''
+  });
+
+  // Create new day
+  var keys = dayKeys();
+  var newD = Math.max.apply(null, keys) + 1;
+  var colorIdx = keys.length % DAY_COLORS.length;
+
+  // Try to compute next date
+  var newDateISO = '';
+  if (day.dateISO) {
+    var dt = new Date(day.dateISO);
+    dt.setDate(dt.getDate() + (keys.length - keys.indexOf(d)));
+    newDateISO = dt.toISOString().slice(0, 10);
+  }
+
+  // Assign IDs
+  newStops.forEach(function(s, i) { s.id = 'd' + newD + 's' + (i + 1); s.num = i + 1; });
+
+  var descParts = [newStart.name, newStops[newStops.length - 1]?.name].filter(Boolean);
+
+  DAYS_DATA[newD] = {
+    color: DAY_COLORS[colorIdx],
+    dateISO: newDateISO,
+    date: descParts.join(' → ') || 'Обратный маршрут',
+    departP: '', departA: '',
+    start: newStart,
+    stops: newStops
+  };
+
+  layers[newD] = L.layerGroup();
+  segmentLayers[newD] = [];
+  renderTabs();
+  document.getElementById('daySections').appendChild(renderDaySection(newD));
+  renderStops(newD);
+  updateDayRoute(newD);
+  redrawDay(newD);
+  switchDay(newD);
+  saveData();
+  showToast('↩ Обратный маршрут создан');
 }
 
 // ── ADD / DELETE DAY ──────────────────────────────────────────────────────────
@@ -442,9 +601,20 @@ function addNewDay() {
   const keys     = dayKeys();
   const newD     = Math.max(...keys) + 1;
   const colorIdx = keys.length % DAY_COLORS.length;
+
+  // Compute next date from last day
+  var lastDay = DAYS_DATA[keys[keys.length - 1]];
+  var newDateISO = '';
+  if (lastDay && lastDay.dateISO) {
+    var dt = new Date(lastDay.dateISO);
+    dt.setDate(dt.getDate() + 1);
+    newDateISO = dt.toISOString().slice(0, 10);
+  }
+
   DAYS_DATA[newD] = {
     color: DAY_COLORS[colorIdx],
-    date: 'Дата',
+    dateISO: newDateISO,
+    date: '',
     departP: '', departA: '',
     start: { lat:0, lng:0, name:'Старт', icon:'🚗' },
     stops: []
@@ -464,8 +634,9 @@ let deleteDayTarget = null;
 function confirmDeleteDay(d) {
   if (dayKeys().length <= 1) { showToast('Нельзя удалить последний день'); return; }
   deleteDayTarget = d;
+  var label = DAYS_DATA[d].dateISO ? fmtDateFull(DAYS_DATA[d].dateISO) : ('День ' + d);
   document.getElementById('deleteDayModalBody').textContent =
-    `День ${d} · ${DAYS_DATA[d].date} и все его точки будут удалены.`;
+    label + (DAYS_DATA[d].date ? ' · ' + DAYS_DATA[d].date : '') + ' и все его точки будут удалены.';
   document.getElementById('deleteDayModal').classList.add('show');
 }
 function closeDeleteDayModal() {
@@ -1003,14 +1174,20 @@ document.addEventListener('click', e => {
 });
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
-var APP_VERSION = '2.0.0';
+var APP_VERSION = '2.1.0';
 var CHANGELOG_MAX_SHOW = 2;
 
 var APP_CHANGELOG = [
+  { ver: '2.1.0', date: '21.03.2026', items: [
+    'Ссылки в заметках к точкам теперь кликабельные',
+    'Drag-and-drop: перетаскивай дни для изменения порядка',
+    '↩ Обратный маршрут — создаёт обратный день с отелями/жильём',
+    'Даты вместо номеров дней, описание маршрута'
+  ]},
   { ver: '2.0.0', date: '21.03.2026', items: [
     'Новая иконка — глобус с машинкой',
-    'Шторка sidebar ↕ — тяни ручку между списком и картой',
-    'Кнопка «назад» теперь ходит по вкладкам',
+    'Шторка sidebar ↕',
+    'Кнопка «назад» ходит по вкладкам',
     '«Что нового» — этот экран'
   ]}
 ];

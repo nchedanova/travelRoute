@@ -507,6 +507,10 @@ input.day-date-input {
   font-size:11px; cursor:pointer; transition:all 0.2s; white-space:nowrap; flex-shrink:0;
 }
 .day-tab-add:hover { border-color:var(--amber); color:var(--amber); }
+.day-tab.tab-dragging { opacity:0.4; }
+.day-tab.tab-drag-over { border-color:var(--amber); box-shadow:0 0 0 1px var(--amber); }
+.day-desc-wrap { display:inline-flex; align-items:center; gap:4px; cursor:pointer; }
+.day-desc-wrap:hover .day-date-edit-icon { opacity:1; }
 .delete-day-btn {
   background:transparent; border:1px solid var(--border);
   border-radius:3px; color:var(--muted);

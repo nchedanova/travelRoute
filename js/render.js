@@ -260,16 +260,22 @@ function makeStopCard(s, day) {
     <div class="stop-edit-form" id="edit-form-${s.id}" style="display:none;"></div>
     ${isAdmin() ? `
     <div class="stop-note-wrap" id="stop-note-wrap-${s.id}" style="display:${s.note ? 'block' : 'none'}">
-      <div class="stop-note-input-row">
+      <div class="stop-note-input-row" style="display:${s.note ? 'none' : ''}">
         <textarea class="stop-note-input" id="stop-note-${s.id}"
           placeholder="Заметка к точке…"
           oninput="autoResizeNote(this)"
-          onblur="saveStopNote('${s.id}',${day})"
+          onblur="saveStopNote('${s.id}',${day}); updateStopNotePreview('${s.id}')"
           ontouchstart="event.stopPropagation()"
           onmousedown="event.stopPropagation()">${s.note || ''}</textarea>
         <button class="stop-note-add-btn" data-note-save="${s.id}" onclick="saveStopNoteBtn('${s.id}',${day})" title="Сохранить заметку">✓</button>
       </div>
-    </div>` : ''}`;
+      <div class="stop-note-display" id="stop-note-preview-${s.id}" style="display:${s.note ? 'block' : 'none'};cursor:pointer"
+        onclick="var row=this.previousElementSibling;row.style.display='';this.style.display='none';document.getElementById('stop-note-${s.id}').focus()"
+        onmousedown="event.stopPropagation()" ontouchstart="event.stopPropagation()">${typeof _linkifyN==='function'?_linkifyN(s.note||'').replace(/\n/g,'<br>'):''}</div>
+    </div>` : (s.note ? `
+    <div class="stop-note-wrap" style="display:block">
+      <div class="stop-note-display">${typeof _linkifyN==='function'?_linkifyN(s.note).replace(/\n/g,'<br>'):''}</div>
+    </div>` : '')}`;
 
   if (typeof isAdmin === 'function' && isAdmin()) {
     div.addEventListener('dragstart', onDragStart);
@@ -305,9 +311,12 @@ function renderDaySection(d) {
     <div class="day-header" style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;">
       <div style="flex:1;min-width:0">
         <div class="day-label" style="color:${data.color};">
-          День ${ordinal} ·
-          <span class="day-date-wrap" ${isAdmin() ? `onclick="editDate(${d}, this)" title="Нажмите для изменения даты"` : ''}>
-            <span class="day-date-text">${data.date}</span>
+          <span class="day-date-wrap" ${isAdmin() ? `onclick="editDateISO(${d}, this)" title="Нажмите для изменения даты"` : ''}>
+            <span class="day-date-text">${data.dateISO ? fmtDateFull(data.dateISO) : 'Дата'}</span>
+            ${isAdmin() ? `<span class="day-date-edit-icon">✎</span>` : ''}
+          </span>
+          · <span class="day-desc-wrap" ${isAdmin() ? `onclick="editDesc(${d}, this)" title="Нажмите для изменения описания"` : ''}>
+            <span class="day-desc-text">${data.date || ''}</span>
             ${isAdmin() ? `<span class="day-date-edit-icon">✎</span>` : ''}
           </span>
         </div>
@@ -315,6 +324,7 @@ function renderDaySection(d) {
       </div>
       <button class="nav-day-btn" onclick="openShareDay(${d})" title="Открыть маршрут в навигаторе">🗺 НАВИГАТОР</button>
       ${isAdmin() ? `
+      <button class="nav-day-btn" onclick="reverseDay(${d})" title="Создать обратный маршрут для этого дня">↩ ОБРАТНО</button>
       <button class="delete-day-btn" onclick="confirmDeleteDay(${d})" title="Удалить день">✕ ДЕНЬ</button>
       <button class="reset-btn" onclick="confirmReset(${d})">⟳ СБРОС</button>` : ''}
     </div>
@@ -381,6 +391,20 @@ function updateDayRoute(d) {
 }
 
 // ── TABS ──────────────────────────────────────────────────────────────────────
+const _MONTHS_SHORT = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+const _MONTHS_FULL  = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+
+function fmtDateShort(iso) {
+  if (!iso) return '?';
+  var p = iso.split('-'); if (p.length < 3) return iso;
+  return parseInt(p[2]) + ' ' + (_MONTHS_SHORT[parseInt(p[1]) - 1] || '');
+}
+function fmtDateFull(iso) {
+  if (!iso) return '';
+  var p = iso.split('-'); if (p.length < 3) return iso;
+  return parseInt(p[2]) + ' ' + (_MONTHS_FULL[parseInt(p[1]) - 1] || '');
+}
+
 function renderTabs() {
   const tabsEl = document.getElementById('dayTabs');
   tabsEl.innerHTML = '';
@@ -389,11 +413,38 @@ function renderTabs() {
     const btn  = document.createElement('button');
     btn.className  = 'day-tab' + (d === currentDay ? ' active' : '');
     btn.dataset.day = d;
-    btn.textContent = `День ${d} · ${data.date.split(' ')[0]} ${data.date.split(' ')[1]?.slice(0, 3) || ''}`;
+    btn.textContent = data.dateISO ? fmtDateShort(data.dateISO) : ('День ' + d);
     btn.onclick = () => switchDay(d);
     if (d === currentDay) {
       btn.style.backgroundColor = data.color;
       btn.style.borderColor     = data.color;
+    }
+    // Drag-and-drop for day tabs
+    if (typeof isAdmin === 'function' && isAdmin()) {
+      btn.draggable = true;
+      btn.addEventListener('dragstart', function(e) {
+        e.dataTransfer.setData('text/plain', String(d));
+        btn.classList.add('tab-dragging');
+        _tabDragSource = d;
+      });
+      btn.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        btn.classList.add('tab-drag-over');
+      });
+      btn.addEventListener('dragleave', function() {
+        btn.classList.remove('tab-drag-over');
+      });
+      btn.addEventListener('drop', function(e) {
+        e.preventDefault();
+        btn.classList.remove('tab-drag-over');
+        var from = _tabDragSource;
+        var to   = d;
+        if (from && from !== to) swapDays(from, to);
+      });
+      btn.addEventListener('dragend', function() {
+        btn.classList.remove('tab-dragging');
+        document.querySelectorAll('.day-tab').forEach(t => t.classList.remove('tab-drag-over'));
+      });
     }
     tabsEl.appendChild(btn);
   });
