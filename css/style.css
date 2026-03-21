@@ -548,11 +548,11 @@ input.day-date-input {
   #syncStatus { display:none; }
   .main { flex-direction:column; }
   .sidebar {
-    width:100%; border-right:none; border-bottom:1px solid var(--border);
+    width:100%; border-right:none; border-bottom:none;
     flex-shrink:0; max-height:0; overflow:hidden; transition:max-height 0.32s ease;
   }
-  .sidebar.open { max-height:55vh; overflow:hidden; }
-  #map { flex:1; min-height:0; }
+  .sidebar.open { max-height:var(--sheet-h, 55vh); overflow:hidden; }
+  #map { flex:1; min-height:60px; }
   .time-grid { padding-left:40px; }
   .delete-stop-btn { display:none; }
   .dots-btn { font-size:18px; padding:6px 10px; }
@@ -605,12 +605,39 @@ input.day-date-input {
   #tabPanelRoute,
   #tabPanelNotes,
   #tabPanelChat {
-    max-height: calc(55vh - 90px);
-    min-height: calc(55vh - 90px);
+    max-height: calc(var(--sheet-h, 55vh) - 90px);
+    min-height: calc(var(--sheet-h, 55vh) - 90px);
   }
   #tabPanelRoute::-webkit-scrollbar { width: 6px; }
   #tabPanelRoute::-webkit-scrollbar-track { background: transparent; }
   #tabPanelRoute::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+}
+
+/* ── SHEET HANDLE (drag to resize sidebar/map) ────────── */
+.sheet-handle {
+  display:none;
+}
+@media (max-width:700px) {
+  .sheet-handle {
+    display:flex; align-items:center; justify-content:center;
+    height:22px; flex-shrink:0;
+    background:var(--surface); border-top:1px solid var(--border); border-bottom:1px solid var(--border);
+    cursor:ns-resize; touch-action:none;
+    -webkit-tap-highlight-color:transparent;
+    user-select:none; -webkit-user-select:none;
+  }
+  .sheet-handle-bar {
+    width:36px; height:4px; border-radius:2px;
+    background:var(--muted); opacity:0.35;
+    transition:opacity 0.15s, width 0.15s;
+  }
+  .sheet-handle:hover .sheet-handle-bar,
+  .sheet-handle:active .sheet-handle-bar,
+  .sheet-handle.dragging .sheet-handle-bar {
+    opacity:0.7; width:48px;
+  }
+  .sidebar.open.dragging { transition:none; }
+  .sidebar.open.snapping { transition:max-height 0.25s ease; }
 }
 
 /* ── PILL POPUP ───────────────────────────────────────── */

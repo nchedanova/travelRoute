@@ -997,3 +997,74 @@ document.addEventListener('click', e => {
   if (!e.target.closest('#chatMsgMenu')) closeMsgMenu && closeMsgMenu();
   if (!e.target.closest('#emojiPicker') && !e.target.closest('.chat-emoji-btn')) closeEmojiPicker && closeEmojiPicker();
 });
+
+// ── SHEET DRAG (mobile: resize sidebar / map split) ──────────────────────────
+(function() {
+  const handle  = document.getElementById('sheetHandle');
+  const sidebar = document.getElementById('sidebar');
+  if (!handle || !sidebar) return;
+
+  const SNAPS    = [25, 55, 85];
+  let currentVh  = 55;
+  let dragging   = false;
+  let startY     = 0;
+  let startVh    = 55;
+
+  function isMobile() { return window.innerWidth <= 700; }
+
+  function setHeight(vh) {
+    currentVh = Math.max(15, Math.min(90, vh));
+    sidebar.style.setProperty('--sheet-h', currentVh + 'vh');
+  }
+
+  function nearest(vh) {
+    return SNAPS.reduce((a, b) => Math.abs(b - vh) < Math.abs(a - vh) ? b : a);
+  }
+
+  function snapTo(vh) {
+    sidebar.classList.remove('dragging');
+    sidebar.classList.add('snapping');
+    setHeight(vh);
+    setTimeout(() => {
+      sidebar.classList.remove('snapping');
+      if (typeof map !== 'undefined' && map) map.invalidateSize();
+    }, 280);
+  }
+
+  handle.addEventListener('pointerdown', function(e) {
+    if (!isMobile()) return;
+    e.preventDefault();
+    handle.setPointerCapture(e.pointerId);
+    dragging = true;
+    startY   = e.clientY;
+    startVh  = currentVh;
+    sidebar.classList.add('dragging');
+    handle.classList.add('dragging');
+  });
+
+  handle.addEventListener('pointermove', function(e) {
+    if (!dragging) return;
+    var dy = e.clientY - startY;
+    var dvh = (dy / window.innerHeight) * 100;
+    setHeight(startVh + dvh);
+    if (typeof map !== 'undefined' && map) map.invalidateSize();
+  });
+
+  function endDrag() {
+    if (!dragging) return;
+    dragging = false;
+    handle.classList.remove('dragging');
+    snapTo(nearest(currentVh));
+  }
+
+  handle.addEventListener('pointerup', endDrag);
+  handle.addEventListener('pointercancel', endDrag);
+
+  // Reset variable on desktop resize
+  window.addEventListener('resize', function() {
+    if (!isMobile()) {
+      sidebar.style.removeProperty('--sheet-h');
+      currentVh = 55;
+    }
+  });
+})();
