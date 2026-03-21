@@ -2,6 +2,7 @@
 let currentDay = 1;
 
 function switchDay(d) {
+  var prev = currentDay;
   currentDay = d;
   document.querySelectorAll('.day-tab').forEach(t =>
     t.classList.toggle('active', parseInt(t.dataset.day) === d)
@@ -19,6 +20,7 @@ function switchDay(d) {
     }
   });
   switchMapDay(d);
+  if (prev !== d) _navPush();
 }
 
 function highlightStop(id, d) {
@@ -1001,17 +1003,15 @@ document.addEventListener('click', e => {
 });
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
-var APP_VERSION = '1.1.0';
+var APP_VERSION = '2.0.0';
+var CHANGELOG_MAX_SHOW = 2;
 
 var APP_CHANGELOG = [
-  { ver: '1.1.0', date: '21.03.2026', items: [
-    'Новая иконка приложения — глобус с машинкой',
+  { ver: '2.0.0', date: '21.03.2026', items: [
+    'Новая иконка — глобус с машинкой',
     'Шторка sidebar ↕ — тяни ручку между списком и картой',
-    'Кнопка «назад» ходит по вкладкам, а не выходит из приложения',
-    'Что нового — этот экран'
-  ]},
-  { ver: '1.0.0', date: '19.03.2026', items: [
-    'Первый релиз: маршрут, чат, GPS-трекинг, офлайн-карты'
+    'Кнопка «назад» теперь ходит по вкладкам',
+    '«Что нового» — этот экран'
   ]}
 ];
 
@@ -1019,7 +1019,8 @@ function showChangelog() {
   var body = document.getElementById('changelogBody');
   if (!body) return;
   var html = '';
-  APP_CHANGELOG.forEach(function(entry) {
+  var entries = APP_CHANGELOG.slice(0, CHANGELOG_MAX_SHOW);
+  entries.forEach(function(entry) {
     html += '<div class="changelog-ver">v' + entry.ver + ' — ' + entry.date + '</div>';
     entry.items.forEach(function(item) {
       html += '<div class="changelog-item">' + item + '</div>';
@@ -1049,7 +1050,7 @@ var _navFromHistory = false;
 
 function _navState() {
   var sb = document.getElementById('sidebar');
-  return { tab: _currentSidebarTab, open: sb ? sb.classList.contains('open') : false };
+  return { tab: _currentSidebarTab, open: sb ? sb.classList.contains('open') : false, day: currentDay };
 }
 
 function _navPush() {
@@ -1076,6 +1077,11 @@ function _navRestore(state) {
   // Restore tab
   if (state.tab && state.tab !== _currentSidebarTab) {
     switchSidebarTab(state.tab);
+  }
+
+  // Restore day
+  if (state.day && state.day !== currentDay) {
+    switchDay(state.day);
   }
 
   _navFromHistory = false;
