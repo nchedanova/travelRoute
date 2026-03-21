@@ -93,6 +93,7 @@ function doReset() {
 let dragSrcId = null, dragSrcDay = null;
 
 function onDragStart(e) {
+  if (e.target.closest('textarea,input,.stop-note-display')) { e.preventDefault(); return; }
   dragSrcId  = this.dataset.id;
   dragSrcDay = parseInt(this.dataset.day);
   this.classList.add('dragging');
@@ -409,32 +410,44 @@ function doEditStart() {
 }
 
 // ── EDITABLE DATE ─────────────────────────────────────────────────────────────
-function editDateISO(day, wrapEl) {
+function editDayDate(day, wrapEl) {
   var current = DAYS_DATA[day].dateISO || '';
   var inp = document.createElement('input');
-  inp.type = 'date';
+  inp.type = 'text';
   inp.className = 'day-date-input';
   inp.value = current;
+  inp.placeholder = 'ДД.ММ.ГГГГ';
+  inp.maxLength = 10;
   inp.style.color = DAYS_DATA[day].color;
   inp.style.borderBottomColor = DAYS_DATA[day].color;
-  inp.style.width = '140px';
+  inp.style.width = '100px';
   wrapEl.replaceWith(inp);
-  inp.focus();
+  inp.focus(); inp.select();
+
+  inp.oninput = function() {
+    var v = inp.value.replace(/[^0-9]/g, '').slice(0, 8);
+    var out = '';
+    if (v.length > 0) out += v.slice(0, 2);
+    if (v.length > 2) out += '.' + v.slice(2, 4);
+    if (v.length > 4) out += '.' + v.slice(4, 8);
+    inp.value = out;
+  };
+
   var commit = function() {
-    var val = inp.value || current;
+    var val = inp.value.trim() || current;
     DAYS_DATA[day].dateISO = val;
     var newWrap = document.createElement('span');
     newWrap.className = 'day-date-wrap';
     newWrap.title = 'Нажмите для изменения даты';
-    newWrap.onclick = function() { editDateISO(day, newWrap); };
-    newWrap.innerHTML = '<span class="day-date-text">' + (typeof fmtDateFull === 'function' ? fmtDateFull(val) : val) + '</span><span class="day-date-edit-icon">✎</span>';
+    newWrap.onclick = function() { editDayDate(day, newWrap); };
+    newWrap.innerHTML = '<span class="day-date-text">' + (val || 'Дата') + '</span><span class="day-date-edit-icon">✎</span>';
     inp.replaceWith(newWrap);
     renderTabs();
     saveData();
   };
   inp.onblur = commit;
-  inp.onchange = function() { inp.blur(); };
   inp.onkeydown = function(e) {
+    if (e.key === 'Enter') inp.blur();
     if (e.key === 'Escape') { inp.value = current; inp.blur(); }
   };
 }
@@ -451,13 +464,17 @@ function editDesc(day, wrapEl) {
   wrapEl.replaceWith(inp);
   inp.focus(); inp.select();
   var commit = function() {
-    var val = inp.value.trim() || current;
+    var val = inp.value.trim();
     DAYS_DATA[day].date = val;
     var newWrap = document.createElement('span');
     newWrap.className = 'day-desc-wrap';
     newWrap.title = 'Нажмите для изменения описания';
     newWrap.onclick = function() { editDesc(day, newWrap); };
-    newWrap.innerHTML = '<span class="day-desc-text">' + val + '</span><span class="day-date-edit-icon">✎</span>';
+    if (val) {
+      newWrap.innerHTML = '<span class="day-desc-text">' + val + '</span><span class="day-date-edit-icon">✎</span>';
+    } else {
+      newWrap.innerHTML = '<span class="day-desc-text" style="color:var(--muted);font-style:italic">описание</span><span class="day-date-edit-icon">✎</span>';
+    }
     inp.replaceWith(newWrap);
     saveData();
   };
@@ -467,6 +484,21 @@ function editDesc(day, wrapEl) {
     if (e.key === 'Escape') { inp.value = current; inp.blur(); }
   };
 }
+
+// ── DAY OVERFLOW MENU ─────────────────────────────────────────────────────────
+function toggleDayMenu(d) {
+  var menu = document.getElementById('dayMenu' + d);
+  if (!menu) return;
+  var wasOpen = menu.classList.contains('show');
+  closeDayMenus();
+  if (!wasOpen) menu.classList.add('show');
+}
+function closeDayMenus() {
+  document.querySelectorAll('.day-overflow-menu').forEach(function(m) { m.classList.remove('show'); });
+}
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.day-overflow-wrap')) closeDayMenus();
+});
 
 // ── SWAP DAYS (drag-and-drop tabs) ────────────────────────────────────────────
 var _tabDragSource = null;
@@ -525,21 +557,24 @@ function reverseDay(d) {
   var day = DAYS_DATA[d];
   if (!day) return;
 
-  // Collect accommodation stops (Отель, Жильё)
-  var accomStops = day.stops.filter(function(s) {
-    return s.type === 'Отель' || s.type === 'Жильё';
-  });
-
-  // Last stop = new start
   var lastStop = day.stops[day.stops.length - 1];
   if (!lastStop) { showToast('⚠ Нет точек для обратного маршрута'); return; }
 
+  // New start = last stop of original day
   var newStart = {
     lat: lastStop.lat, lng: lastStop.lng,
     name: lastStop.name, icon: lastStop.icon || '📍'
   };
 
-  // Build reversed stops: accommodation in reverse + original start as final
+  // Collect intermediate accommodation stops (exclude last stop + any at same coords as new start)
+  var accomStops = day.stops.filter(function(s) {
+    if (s.type !== 'Отель' && s.type !== 'Жильё') return false;
+    if (s.id === lastStop.id) return false;
+    if (Math.abs(s.lat - newStart.lat) < 0.001 && Math.abs(s.lng - newStart.lng) < 0.001) return false;
+    return true;
+  });
+
+  // Build reversed stops: accommodation in reverse order
   var newStops = [];
   for (var i = accomStops.length - 1; i >= 0; i--) {
     var s = accomStops[i];
@@ -550,25 +585,20 @@ function reverseDay(d) {
     });
   }
 
-  // Add original start as final destination
-  newStops.push({
-    id: '', num: 0, icon: day.start.icon || '🚗', type: 'Жильё',
-    name: day.start.name, lat: day.start.lat, lng: day.start.lng,
-    arrP: '', depP: '', arrA: '', depA: ''
-  });
+  // Final destination = original start (only if not the same place as newStart)
+  var startSameAsEnd = Math.abs(day.start.lat - newStart.lat) < 0.001 && Math.abs(day.start.lng - newStart.lng) < 0.001;
+  if (!startSameAsEnd) {
+    newStops.push({
+      id: '', num: 0, icon: day.start.icon || '🚗', type: 'Другое',
+      name: day.start.name, lat: day.start.lat, lng: day.start.lng,
+      arrP: '', depP: '', arrA: '', depA: ''
+    });
+  }
 
   // Create new day
   var keys = dayKeys();
   var newD = Math.max.apply(null, keys) + 1;
   var colorIdx = keys.length % DAY_COLORS.length;
-
-  // Try to compute next date
-  var newDateISO = '';
-  if (day.dateISO) {
-    var dt = new Date(day.dateISO);
-    dt.setDate(dt.getDate() + (keys.length - keys.indexOf(d)));
-    newDateISO = dt.toISOString().slice(0, 10);
-  }
 
   // Assign IDs
   newStops.forEach(function(s, i) { s.id = 'd' + newD + 's' + (i + 1); s.num = i + 1; });
@@ -577,7 +607,7 @@ function reverseDay(d) {
 
   DAYS_DATA[newD] = {
     color: DAY_COLORS[colorIdx],
-    dateISO: newDateISO,
+    dateISO: '',
     date: descParts.join(' → ') || 'Обратный маршрут',
     departP: '', departA: '',
     start: newStart,
@@ -605,10 +635,9 @@ function addNewDay() {
   // Compute next date from last day
   var lastDay = DAYS_DATA[keys[keys.length - 1]];
   var newDateISO = '';
-  if (lastDay && lastDay.dateISO) {
-    var dt = new Date(lastDay.dateISO);
-    dt.setDate(dt.getDate() + 1);
-    newDateISO = dt.toISOString().slice(0, 10);
+  if (lastDay && lastDay.dateISO && typeof parseDateDMY === 'function') {
+    var dt = parseDateDMY(lastDay.dateISO);
+    if (dt) { dt.setDate(dt.getDate() + 1); newDateISO = fmtDateDMY(dt); }
   }
 
   DAYS_DATA[newD] = {

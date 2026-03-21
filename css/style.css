@@ -511,6 +511,19 @@ input.day-date-input {
 .day-tab.tab-drag-over { border-color:var(--amber); box-shadow:0 0 0 1px var(--amber); }
 .day-desc-wrap { display:inline-flex; align-items:center; gap:4px; cursor:pointer; }
 .day-desc-wrap:hover .day-date-edit-icon { opacity:1; }
+.day-overflow-menu {
+  display:none; position:absolute; top:100%; right:0; z-index:200;
+  background:var(--surface2); border:1px solid var(--border); border-radius:6px;
+  min-width:180px; padding:4px 0; box-shadow:0 4px 16px rgba(0,0,0,0.5);
+}
+.day-overflow-menu.show { display:block; }
+.day-overflow-menu button {
+  display:block; width:100%; text-align:left; padding:8px 14px;
+  background:none; border:none; color:var(--text);
+  font-family:'JetBrains Mono',monospace; font-size:11px;
+  cursor:pointer; transition:background 0.1s;
+}
+.day-overflow-menu button:hover { background:var(--surface); }
 .delete-day-btn {
   background:transparent; border:1px solid var(--border);
   border-radius:3px; color:var(--muted);
@@ -1189,6 +1202,7 @@ body.driving-active .stop-card.gps-nearest .stop-num {
   transition: border-color 0.15s;
 }
 .stop-note-input:focus { border-color: var(--amber); border-left-color: var(--amber); }
+.stop-note-input { -webkit-user-select: text; user-select: text; }
 .stop-note-readonly {
   font-size: 11px;
   color: var(--muted);

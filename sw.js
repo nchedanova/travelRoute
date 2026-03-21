@@ -1,5 +1,5 @@
 // ── SERVICE WORKER · Дорожный журнал ───────────────────────────────────────────
-const CACHE_STATIC  = 'travel-static-v6';
+const CACHE_STATIC  = 'travel-static-v7';
 const CACHE_TILES   = 'travel-tiles-v1';
 const CACHE_FONTS   = 'travel-fonts-v1';
 

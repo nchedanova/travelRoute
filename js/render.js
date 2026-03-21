@@ -259,13 +259,16 @@ function makeStopCard(s, day) {
     </div>
     <div class="stop-edit-form" id="edit-form-${s.id}" style="display:none;"></div>
     ${isAdmin() ? `
-    <div class="stop-note-wrap" id="stop-note-wrap-${s.id}" style="display:${s.note ? 'block' : 'none'}">
+    <div class="stop-note-wrap" id="stop-note-wrap-${s.id}" style="display:${s.note ? 'block' : 'none'}"
+      ontouchstart="event.stopPropagation()" ontouchmove="event.stopPropagation()" onmousedown="event.stopPropagation()">
       <div class="stop-note-input-row" style="display:${s.note ? 'none' : ''}">
         <textarea class="stop-note-input" id="stop-note-${s.id}"
           placeholder="Заметка к точке…"
+          style="touch-action:auto"
           oninput="autoResizeNote(this)"
-          onblur="saveStopNote('${s.id}',${day}); updateStopNotePreview('${s.id}')"
-          ontouchstart="event.stopPropagation()"
+          onblur="saveStopNote('${s.id}',${day}); updateStopNotePreview('${s.id}'); var c=this.closest('.stop-card');if(c)c.draggable=true"
+          onfocus="var c=this.closest('.stop-card');if(c)c.draggable=false"
+          ontouchstart="event.stopPropagation()" ontouchmove="event.stopPropagation()"
           onmousedown="event.stopPropagation()">${s.note || ''}</textarea>
         <button class="stop-note-add-btn" data-note-save="${s.id}" onclick="saveStopNoteBtn('${s.id}',${day})" title="Сохранить заметку">✓</button>
       </div>
@@ -311,22 +314,27 @@ function renderDaySection(d) {
     <div class="day-header" style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;">
       <div style="flex:1;min-width:0">
         <div class="day-label" style="color:${data.color};">
-          <span class="day-date-wrap" ${isAdmin() ? `onclick="editDateISO(${d}, this)" title="Нажмите для изменения даты"` : ''}>
-            <span class="day-date-text">${data.dateISO ? fmtDateFull(data.dateISO) : 'Дата'}</span>
+          <span class="day-date-wrap" ${isAdmin() ? `onclick="editDayDate(${d}, this)" title="Нажмите для изменения даты"` : ''}>
+            <span class="day-date-text">${data.dateISO ? fmtDateFull(data.dateISO) : (data.dateISO || 'Дата')}</span>
             ${isAdmin() ? `<span class="day-date-edit-icon">✎</span>` : ''}
           </span>
-          · <span class="day-desc-wrap" ${isAdmin() ? `onclick="editDesc(${d}, this)" title="Нажмите для изменения описания"` : ''}>
-            <span class="day-desc-text">${data.date || ''}</span>
+          ${data.date ? ` · <span class="day-desc-wrap" ${isAdmin() ? `onclick="editDesc(${d}, this)" title="Нажмите для изменения описания"` : ''}>
+            <span class="day-desc-text">${data.date}</span>
             ${isAdmin() ? `<span class="day-date-edit-icon">✎</span>` : ''}
-          </span>
+          </span>` : (isAdmin() ? ` · <span class="day-desc-wrap" onclick="editDesc(${d}, this)" title="Добавить описание"><span class="day-desc-text" style="color:var(--muted);font-style:italic">описание</span><span class="day-date-edit-icon">✎</span></span>` : '')}
         </div>
         <div class="day-route" id="d${d}-route"></div>
       </div>
       <button class="nav-day-btn" onclick="openShareDay(${d})" title="Открыть маршрут в навигаторе">🗺 НАВИГАТОР</button>
       ${isAdmin() ? `
-      <button class="nav-day-btn" onclick="reverseDay(${d})" title="Создать обратный маршрут для этого дня">↩ ОБРАТНО</button>
-      <button class="delete-day-btn" onclick="confirmDeleteDay(${d})" title="Удалить день">✕ ДЕНЬ</button>
-      <button class="reset-btn" onclick="confirmReset(${d})">⟳ СБРОС</button>` : ''}
+      <div class="day-overflow-wrap" style="position:relative">
+        <button class="nav-day-btn" onclick="toggleDayMenu(${d})" title="Ещё">···</button>
+        <div class="day-overflow-menu" id="dayMenu${d}">
+          <button onclick="reverseDay(${d});closeDayMenus()">↩ Обратный маршрут</button>
+          <button onclick="confirmDeleteDay(${d});closeDayMenus()" style="color:var(--red)">✕ Удалить день</button>
+          <button onclick="confirmReset(${d});closeDayMenus()">⟳ Сбросить факт</button>
+        </div>
+      </div>` : ''}
     </div>
     <div class="depart-row">
       <div class="depart-icon">🚗</div>
@@ -394,15 +402,33 @@ function updateDayRoute(d) {
 const _MONTHS_SHORT = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
 const _MONTHS_FULL  = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
 
-function fmtDateShort(iso) {
-  if (!iso) return '?';
-  var p = iso.split('-'); if (p.length < 3) return iso;
-  return parseInt(p[2]) + ' ' + (_MONTHS_SHORT[parseInt(p[1]) - 1] || '');
+function fmtDateShort(s) {
+  if (!s) return '?';
+  var d, m;
+  if (s.indexOf('-') > -1) { var p = s.split('-'); d = parseInt(p[2]); m = parseInt(p[1]); }
+  else if (s.indexOf('.') > -1) { var p = s.split('.'); d = parseInt(p[0]); m = parseInt(p[1]); }
+  else return s;
+  if (isNaN(d) || isNaN(m)) return s;
+  return d + ' ' + (_MONTHS_SHORT[m - 1] || '');
 }
-function fmtDateFull(iso) {
-  if (!iso) return '';
-  var p = iso.split('-'); if (p.length < 3) return iso;
-  return parseInt(p[2]) + ' ' + (_MONTHS_FULL[parseInt(p[1]) - 1] || '');
+function fmtDateFull(s) {
+  if (!s) return '';
+  var d, m;
+  if (s.indexOf('-') > -1) { var p = s.split('-'); d = parseInt(p[2]); m = parseInt(p[1]); }
+  else if (s.indexOf('.') > -1) { var p = s.split('.'); d = parseInt(p[0]); m = parseInt(p[1]); }
+  else return s;
+  if (isNaN(d) || isNaN(m)) return s;
+  return d + ' ' + (_MONTHS_FULL[m - 1] || '');
+}
+function parseDateDMY(s) {
+  if (!s) return null;
+  var p = s.split('.'); if (p.length < 3) return null;
+  return new Date(parseInt(p[2]), parseInt(p[1]) - 1, parseInt(p[0]));
+}
+function fmtDateDMY(d) {
+  var dd = String(d.getDate()).padStart(2, '0');
+  var mm = String(d.getMonth() + 1).padStart(2, '0');
+  return dd + '.' + mm + '.' + d.getFullYear();
 }
 
 function renderTabs() {
