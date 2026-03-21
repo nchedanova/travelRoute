@@ -403,6 +403,16 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="changelogModal" onclick="if(event.target===this)closeChangelog()">
+  <div class="modal" style="max-width:340px">
+    <div class="modal-title">🆕 Что нового</div>
+    <div id="changelogBody" class="modal-body"></div>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeChangelog()">Понятно</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast">💾 Сохранено</div>
 
 <!-- Scripts: порядок важен — config и data первыми -->

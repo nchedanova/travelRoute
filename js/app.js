@@ -35,11 +35,11 @@ function toggleSidebar() {
   sb.classList.toggle('open');
   const btn = document.getElementById('toggleBtn');
   if (btn) btn.textContent = sb.classList.contains('open') ? '✕' : '☰';
-  // Если закрыли сайдбар пока был открыт чат — корректно закрываем чат
   if (wasOpen && _currentSidebarTab === 'chat') {
     onChatTabClose && onChatTabClose();
   }
   setTimeout(() => map && map.invalidateSize(), 340);
+  _navPush();
 }
 
 // ── TOAST ─────────────────────────────────────────────────────────────────────
@@ -954,6 +954,7 @@ function initSidebarTabs() {
 }
 
 function switchSidebarTab(tab) {
+  var prev = _currentSidebarTab;
   _currentSidebarTab = tab;
   ['route','notes','chat'].forEach(t => {
     const btn   = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1));
@@ -965,6 +966,7 @@ function switchSidebarTab(tab) {
   if (tab === 'chat')  { onChatTabOpen && onChatTabOpen(); }
   if (tab === 'notes') { onNotesTabOpen && onNotesTabOpen(); }
   if (tab !== 'chat')  { onChatTabClose && onChatTabClose(); }
+  if (prev !== tab) _navPush();
 }
 
 // ── STOP NOTE TOGGLE ───────────────────────────────────────────────────────────
@@ -997,6 +999,93 @@ document.addEventListener('click', e => {
   if (!e.target.closest('#chatMsgMenu')) closeMsgMenu && closeMsgMenu();
   if (!e.target.closest('#emojiPicker') && !e.target.closest('.chat-emoji-btn')) closeEmojiPicker && closeEmojiPicker();
 });
+
+// ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
+var APP_VERSION = '1.1.0';
+
+var APP_CHANGELOG = [
+  { ver: '1.1.0', date: '21.03.2026', items: [
+    'Новая иконка приложения — глобус с машинкой',
+    'Шторка sidebar ↕ — тяни ручку между списком и картой',
+    'Кнопка «назад» ходит по вкладкам, а не выходит из приложения',
+    'Что нового — этот экран'
+  ]},
+  { ver: '1.0.0', date: '19.03.2026', items: [
+    'Первый релиз: маршрут, чат, GPS-трекинг, офлайн-карты'
+  ]}
+];
+
+function showChangelog() {
+  var body = document.getElementById('changelogBody');
+  if (!body) return;
+  var html = '';
+  APP_CHANGELOG.forEach(function(entry) {
+    html += '<div class="changelog-ver">v' + entry.ver + ' — ' + entry.date + '</div>';
+    entry.items.forEach(function(item) {
+      html += '<div class="changelog-item">' + item + '</div>';
+    });
+  });
+  body.innerHTML = html;
+  document.getElementById('changelogModal').classList.add('show');
+}
+
+function closeChangelog() {
+  document.getElementById('changelogModal').classList.remove('show');
+  try { localStorage.setItem('changelog_seen', APP_VERSION); } catch(e) {}
+}
+
+// Show on load if admin and new version
+setTimeout(function() {
+  if (typeof isAdmin === 'function' && isAdmin()) {
+    try {
+      var seen = localStorage.getItem('changelog_seen');
+      if (seen !== APP_VERSION) showChangelog();
+    } catch(e) {}
+  }
+}, 800);
+
+// ── NAVIGATION HISTORY (back button / swipe-back) ────────────────────────────
+var _navFromHistory = false;
+
+function _navState() {
+  var sb = document.getElementById('sidebar');
+  return { tab: _currentSidebarTab, open: sb ? sb.classList.contains('open') : false };
+}
+
+function _navPush() {
+  if (_navFromHistory) return;
+  history.pushState(_navState(), '');
+}
+
+function _navRestore(state) {
+  if (!state) return;
+  _navFromHistory = true;
+  var sb  = document.getElementById('sidebar');
+  var btn = document.getElementById('toggleBtn');
+
+  // Restore sidebar open/close
+  if (state.open && !sb.classList.contains('open')) {
+    sb.classList.add('open');
+    if (btn) btn.textContent = '✕';
+  } else if (!state.open && sb.classList.contains('open')) {
+    sb.classList.remove('open');
+    if (btn) btn.textContent = '☰';
+    if (_currentSidebarTab === 'chat') onChatTabClose && onChatTabClose();
+  }
+
+  // Restore tab
+  if (state.tab && state.tab !== _currentSidebarTab) {
+    switchSidebarTab(state.tab);
+  }
+
+  _navFromHistory = false;
+  setTimeout(function() { map && map.invalidateSize(); }, 340);
+}
+
+window.addEventListener('popstate', function(e) { _navRestore(e.state); });
+
+// Set initial state so first "back" doesn't exit immediately
+history.replaceState(_navState(), '');
 
 // ── SHEET DRAG (mobile: resize sidebar / map split) ──────────────────────────
 (function() {

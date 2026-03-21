@@ -326,6 +326,14 @@ input.time-in.late   { color:var(--red);    border-color:rgba(248,113,113,0.4); 
 .modal-confirm:hover { background:rgba(248,113,113,0.2); }
 
 /* ── DRAG & DROP ─────────────────────────────────────── */
+
+/* ── CHANGELOG MODAL ────────────────────────────────── */
+.changelog-ver { font-family:'Unbounded',sans-serif; font-size:11px; color:var(--amber); margin:10px 0 4px; }
+.changelog-ver:first-child { margin-top:0; }
+.changelog-item { font-size:11px; color:var(--muted); padding:2px 0 2px 12px; position:relative; line-height:1.5; }
+.changelog-item::before { content:'·'; position:absolute; left:2px; color:var(--amber); font-weight:bold; }
+
+/* ── DRAG & DROP ─────────────────────────────────────── */
 .drag-handle {
   position:absolute; left:0; top:0; bottom:0; width:14px;
   display:flex; align-items:center; justify-content:center;
