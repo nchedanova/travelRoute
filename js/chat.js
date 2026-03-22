@@ -315,28 +315,91 @@ function _stopPollFallback() {
   }
 }
 
-// ── NICKNAME ───────────────────────────────────────────────────────────────────
+// ── NICKNAME / AUTH ───────────────────────────────────────────────────────────
 function getChatName()  { return localStorage.getItem('travel_chat_name') || ''; }
 function getChatRole()  { return (typeof isAdmin === 'function' && isAdmin()) ? 'admin' : 'viewer'; }
 function getRoleBadge() { return (typeof isAdmin === 'function' && isAdmin()) ? '✏' : '👁'; }
+function isGoogleUser() {
+  var u = firebase.auth && firebase.auth().currentUser;
+  return u && u.providerData && u.providerData.some(function(p) { return p.providerId === 'google.com'; });
+}
 
 function _ensureNickname(cb) {
   if (getChatName()) { cb && cb(); return; }
   _showNicknameModal(cb);
 }
+
 function _showNicknameModal(cb) {
   const ov = document.getElementById('nicknameModal');
   if (!ov) { cb && cb(); return; }
+  // Reset to auth choice step
+  showAuthChoiceStep();
   ov.classList.add('show');
-  const inp = document.getElementById('nicknameInput');
-  if (inp) { inp.value = ''; setTimeout(() => inp.focus(), 120); }
   window._nicknameModalCb = cb;
 }
+
+function showAuthChoiceStep() {
+  var s1 = document.getElementById('authChoiceStep');
+  var s2 = document.getElementById('anonNameStep');
+  if (s1) s1.style.display = '';
+  if (s2) s2.style.display = 'none';
+  var err = document.getElementById('authError');
+  if (err) err.style.display = 'none';
+}
+
+function showAnonNameStep() {
+  var s1 = document.getElementById('authChoiceStep');
+  var s2 = document.getElementById('anonNameStep');
+  if (s1) s1.style.display = 'none';
+  if (s2) s2.style.display = '';
+  var inp = document.getElementById('nicknameInput');
+  if (inp) { inp.value = ''; setTimeout(function() { inp.focus(); }, 120); }
+}
+
+function signInWithGoogle() {
+  if (typeof firebase === 'undefined' || !firebase.auth) return;
+  var errEl = document.getElementById('authError');
+  var provider = new firebase.auth.GoogleAuthProvider();
+  var user = firebase.auth().currentUser;
+
+  // If currently anonymous, link to Google (preserves uid + existing DMs)
+  var promise = (user && user.isAnonymous)
+    ? user.linkWithPopup(provider).catch(function(err) {
+        // If account already exists, sign in directly instead of linking
+        if (err.code === 'auth/credential-already-in-use' || err.code === 'auth/email-already-in-use') {
+          return firebase.auth().signInWithPopup(provider);
+        }
+        throw err;
+      })
+    : firebase.auth().signInWithPopup(provider);
+
+  promise.then(function(result) {
+    var u = result.user;
+    window._firebaseUid = u.uid;
+    localStorage.setItem('travel_firebase_uid', u.uid);
+    // Use Google display name
+    var name = u.displayName || u.email?.split('@')[0] || 'User';
+    localStorage.setItem('travel_chat_name', name);
+    localStorage.setItem('travel_auth_provider', 'google');
+    document.getElementById('nicknameModal').classList.remove('show');
+    renderChatHeader();
+    console.log('[auth] Google sign-in ok, uid:', u.uid, 'name:', name);
+    if (window._nicknameModalCb) { window._nicknameModalCb(); window._nicknameModalCb = null; }
+  }).catch(function(err) {
+    console.error('[auth] Google sign-in error:', err);
+    if (errEl) {
+      errEl.textContent = err.code === 'auth/popup-closed-by-user' ? 'Окно входа закрыто' : 'Ошибка: ' + (err.message || err.code);
+      errEl.style.display = 'block';
+    }
+  });
+}
+
 function saveNickname() {
   const inp = document.getElementById('nicknameInput');
   const name = inp ? inp.value.trim() : '';
   if (!name) { inp && inp.focus(); return; }
   localStorage.setItem('travel_chat_name', name);
+  localStorage.setItem('travel_auth_provider', 'anonymous');
   document.getElementById('nicknameModal').classList.remove('show');
   renderChatHeader();
   if (window._nicknameModalCb) { window._nicknameModalCb(); window._nicknameModalCb = null; }
@@ -1183,12 +1246,25 @@ function onChatTabClose() { _chatVisible = false; clearInterval(_presenceTimer);
 
 function renderChatHeader() {
   const el = document.getElementById('chatNameDisplay');
-  if (el) el.textContent = getChatName() ? getChatName() + ' ' + getRoleBadge() : '';
-  // Кнопка "Очистить чат" — только для Admin (canWrite)
+  if (el) {
+    var gBadge = isGoogleUser() ? ' <span class="google-badge" title="Google">G</span>' : '';
+    el.innerHTML = getChatName() ? _esc(getChatName()) + ' ' + getRoleBadge() + gBadge : '';
+  }
   const clearBtn = document.getElementById('chatClearBtn');
   if (clearBtn) clearBtn.style.display = (typeof isAdmin === 'function' && isAdmin()) ? 'inline-flex' : 'none';
 }
-function changeChatName() { localStorage.removeItem('travel_chat_name'); _showNicknameModal(() => renderChatHeader()); }
+function changeChatName() {
+  // Just change display name, don't touch auth
+  var current = getChatName();
+  var name = prompt('Имя в чате:', current);
+  if (name === null) return; // cancelled
+  name = name.trim();
+  if (!name) return;
+  localStorage.setItem('travel_chat_name', name);
+  renderChatHeader();
+  _writePresence();
+  showToast('✅ Имя изменено');
+}
 
 // ── PASTE LISTENER (chat) ────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -1209,6 +1285,7 @@ function _saveDmRooms() {
 
 function openDmWith(uid, name, role) {
   if (!_chatInited || !_chatDb) return;
+  if (typeof isAdmin === 'function' && !isAdmin()) return; // viewers can't create DMs
   if (!window._firebaseUid) { showToast('⏳ Подождите, авторизация…'); return; }
   var roomId = _dmRoomId(uid);
   // Save to known DM rooms
@@ -1302,53 +1379,63 @@ function _renderRoomTabs() {
   var container = document.getElementById('chatRoomTabs');
   if (!container) return;
 
+  var _isAdm = typeof isAdmin === 'function' && isAdmin();
+
   var html = '';
-  // Group tab
+  // Group tab — always visible
   var groupActive = _currentRoom === 'group' ? ' active' : '';
   var groupUnread = (_dmUnread['group'] || 0) > 0 && _currentRoom !== 'group';
   html += '<button class="chat-room-tab' + groupActive + '" data-room="group" onclick="switchChatRoom(\'group\')">'
        + '💬 Общий' + (groupUnread ? '<span class="room-unread-dot"></span>' : '') + '</button>';
 
-  // Saved DM rooms
-  _savedDmRooms.forEach(function(dm) {
-    var roomKey = 'dm_' + dm.roomId;
-    var active  = _currentRoom === roomKey ? ' active' : '';
-    var unread  = (_dmUnread[roomKey] || 0) > 0 && _currentRoom !== roomKey;
-    var contact = _knownContacts.find(function(c) { return c.uid === dm.uid; });
-    var name    = contact ? contact.name : dm.name;
-    var role    = contact ? contact.role : (dm.role || 'viewer');
-    var badge   = role === 'admin' ? ' ✏' : ' 👁';
-    html += '<button class="chat-room-tab' + active + '" onclick="switchChatRoom(\'' + roomKey + '\')">'
-         + _esc(name) + '<span class="room-role-badge">' + badge + '</span>'
-         + (unread ? '<span class="room-unread-dot"></span>' : '')
-         + '</button>';
-  });
+  // DMs — only for admin
+  if (_isAdm) {
+    // Saved DM rooms
+    _savedDmRooms.forEach(function(dm) {
+      var roomKey = 'dm_' + dm.roomId;
+      var active  = _currentRoom === roomKey ? ' active' : '';
+      var unread  = (_dmUnread[roomKey] || 0) > 0 && _currentRoom !== roomKey;
+      var contact = _knownContacts.find(function(c) { return c.uid === dm.uid; });
+      var name    = contact ? contact.name : dm.name;
+      var role    = contact ? contact.role : (dm.role || 'viewer');
+      var badge   = role === 'admin' ? ' ✏' : ' 👁';
+      html += '<button class="chat-room-tab' + active + '" onclick="switchChatRoom(\'' + roomKey + '\')">'
+           + _esc(name) + '<span class="room-role-badge">' + badge + '</span>'
+           + (unread ? '<span class="room-unread-dot"></span>' : '')
+           + '</button>';
+    });
 
-  // Online contacts (exclude self, exclude already saved)
-  var savedUids = {};
-  _savedDmRooms.forEach(function(dm) { savedUids[dm.uid] = true; });
-  var recentThreshold = Date.now() - 3600000;
-  _knownContacts.forEach(function(c) {
-    if (savedUids[c.uid]) return;
-    if (c.ts < recentThreshold) return;
-    if (c.name === '?' || !c.name) return;
-    var badge = c.role === 'admin' ? ' ✏' : ' 👁';
-    html += '<button class="chat-room-tab contact" onclick="openDmWith(\'' + _esc(c.uid) + '\',\'' + _esc(c.name) + '\',\'' + _esc(c.role) + '\')">'
-         + '+ ' + _esc(c.name) + '<span class="room-role-badge">' + badge + '</span></button>';
-  });
+    // Online contacts (exclude self, exclude already saved)
+    var savedUids = {};
+    _savedDmRooms.forEach(function(dm) { savedUids[dm.uid] = true; });
+    var recentThreshold = Date.now() - 3600000;
+    _knownContacts.forEach(function(c) {
+      if (savedUids[c.uid]) return;
+      if (c.ts < recentThreshold) return;
+      if (c.name === '?' || !c.name) return;
+      var badge = c.role === 'admin' ? ' ✏' : ' 👁';
+      html += '<button class="chat-room-tab contact" onclick="openDmWith(\'' + _esc(c.uid) + '\',\'' + _esc(c.name) + '\',\'' + _esc(c.role) + '\')">'
+           + '+ ' + _esc(c.name) + '<span class="room-role-badge">' + badge + '</span></button>';
+    });
+  }
 
   container.innerHTML = html;
 
-  // Long-press on DM tabs to delete
-  container.querySelectorAll('.chat-room-tab[onclick^="switchChatRoom(\'dm_"]').forEach(function(btn) {
-    var roomKey = btn.getAttribute('onclick').match(/switchChatRoom\('([^']+)'\)/)?.[1];
-    if (!roomKey) return;
-    var pressTimer = null;
-    btn.addEventListener('contextmenu', function(e) { e.preventDefault(); _confirmDeleteDm(roomKey); });
-    btn.addEventListener('touchstart', function() { pressTimer = setTimeout(function() { _confirmDeleteDm(roomKey); }, 600); }, { passive: true });
-    btn.addEventListener('touchend', function() { clearTimeout(pressTimer); });
-    btn.addEventListener('touchmove', function() { clearTimeout(pressTimer); });
-  });
+  // Hide tabs bar entirely if only group tab (viewer)
+  container.style.display = (!_isAdm && !_savedDmRooms.length) ? 'none' : '';
+
+  // Long-press on DM tabs to delete (admin only)
+  if (_isAdm) {
+    container.querySelectorAll('.chat-room-tab[onclick^="switchChatRoom(\'dm_"]').forEach(function(btn) {
+      var roomKey = btn.getAttribute('onclick').match(/switchChatRoom\('([^']+)'\)/)?.[1];
+      if (!roomKey) return;
+      var pressTimer = null;
+      btn.addEventListener('contextmenu', function(e) { e.preventDefault(); _confirmDeleteDm(roomKey); });
+      btn.addEventListener('touchstart', function() { pressTimer = setTimeout(function() { _confirmDeleteDm(roomKey); }, 600); }, { passive: true });
+      btn.addEventListener('touchend', function() { clearTimeout(pressTimer); });
+      btn.addEventListener('touchmove', function() { clearTimeout(pressTimer); });
+    });
+  }
 }
 
 function _confirmDeleteDm(roomKey) {

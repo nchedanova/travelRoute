@@ -44,18 +44,27 @@ function initGps() {
     firebase.initializeApp(cfg);
   }
 
-  // Anonymous Auth — серверный uid вместо localStorage sessionId
+  // Auth — use existing session (Google/anonymous) or create anonymous
   if (firebase.auth) {
-    firebase.auth().signInAnonymously().catch(e => console.warn('[auth] anonymous sign-in failed:', e));
     firebase.auth().onAuthStateChanged(user => {
-      if (!user) return;
-      var oldId = localStorage.getItem('travel_session_id');
-      window._firebaseUid = user.uid;
-      localStorage.setItem('travel_firebase_uid', user.uid);
-      console.log('[auth] uid:', user.uid);
-      // Migrate: clean up old presence entry if sessionId changed
-      if (oldId && oldId !== user.uid && firebase.database) {
-        try { firebase.database().ref('chat_presence/' + oldId).remove(); } catch(e) {}
+      if (user) {
+        window._firebaseUid = user.uid;
+        localStorage.setItem('travel_firebase_uid', user.uid);
+        var provider = user.providerData?.length ? user.providerData[0].providerId : 'anonymous';
+        console.log('[auth] uid:', user.uid, '(' + provider + ')');
+        // Migrate: clean up old presence entry
+        var oldId = localStorage.getItem('travel_session_id');
+        if (oldId && oldId !== user.uid && firebase.database) {
+          try { firebase.database().ref('chat_presence/' + oldId).remove(); } catch(e) {}
+        }
+        // If Google user, auto-set name from profile
+        if (user.displayName && provider === 'google.com') {
+          localStorage.setItem('travel_chat_name', user.displayName);
+          localStorage.setItem('travel_auth_provider', 'google');
+        }
+      } else {
+        // No user → sign in anonymously for immediate uid
+        firebase.auth().signInAnonymously().catch(e => console.warn('[auth] anonymous sign-in failed:', e));
       }
     });
   }
