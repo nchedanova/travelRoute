@@ -890,25 +890,16 @@ function _updateTicks(key, ts) {
   const el = document.getElementById('ticks-' + key); if (!el) return;
   el.classList.remove('pending', 'delivered', 'read');
 
-  // Count readers who have seen this message
   const readers = _otherReaders.filter(r => r.ts >= ts);
   const isRead  = readers.length > 0;
 
   el.classList.add(ts && isRead ? 'read' : 'delivered');
 
-  // Show reader count badge
-  let badge = el.querySelector('.read-count');
-  if (isRead && readers.length > 0) {
-    if (!badge) {
-      badge = document.createElement('span');
-      badge.className = 'read-count';
-      el.appendChild(badge);
-    }
-    badge.textContent = readers.length;
-    // Store reader names for popup
+  // Store reader names for tap popup (no visible badge)
+  if (isRead) {
     el.dataset.readers = readers.map(r => r.name).join(', ');
-  } else if (badge) {
-    badge.remove();
+  } else {
+    delete el.dataset.readers;
   }
 }
 

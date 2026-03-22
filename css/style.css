@@ -1403,13 +1403,6 @@ body.driving-active .stop-card.gps-nearest .stop-num {
 .chat-ticks.pending   { color: var(--muted); opacity: 0.35; cursor: default; }
 .chat-ticks.delivered { color: var(--muted); cursor: default; }
 .chat-ticks.read      { color: var(--amber); }
-.read-count {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
-  color: var(--amber);
-  min-width: 10px;
-  text-align: center;
-}
 .read-popup {
   background: var(--surface2);
   border: 1px solid var(--border);
