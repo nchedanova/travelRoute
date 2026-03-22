@@ -367,6 +367,9 @@ function sendChatMessage() {
   // Если редактируем — сохраняем изменение
   if (_editingKey) { _commitEdit(_editingKey); return; }
 
+  // Если есть pending-фото — отправляем фото-сообщение
+  if (_pendingImages.length) { _sendPendingImages(); return; }
+
   const inp  = document.getElementById('chatInput');
   const text = inp ? inp.value.trim() : '';
   if (!text) return;
@@ -392,41 +395,117 @@ function sendChatMessage() {
   closeEmojiPicker();
 }
 
-// ── PHOTO UPLOAD ──────────────────────────────────────────────────────────────
+// ── PHOTO UPLOAD (multi-photo + paste) ────────────────────────────────────────
+const MAX_PENDING_IMAGES = 10;
+let _pendingImages = []; // [{blob, thumbUrl}]
+
 function triggerPhotoUpload() {
   if (!_chatInited) { initChat(); return; }
   if (!getChatName()) { _showNicknameModal(() => triggerPhotoUpload()); return; }
   let inp = document.getElementById('chatPhotoInput');
   if (!inp) {
     inp = document.createElement('input');
-    inp.type = 'file'; inp.accept = 'image/*';
+    inp.type = 'file'; inp.accept = 'image/*'; inp.multiple = true;
     inp.id = 'chatPhotoInput'; inp.style.display = 'none';
-    inp.onchange = () => { if (inp.files[0]) _uploadPhoto(inp.files[0]); inp.value = ''; };
+    inp.onchange = () => {
+      if (inp.files.length) _addPendingFiles(Array.from(inp.files));
+      inp.value = '';
+    };
     document.body.appendChild(inp);
   }
   inp.click();
 }
 
-async function _uploadPhoto(file) {
+function _addPendingFiles(files) {
+  const room = MAX_PENDING_IMAGES - _pendingImages.length;
+  if (room <= 0) { showToast('📷 Максимум ' + MAX_PENDING_IMAGES + ' фото'); return; }
+  const batch = files.slice(0, room);
+  if (files.length > room) showToast('📷 Добавлено ' + batch.length + ' из ' + files.length + ' (макс ' + MAX_PENDING_IMAGES + ')');
+  batch.forEach(file => {
+    const thumbUrl = URL.createObjectURL(file);
+    _pendingImages.push({ blob: file, thumbUrl });
+  });
+  _renderPendingPreview();
+  // Focus chat input so user can type caption
+  const inp = document.getElementById('chatInput');
+  if (inp) inp.focus();
+}
+
+function _addPendingBlob(blob) {
+  if (_pendingImages.length >= MAX_PENDING_IMAGES) { showToast('📷 Максимум ' + MAX_PENDING_IMAGES + ' фото'); return; }
+  const thumbUrl = URL.createObjectURL(blob);
+  _pendingImages.push({ blob, thumbUrl });
+  _renderPendingPreview();
+}
+
+function removePendingImage(idx) {
+  if (_pendingImages[idx]) {
+    URL.revokeObjectURL(_pendingImages[idx].thumbUrl);
+    _pendingImages.splice(idx, 1);
+    _renderPendingPreview();
+  }
+}
+
+function _renderPendingPreview() {
+  const bar = document.getElementById('chatPendingImages');
+  if (!bar) return;
+  if (!_pendingImages.length) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
+  bar.style.display = 'flex';
+  bar.innerHTML = _pendingImages.map((p, i) =>
+    `<div class="pending-thumb-wrap">
+      <img src="${p.thumbUrl}" class="pending-thumb" alt="">
+      <button class="pending-thumb-remove" onclick="removePendingImage(${i})">×</button>
+    </div>`
+  ).join('') + `<div class="pending-thumb-count">${_pendingImages.length}/${MAX_PENDING_IMAGES}</div>`;
+}
+
+function _clearPending() {
+  _pendingImages.forEach(p => URL.revokeObjectURL(p.thumbUrl));
+  _pendingImages = [];
+  _renderPendingPreview();
+}
+
+async function _sendPendingImages() {
+  if (!_pendingImages.length) return;
   if (!navigator.onLine) { showToast('📴 Для фото нужен интернет'); return; }
+
   const ts = Date.now();
   const pendingKey = 'photo-' + ts;
+  const caption = document.getElementById('chatInput')?.value.trim() || '';
+  document.getElementById('chatInput').value = '';
+  document.getElementById('chatInput').style.height = 'auto';
+
   _appendMessage(pendingKey, { name: getChatName(), role: getChatRole(), ts, uploading: true });
 
   try {
-    // Сжимаем через canvas → base64 (без Firebase Storage)
-    const base64url = await _compressToBase64(file, 800, 0.6);
-    const caption = document.getElementById('chatInput')?.value.trim() || '';
-    document.getElementById('chatInput').value = '';
+    const urls = [];
+    for (const p of _pendingImages) {
+      urls.push(await _compressToBase64(p.blob, 800, 0.6));
+    }
+    _clearPending();
     document.getElementById('msg-' + pendingKey)?.remove();
+
     const ref = _chatRef.push();
-    const msgData = { name: getChatName(), role: getChatRole(), text: caption, imgUrl: base64url, ts };
+    const msgData = { name: getChatName(), role: getChatRole(), ts, text: caption };
+    if (urls.length === 1) {
+      msgData.imgUrl = urls[0]; // обратная совместимость
+    } else {
+      msgData.imgUrls = urls;
+    }
+    if (_replyingTo) { msgData.replyTo = _replyingTo; cancelReply(); }
     ref.set(msgData);
   } catch(e) {
     console.error('Photo upload error:', e);
     document.getElementById('msg-' + pendingKey)?.remove();
+    _clearPending();
     showToast('⚠ Ошибка загрузки фото');
   }
+}
+
+// Legacy single-file upload (kept for offline queue compatibility)
+async function _uploadPhoto(file) {
+  _addPendingFiles([file]);
+  await _sendPendingImages();
 }
 
 function _compressToBase64(file, maxDim, quality) {
@@ -457,6 +536,24 @@ function _compressToBase64(file, maxDim, quality) {
     };
     img.onerror = reject;
     img.src = url;
+  });
+}
+
+// ── CLIPBOARD PASTE (chat) ────────────────────────────────────────────────────
+function _handleChatPaste(e) {
+  const items = e.clipboardData?.items;
+  if (!items) return;
+  const imageItems = [];
+  for (let i = 0; i < items.length; i++) {
+    if (items[i].type.startsWith('image/')) imageItems.push(items[i]);
+  }
+  if (!imageItems.length) return;
+  e.preventDefault();
+  if (!_chatInited) { initChat(); return; }
+  if (!getChatName()) { _showNicknameModal(); return; }
+  imageItems.forEach(item => {
+    const blob = item.getAsFile();
+    if (blob) _addPendingBlob(blob);
   });
 }
 
@@ -738,6 +835,15 @@ function _appendMessageAt(key, msg, beforeNode) {
 
   if (msg.uploading) {
     inner += `<div class="chat-bubble"><span class="chat-uploading">Загрузка фото…</span></div>`;
+  } else if (msg.imgUrls && msg.imgUrls.length) {
+    // Multi-photo grid
+    const cnt = msg.imgUrls.length;
+    const cols = cnt === 1 ? 1 : cnt <= 4 ? 2 : 3;
+    inner += `<div class="chat-bubble chat-bubble-img"><div class="chat-photo-grid chat-photo-grid-${cols}" data-count="${cnt}">`;
+    msg.imgUrls.forEach((url, i) => {
+      inner += `<img src="${_esc(url)}" class="chat-photo-grid-item" onclick="openChatPhoto('${_esc(url)}')" alt="фото ${i+1}">`;
+    });
+    inner += `</div>${msg.text ? `<div class="chat-photo-caption">${_linkify(msg.text)}</div>` : ''}</div>`;
   } else if (msg.imgUrl) {
     inner += `<div class="chat-bubble chat-bubble-img">
       <img src="${_esc(msg.imgUrl)}" class="chat-photo" onclick="openChatPhoto('${_esc(msg.imgUrl)}')" alt="фото">
@@ -835,3 +941,9 @@ function renderChatHeader() {
   if (clearBtn) clearBtn.style.display = (typeof isAdmin === 'function' && isAdmin()) ? 'inline-flex' : 'none';
 }
 function changeChatName() { localStorage.removeItem('travel_chat_name'); _showNicknameModal(() => renderChatHeader()); }
+
+// ── PASTE LISTENER (chat) ────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const chatInp = document.getElementById('chatInput');
+  if (chatInp) chatInp.addEventListener('paste', _handleChatPaste);
+});

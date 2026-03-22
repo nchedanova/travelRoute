@@ -259,7 +259,7 @@ function makeStopCard(s, day) {
     </div>
     <div class="stop-edit-form" id="edit-form-${s.id}" style="display:none;"></div>
     ${isAdmin() ? `
-    <div class="stop-note-wrap" id="stop-note-wrap-${s.id}" style="display:${s.note ? 'block' : 'none'}"
+    <div class="stop-note-wrap" id="stop-note-wrap-${s.id}" style="display:${(s.note || (s.noteImages && s.noteImages.length)) ? 'block' : 'none'}"
       ontouchstart="event.stopPropagation()" ontouchmove="event.stopPropagation()" onmousedown="event.stopPropagation()">
       <div class="stop-note-input-row" style="display:${s.note ? 'none' : ''}">
         <textarea class="stop-note-input" id="stop-note-${s.id}"
@@ -275,9 +275,11 @@ function makeStopCard(s, day) {
       <div class="stop-note-display" id="stop-note-preview-${s.id}" style="display:${s.note ? 'block' : 'none'};cursor:pointer"
         onclick="var row=this.previousElementSibling;row.style.display='';this.style.display='none';document.getElementById('stop-note-${s.id}').focus()"
         onmousedown="event.stopPropagation()" ontouchstart="event.stopPropagation()">${typeof _linkifyN==='function'?_linkifyN(s.note||'').replace(/\n/g,'<br>'):''}</div>
-    </div>` : (s.note ? `
+      ${s.noteImages && s.noteImages.length ? `<div class="note-images-row" id="stop-note-images-${s.id}" style="display:flex">${s.noteImages.map((url,i)=>`<div class="note-img-thumb-wrap"><img src="${typeof _escN==='function'?_escN(url):url}" class="note-img-thumb" onclick="openChatPhoto(this.src)" alt=""><button class="pending-thumb-remove" onclick="removeStopNoteImage('${s.id}',${i})">×</button></div>`).join('')}</div>` : `<div class="note-images-row" id="stop-note-images-${s.id}" style="display:none"></div>`}
+    </div>` : ((s.note || (s.noteImages && s.noteImages.length)) ? `
     <div class="stop-note-wrap" style="display:block">
-      <div class="stop-note-display">${typeof _linkifyN==='function'?_linkifyN(s.note).replace(/\n/g,'<br>'):''}</div>
+      ${s.note ? `<div class="stop-note-display">${typeof _linkifyN==='function'?_linkifyN(s.note).replace(/\n/g,'<br>'):''}</div>` : ''}
+      ${s.noteImages && s.noteImages.length ? `<div class="note-images-row" style="display:flex">${s.noteImages.map(url=>`<div class="note-img-thumb-wrap"><img src="${typeof _escN==='function'?_escN(url):url}" class="note-img-thumb" onclick="openChatPhoto(this.src)" alt=""></div>`).join('')}</div>` : ''}
     </div>` : '')}`;
 
   if (typeof isAdmin === 'function' && isAdmin()) {

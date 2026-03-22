@@ -125,11 +125,14 @@
         <button class="reply-banner-cancel" onclick="cancelReply()" title="Отмена">×</button>
       </div>
       <div class="chat-input-bar">
-        <button class="chat-emoji-btn" onclick="toggleEmojiPicker()" title="Смайлики">😊</button>
-        <button class="chat-emoji-btn" onclick="triggerPhotoUpload()" title="Фото">🏞️</button>
-        <textarea id="chatInput" class="chat-textarea" placeholder="Сообщение…" rows="1"
-          onkeydown="chatInputKeydown(event)" oninput="autoResizeChatInput(this)"></textarea>
-        <button class="chat-send-btn" onclick="sendChatMessage()" title="Отправить">➤</button>
+        <div class="pending-images-bar" id="chatPendingImages" style="display:none"></div>
+        <div class="chat-input-row">
+          <button class="chat-emoji-btn" onclick="toggleEmojiPicker()" title="Смайлики">😊</button>
+          <button class="chat-emoji-btn" onclick="triggerPhotoUpload()" title="Фото">🏞️</button>
+          <textarea id="chatInput" class="chat-textarea" placeholder="Сообщение…" rows="1"
+            onkeydown="chatInputKeydown(event)" oninput="autoResizeChatInput(this)"></textarea>
+          <button class="chat-send-btn" onclick="sendChatMessage()" title="Отправить">➤</button>
+        </div>
       </div>
     </div>
   </div>

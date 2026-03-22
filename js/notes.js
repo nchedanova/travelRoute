@@ -138,7 +138,8 @@ function addNote() {
   if (!_notesInited) initNotes();
   const inp  = document.getElementById('noteInput');
   const text = inp ? inp.value.trim() : '';
-  if (!text) return;
+  const hasImages = typeof _noteTabPendingImages !== 'undefined' && _noteTabPendingImages.length > 0;
+  if (!text && !hasImages) return;
   const author = (typeof getChatName === 'function' ? getChatName() : '') || 'Админ';
 
   let payload = { type: _noteType, author, ts: Date.now() };
@@ -151,7 +152,13 @@ function addNote() {
       text: l.trim(),
       done: false
     }));
-    if (!payload.items.length) return;
+    if (!payload.items.length && !hasImages) return;
+  }
+
+  if (hasImages) {
+    payload.images = _noteTabPendingImages.slice();
+    _noteTabPendingImages = [];
+    if (typeof _renderNoteTabPending === 'function') _renderNoteTabPending();
   }
 
   if (_isDemoNotes()) { _demoAddNote(payload); } else { _notesRef.push(payload); }
@@ -320,8 +327,8 @@ function saveStopNoteDemo(stopId, day) {
   const d   = DAYS_DATA[day]; if (!d) return;
   const s   = (d.stops || []).find(x => x.id === stopId); if (!s) return;
   s.note = inp ? inp.value.trim() : '';
-  // Скрыть wrap если заметка пустая и нет фокуса
-  if (!s.note) {
+  // Скрыть wrap если заметка пустая и нет фото
+  if (!s.note && !(s.noteImages && s.noteImages.length)) {
     const wrap = document.getElementById('stop-note-wrap-' + stopId);
     if (wrap) wrap.style.display = 'none';
   }
@@ -360,4 +367,161 @@ function saveStopNoteBtn(stopId, day) {
   }
   typeof showToast === 'function' && showToast('💾 Сохранено');
 }
+
+// ── PASTE IMAGES INTO NOTES ──────────────────────────────────────────────────
+// Shared: вставка фото из буфера в заметки (вкладка + точки)
+const MAX_NOTE_IMAGES = 5;
+
+function _handleNotePaste(e) {
+  const items = e.clipboardData?.items;
+  if (!items) return;
+  const imageItems = [];
+  for (let i = 0; i < items.length; i++) {
+    if (items[i].type.startsWith('image/')) imageItems.push(items[i]);
+  }
+  if (!imageItems.length) return;
+  e.preventDefault();
+
+  // Определяем контекст: заметки-вкладка или заметка-точки
+  const target = e.target;
+  const isNoteTab = target.id === 'noteInput';
+  const stopMatch = target.id?.match(/^stop-note-(.+)$/);
+
+  imageItems.forEach(item => {
+    const blob = item.getAsFile();
+    if (!blob) return;
+    // Сжимаем с тем же алгоритмом что и чат
+    if (typeof _compressToBase64 === 'function') {
+      _compressToBase64(blob, 800, 0.6).then(dataUrl => {
+        if (isNoteTab) {
+          _addNoteTabImage(dataUrl);
+        } else if (stopMatch) {
+          _addStopNoteImage(stopMatch[1], dataUrl);
+        }
+      }).catch(err => console.error('Note paste error:', err));
+    }
+  });
+}
+
+// ── Note Tab Images ──────────────────────────────────────────────────────────
+let _noteTabPendingImages = [];
+
+function _addNoteTabImage(dataUrl) {
+  if (_noteTabPendingImages.length >= MAX_NOTE_IMAGES) { showToast('📷 Максимум ' + MAX_NOTE_IMAGES + ' фото'); return; }
+  _noteTabPendingImages.push(dataUrl);
+  _renderNoteTabPending();
+}
+
+function removeNoteTabImage(idx) {
+  _noteTabPendingImages.splice(idx, 1);
+  _renderNoteTabPending();
+}
+
+function _renderNoteTabPending() {
+  let bar = document.getElementById('noteTabPendingImages');
+  if (!bar) {
+    const wrap = document.getElementById('noteInput')?.parentElement;
+    if (!wrap) return;
+    bar = document.createElement('div');
+    bar.id = 'noteTabPendingImages';
+    bar.className = 'pending-images-bar';
+    wrap.parentElement.insertBefore(bar, wrap);
+  }
+  if (!_noteTabPendingImages.length) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
+  bar.style.display = 'flex';
+  bar.innerHTML = _noteTabPendingImages.map((url, i) =>
+    `<div class="pending-thumb-wrap"><img src="${url}" class="pending-thumb" alt=""><button class="pending-thumb-remove" onclick="removeNoteTabImage(${i})">×</button></div>`
+  ).join('');
+}
+
+// ── Stop Note Images ─────────────────────────────────────────────────────────
+function _addStopNoteImage(stopId, dataUrl) {
+  // Найти точку
+  let stop = null, dayNum = null;
+  dayKeys().forEach(d => {
+    const s = DAYS_DATA[d]?.stops?.find(x => x.id === stopId);
+    if (s) { stop = s; dayNum = d; }
+  });
+  if (!stop) return;
+  if (!stop.noteImages) stop.noteImages = [];
+  if (stop.noteImages.length >= MAX_NOTE_IMAGES) { showToast('📷 Максимум ' + MAX_NOTE_IMAGES + ' фото'); return; }
+  stop.noteImages.push(dataUrl);
+  _renderStopNoteImages(stopId);
+  if (typeof saveData === 'function') saveData();
+  showToast('📷 Фото добавлено');
+}
+
+function removeStopNoteImage(stopId, idx) {
+  let stop = null;
+  dayKeys().forEach(d => {
+    const s = DAYS_DATA[d]?.stops?.find(x => x.id === stopId);
+    if (s) stop = s;
+  });
+  if (!stop || !stop.noteImages) return;
+  stop.noteImages.splice(idx, 1);
+  _renderStopNoteImages(stopId);
+  if (typeof saveData === 'function') saveData();
+}
+
+function _renderStopNoteImages(stopId) {
+  let container = document.getElementById('stop-note-images-' + stopId);
+  if (!container) {
+    const wrap = document.getElementById('stop-note-wrap-' + stopId);
+    if (!wrap) return;
+    container = document.createElement('div');
+    container.id = 'stop-note-images-' + stopId;
+    container.className = 'note-images-row';
+    wrap.appendChild(container);
+  }
+  let stop = null;
+  dayKeys().forEach(d => {
+    const s = DAYS_DATA[d]?.stops?.find(x => x.id === stopId);
+    if (s) stop = s;
+  });
+  if (!stop || !stop.noteImages || !stop.noteImages.length) { container.innerHTML = ''; container.style.display = 'none'; return; }
+  container.style.display = 'flex';
+  const isAdm = typeof isAdmin === 'function' && isAdmin();
+  container.innerHTML = stop.noteImages.map((url, i) =>
+    `<div class="note-img-thumb-wrap">
+      <img src="${url}" class="note-img-thumb" onclick="openChatPhoto('${_escN(url)}')" alt="">
+      ${isAdm ? `<button class="pending-thumb-remove" onclick="removeStopNoteImage('${_escN(stopId)}',${i})">×</button>` : ''}
+    </div>`
+  ).join('');
+}
+
+// Patch _renderNotesList to show images
+const _origRenderNotesList = _renderNotesList;
+_renderNotesList = function() {
+  _origRenderNotesList();
+  // After render, add images to note items that have them
+  Object.entries(_notesData).forEach(([key, entry]) => {
+    if (!entry.images || !entry.images.length) return;
+    const noteEl = document.getElementById('note-' + key);
+    if (!noteEl) return;
+    let imgContainer = noteEl.querySelector('.note-images-row');
+    if (!imgContainer) {
+      imgContainer = document.createElement('div');
+      imgContainer.className = 'note-images-row';
+      noteEl.appendChild(imgContainer);
+    }
+    imgContainer.style.display = 'flex';
+    imgContainer.innerHTML = entry.images.map(url =>
+      `<div class="note-img-thumb-wrap"><img src="${url}" class="note-img-thumb" onclick="openChatPhoto('${_escN(url)}')" alt=""></div>`
+    ).join('');
+  });
+};
+
+// ── PASTE LISTENERS INIT ─────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  // Notes tab
+  const noteInp = document.getElementById('noteInput');
+  if (noteInp) noteInp.addEventListener('paste', _handleNotePaste);
+});
+
+// Delegated paste for stop notes (dynamic textareas)
+document.addEventListener('paste', e => {
+  if (e.target.id?.startsWith('stop-note-')) {
+    _handleNotePaste(e);
+  }
+});
 
