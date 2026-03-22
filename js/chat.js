@@ -1407,15 +1407,21 @@ function _renderRoomTabs() {
            + '</button>';
     });
 
-    // Online admin contacts (exclude self, exclude already saved)
+    // Online admin contacts (deduplicated by name — same person on 2 devices = 1 entry)
     var savedUids = {};
     _savedDmRooms.forEach(function(dm) { savedUids[dm.uid] = true; });
-    var recentThreshold = Date.now() - 3600000;
+    var recentThreshold = Date.now() - 1800000; // 30 minutes
+    var bestByName = {}; // name → {uid, ts, ...} — keep most recent per name
     _knownContacts.forEach(function(c) {
       if (savedUids[c.uid]) return;
       if (c.ts < recentThreshold) return;
       if (c.name === '?' || !c.name) return;
-      if (c.role !== 'admin') return; // only show admins
+      if (c.role !== 'admin') return;
+      if (!bestByName[c.name] || c.ts > bestByName[c.name].ts) {
+        bestByName[c.name] = c;
+      }
+    });
+    Object.values(bestByName).forEach(function(c) {
       html += '<button class="chat-room-tab contact" onclick="openDmWith(\'' + _esc(c.uid) + '\',\'' + _esc(c.name) + '\',\'' + _esc(c.role) + '\')">'
            + '+ ' + _esc(c.name) + '<span class="room-role-badge"> ✏</span></button>';
     });

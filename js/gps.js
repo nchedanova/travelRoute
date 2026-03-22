@@ -81,15 +81,27 @@ function initGps() {
 
     firebase.auth().onAuthStateChanged(user => {
       if (user) {
-        window._firebaseUid = user.uid;
-        localStorage.setItem('travel_firebase_uid', user.uid);
+        var newUid = user.uid;
+        window._firebaseUid = newUid;
+        localStorage.setItem('travel_firebase_uid', newUid);
         var provider = user.providerData?.length ? user.providerData[0].providerId : 'anonymous';
-        console.log('[auth] uid:', user.uid, '(' + provider + ')');
-        // Migrate: clean up old presence entry
-        var oldId = localStorage.getItem('travel_session_id');
-        if (oldId && oldId !== user.uid && firebase.database) {
-          try { firebase.database().ref('chat_presence/' + oldId).remove(); } catch(e) {}
+        console.log('[auth] uid:', newUid, '(' + provider + ')');
+
+        // Clean up ALL old presence entries (localStorage sessionId + old firebase uid)
+        if (firebase.database) {
+          var db = firebase.database();
+          var oldSessionId = localStorage.getItem('travel_session_id');
+          var oldFirebaseUid = localStorage.getItem('travel_prev_firebase_uid');
+          if (oldSessionId && oldSessionId !== newUid) {
+            try { db.ref('chat_presence/' + oldSessionId).remove(); } catch(e) {}
+          }
+          if (oldFirebaseUid && oldFirebaseUid !== newUid) {
+            try { db.ref('chat_presence/' + oldFirebaseUid).remove(); } catch(e) {}
+          }
+          // Save current uid as "prev" for next migration
+          localStorage.setItem('travel_prev_firebase_uid', newUid);
         }
+
         // If Google user, fetch custom name or use profile name
         if (provider === 'google.com' && firebase.database) {
           localStorage.setItem('travel_auth_provider', 'google');
