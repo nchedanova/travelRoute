@@ -182,7 +182,7 @@ header {
   color:var(--muted); border-radius:4px; padding:4px 8px;
   cursor:pointer; transition:border-color 0.15s, color 0.15s;
 }
-.nav-day-btn:hover { border-color:#60a5fa; color:#60a5fa; }
+.nav-day-btn:hover { border-color:var(--accent); color:var(--accent); }
 
 /* ── SHARE MODAL CONTENT ─────────────────────────────── */
 .nav-option { display:flex; flex-direction:column; gap:8px; margin-bottom:14px; }

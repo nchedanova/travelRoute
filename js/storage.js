@@ -146,7 +146,24 @@ async function loadState() {
   // 1. Сначала грузим из localStorage (мгновенно — UI не ждёт)
   try {
     const raw = localStorage.getItem('travel_tracker_v3');
-    if (raw) applyPayload(JSON.parse(raw));
+    if (raw) {
+      applyPayload(JSON.parse(raw));
+      // Перерисовываем UI сразу по кэшу — убирает «мелькание» захардкоженных данных
+      Object.keys(layers).forEach(k => {
+        if (map.hasLayer(layers[k])) map.removeLayer(layers[k]);
+        delete layers[k];
+      });
+      Object.keys(segmentLayers).forEach(k => { delete segmentLayers[k]; });
+      dayKeys().forEach(d => {
+        layers[d] = L.layerGroup();
+        segmentLayers[d] = [];
+        redrawDay(d);
+      });
+      renderTabs();
+      renderAllDays();
+      updateProgress();
+      switchDay(currentDay <= dayKeys().length ? currentDay : dayKeys()[0] || 1);
+    }
   } catch(e) { console.error('loadState localStorage error', e); }
 
   // 2. Затем пробуем облако (перезаписывает локальный кэш)
@@ -168,11 +185,24 @@ async function loadState() {
     const json  = JSON.stringify(saved);
     _lastCloudHash = strHash(json);
     applyPayload(saved);
+    // Пересоздаём слои карты
+    Object.keys(layers).forEach(k => {
+      if (map.hasLayer(layers[k])) map.removeLayer(layers[k]);
+      delete layers[k];
+    });
+    Object.keys(segmentLayers).forEach(k => { delete segmentLayers[k]; });
+    dayKeys().forEach(d => {
+      layers[d] = L.layerGroup();
+      segmentLayers[d] = [];
+      redrawDay(d);
+    });
     // Обновляем UI после загрузки облачных данных
-    dayKeys().forEach(d => redrawDay(d));
     renderTabs();
     renderAllDays();
     updateProgress();
+    var validDay = dayKeys().includes(currentDay) ? currentDay : (dayKeys()[0] || 1);
+    if (validDay !== currentDay) currentDay = validDay;
+    switchMapDay(currentDay);
     setSyncStatus('☁ загружено', 'var(--green)');
     setTimeout(() => setSyncStatus(
       CLOUD_CONFIG.canWrite ? '☁ ок' : '👁 только чтение',
@@ -266,10 +296,25 @@ async function pollCloud() {
     applyPayload(saved);
     localStorage.setItem('travel_tracker_v3', json);
 
-    dayKeys().forEach(d => redrawDay(d));
+    // Пересоздаём слои карты (дни могли поменяться местами)
+    Object.keys(layers).forEach(k => {
+      if (map.hasLayer(layers[k])) map.removeLayer(layers[k]);
+      delete layers[k];
+    });
+    Object.keys(segmentLayers).forEach(k => { delete segmentLayers[k]; });
+    dayKeys().forEach(d => {
+      layers[d] = L.layerGroup();
+      segmentLayers[d] = [];
+      redrawDay(d);
+    });
+
     renderTabs();
     renderAllDays();
     updateProgress();
+    // Переключаем карту на текущий день — обновляет отрезок после свопа дней
+    var validDay = dayKeys().includes(currentDay) ? currentDay : (dayKeys()[0] || 1);
+    if (validDay !== currentDay) currentDay = validDay;
+    switchMapDay(currentDay);
     const t = new Date().toLocaleTimeString('ru', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
     setSyncStatus(`🔄 обновлено ${t}`, 'var(--green)');
     setTimeout(() => setSyncStatus(

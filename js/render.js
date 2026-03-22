@@ -315,7 +315,7 @@ function renderDaySection(d) {
       <div style="flex:1;min-width:0">
         <div class="day-label" style="color:${data.color};">
           <span class="day-date-wrap" ${isAdmin() ? `onclick="editDayDate(${d}, this)" title="Нажмите для изменения даты"` : ''}>
-            <span class="day-date-text">${data.dateISO ? fmtDateFull(data.dateISO) : (data.dateISO || 'Дата')}</span>
+            <span class="day-date-text">${data.dateISO || 'Дата'}</span>
             ${isAdmin() ? `<span class="day-date-edit-icon">✎</span>` : ''}
           </span>
           ${data.date ? ` · <span class="day-desc-wrap" ${isAdmin() ? `onclick="editDesc(${d}, this)" title="Нажмите для изменения описания"` : ''}>

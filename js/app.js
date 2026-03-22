@@ -1120,9 +1120,9 @@ document.addEventListener('focusin', e => {
 });
 
 setTimeout(() => {
-  const d = DAYS_DATA[1];
+  const d = DAYS_DATA[currentDay];
   if (d) {
-    const coords = [[d.start.lat, d.start.lng], ...d.stops.map(s => [s.lat, s.lng])];
+    const coords = [[d.start.lat, d.start.lng], ...d.stops.map(s => [s.lat, s.lng])].filter(p => p[0] && p[1]);
     if (coords.length) map.fitBounds(L.latLngBounds(coords), { padding:[40,40] });
   }
   refreshSegments();
@@ -1203,10 +1203,17 @@ document.addEventListener('click', e => {
 });
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
-var APP_VERSION = '2.1.0';
+var APP_VERSION = '2.1.1';
 var CHANGELOG_MAX_SHOW = 2;
 
 var APP_CHANGELOG = [
+  { ver: '2.1.1', date: '22.03.2026', items: [
+    'Офлайн: стартовая точка из кэша (не Москва) для админа',
+    'Дата в сайдбаре всегда ДД.ММ.ГГГГ',
+    'Кнопки Навигатор/··· подсвечиваются акцентным цветом',
+    'Карта читателя обновляется при свопе дней админом',
+    'Убрано мелькание «День 1» при обновлении страницы'
+  ]},
   { ver: '2.1.0', date: '21.03.2026', items: [
     'Ссылки в заметках к точкам теперь кликабельные',
     'Drag-and-drop: перетаскивай дни для изменения порядка',
