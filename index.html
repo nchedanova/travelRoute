@@ -80,8 +80,9 @@
           </div>
           <button class="edit-banner-cancel" onclick="cancelEditNote()" title="Отмена">×</button>
         </div>
-        <div style="display:flex;gap:6px">
+        <div style="display:flex;gap:6px;align-items:flex-start">
           <textarea id="noteInput" class="notes-textarea" placeholder="Текст заметки…" onkeydown="noteInputKeydown(event)" oninput="autoResizeNote(this)"></textarea>
+          <button class="stop-note-photo-btn" onclick="triggerNoteTabPhoto()" title="Добавить фото">📷</button>
           <button class="notes-add-btn" id="noteAddBtn" onclick="addNote()">+</button>
         </div>
       </div>
@@ -386,9 +387,15 @@
     </div>
   </div>
 
-  <!-- Photo viewer overlay -->
-  <div class="modal-overlay" id="photoViewerOverlay" onclick="closePhotoViewer()" style="background:rgba(0,0,0,0.88);z-index:9999;">
-    <img id="photoViewerImg" src="" alt="фото" style="max-width:94vw;max-height:92vh;border-radius:8px;object-fit:contain;">
+  <!-- Photo gallery viewer -->
+  <div class="photo-viewer" id="photoViewerOverlay">
+    <button class="pv-close" onclick="closePhotoViewer()">✕</button>
+    <div class="pv-counter" id="pvCounter"></div>
+    <button class="pv-arrow pv-prev" id="pvPrev" onclick="event.stopPropagation();viewerPrev()">‹</button>
+    <button class="pv-arrow pv-next" id="pvNext" onclick="event.stopPropagation();viewerNext()">›</button>
+    <div class="pv-img-wrap" id="pvImgWrap" onclick="closePhotoViewer()">
+      <img id="photoViewerImg" src="" alt="фото" onclick="event.stopPropagation()">
+    </div>
   </div>
 
   <div id="map"></div>

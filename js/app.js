@@ -1210,7 +1210,8 @@ var APP_CHANGELOG = [
   { ver: '2.2.0', date: '22.03.2026', items: [
     '📷 Мультивыбор фото (до 10 в одном сообщении)',
     '📋 Вставка фото из буфера (Ctrl+V / Вставить)',
-    'Фото в заметках к точкам и вкладке «Заметки»'
+    'Фото в заметках к точкам и вкладке «Заметки»',
+    '🖼 Галерея: свайп/стрелки между фото, кнопка «Назад» закрывает'
   ]},
   { ver: '2.1.1', date: '22.03.2026', items: [
     'Офлайн: стартовая точка из кэша (не Москва) для админа',
@@ -1306,7 +1307,7 @@ function _navRestore(state) {
   setTimeout(function() { map && map.invalidateSize(); }, 340);
 }
 
-window.addEventListener('popstate', function(e) { _navRestore(e.state); });
+// popstate handled in chat.js (photo viewer priority, then delegates to _navRestore)
 
 // Set initial state so first "back" doesn't exit immediately
 history.replaceState(_navState(), '');

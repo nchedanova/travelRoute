@@ -841,12 +841,12 @@ function _appendMessageAt(key, msg, beforeNode) {
     const cols = cnt === 1 ? 1 : cnt <= 4 ? 2 : 3;
     inner += `<div class="chat-bubble chat-bubble-img"><div class="chat-photo-grid chat-photo-grid-${cols}" data-count="${cnt}">`;
     msg.imgUrls.forEach((url, i) => {
-      inner += `<img src="${_esc(url)}" class="chat-photo-grid-item" onclick="openChatPhoto('${_esc(url)}')" alt="фото ${i+1}">`;
+      inner += `<img src="${_esc(url)}" class="chat-photo-grid-item" onclick="openChatPhoto(this)" alt="фото ${i+1}">`;
     });
     inner += `</div>${msg.text ? `<div class="chat-photo-caption">${_linkify(msg.text)}</div>` : ''}</div>`;
   } else if (msg.imgUrl) {
     inner += `<div class="chat-bubble chat-bubble-img">
-      <img src="${_esc(msg.imgUrl)}" class="chat-photo" onclick="openChatPhoto('${_esc(msg.imgUrl)}')" alt="фото">
+      <img src="${_esc(msg.imgUrl)}" class="chat-photo" onclick="openChatPhoto(this)" alt="фото">
       ${msg.text ? `<div class="chat-photo-caption">${_linkify(msg.text)}</div>` : ''}
     </div>`;
   } else {
@@ -904,11 +904,129 @@ function scrollToMessage(key) {
   setTimeout(() => el.classList.remove('msg-highlight'), 1500);
 }
 
-function openChatPhoto(url) {
-  const ov = document.getElementById('photoViewerOverlay'), img = document.getElementById('photoViewerImg');
-  if (ov && img) { img.src = url; ov.classList.add('show'); }
+// ── PHOTO GALLERY VIEWER ──────────────────────────────────────────────────────
+let _viewerPhotos = [];
+let _viewerIndex  = 0;
+let _viewerOpen   = false;
+
+function openChatPhoto(elOrUrl) {
+  let url;
+  let photos = [];
+
+  if (typeof elOrUrl === 'string') {
+    // Legacy: plain URL string
+    url = elOrUrl;
+    photos = [url];
+  } else if (elOrUrl && elOrUrl.src) {
+    // DOM img element — find sibling photos in container
+    url = elOrUrl.src;
+    const container = elOrUrl.closest('.chat-photo-grid, .note-images-inline, .chat-bubble-img');
+    if (container) {
+      photos = Array.from(container.querySelectorAll('img')).map(i => i.src).filter(Boolean);
+    }
+    if (!photos.length) photos = [url];
+  } else {
+    return;
+  }
+
+  _viewerPhotos = photos;
+  _viewerIndex  = Math.max(0, photos.indexOf(url));
+  _viewerOpen   = true;
+  _showViewerPhoto();
+
+  const ov = document.getElementById('photoViewerOverlay');
+  if (ov) ov.classList.add('show');
+
+  // Push history state so mobile back button closes the viewer
+  history.pushState({ photoViewer: true }, '');
 }
-function closePhotoViewer() { document.getElementById('photoViewerOverlay')?.classList.remove('show'); }
+
+function closePhotoViewer() {
+  const ov = document.getElementById('photoViewerOverlay');
+  if (ov) ov.classList.remove('show');
+  if (_viewerOpen) {
+    _viewerOpen = false;
+    // If we pushed a state, pop it silently
+    // (if user pressed back, the popstate handler already called us)
+  }
+  _viewerPhotos = [];
+}
+
+function _showViewerPhoto() {
+  const img     = document.getElementById('photoViewerImg');
+  const counter = document.getElementById('pvCounter');
+  const prev    = document.getElementById('pvPrev');
+  const next    = document.getElementById('pvNext');
+  if (!img) return;
+
+  img.src = _viewerPhotos[_viewerIndex] || '';
+  const multi = _viewerPhotos.length > 1;
+  if (counter) {
+    counter.textContent = multi ? (_viewerIndex + 1) + ' / ' + _viewerPhotos.length : '';
+    counter.style.display = multi ? '' : 'none';
+  }
+  if (prev) prev.style.display = multi ? '' : 'none';
+  if (next) next.style.display = multi ? '' : 'none';
+}
+
+function viewerPrev() {
+  if (_viewerPhotos.length <= 1) return;
+  _viewerIndex = (_viewerIndex - 1 + _viewerPhotos.length) % _viewerPhotos.length;
+  _showViewerPhoto();
+}
+
+function viewerNext() {
+  if (_viewerPhotos.length <= 1) return;
+  _viewerIndex = (_viewerIndex + 1) % _viewerPhotos.length;
+  _showViewerPhoto();
+}
+
+// Swipe support for gallery
+(function() {
+  let sx = 0, sy = 0, moving = false;
+  const wrap = () => document.getElementById('pvImgWrap');
+
+  document.addEventListener('touchstart', e => {
+    if (!_viewerOpen) return;
+    const t = e.touches[0];
+    sx = t.clientX; sy = t.clientY; moving = true;
+  }, { passive: true });
+
+  document.addEventListener('touchmove', e => {
+    if (!moving || !_viewerOpen) return;
+  }, { passive: true });
+
+  document.addEventListener('touchend', e => {
+    if (!moving || !_viewerOpen) return;
+    moving = false;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - sx;
+    const dy = t.clientY - sy;
+    if (Math.abs(dx) < 50 || Math.abs(dy) > Math.abs(dx)) return; // too short or vertical
+    if (dx < 0) viewerNext();
+    else viewerPrev();
+  }, { passive: true });
+
+  // Keyboard arrows
+  document.addEventListener('keydown', e => {
+    if (!_viewerOpen) return;
+    if (e.key === 'ArrowLeft')  { viewerPrev(); e.preventDefault(); }
+    if (e.key === 'ArrowRight') { viewerNext(); e.preventDefault(); }
+    if (e.key === 'Escape')     { closePhotoViewer(); e.preventDefault(); }
+  });
+})();
+
+// ── Back button integration ──────────────────────────────────────────────────
+// Intercept popstate to close viewer on mobile back
+window.addEventListener('popstate', function(e) {
+  if (_viewerOpen) {
+    closePhotoViewer();
+    // Don't let _navRestore also run — we consumed this event
+    return;
+  }
+  // Otherwise delegate to existing _navRestore
+  if (typeof _navRestore === 'function') _navRestore(e.state);
+});
 
 // ── UNREAD ─────────────────────────────────────────────────────────────────────
 function _updateUnreadBadge() {

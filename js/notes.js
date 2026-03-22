@@ -277,7 +277,7 @@ function saveStopNote(stopId, day) {
   const inp = document.getElementById('stop-note-' + stopId); if (!inp) return;
   const s   = DAYS_DATA[day]?.stops?.find(x => x.id === stopId); if (!s) return;
   s.note = inp.value.trim();
-  if (!s.note) {
+  if (!s.note && !(s.noteImages && s.noteImages.length)) {
     const wrap = document.getElementById('stop-note-wrap-' + stopId);
     if (wrap) wrap.style.display = 'none';
   }
@@ -295,11 +295,22 @@ function updateStopNotePreview(stopId) {
   if (!ta || !preview) return;
   var text = ta.value.trim();
   var row = ta.closest('.stop-note-input-row');
-  if (text) {
-    preview.innerHTML = _linkifyN(text).replace(/\n/g, '<br>');
+  // Update only the text part, preserving images container
+  var textEl = document.getElementById('stop-note-text-' + stopId);
+  // Check if images exist for this stop
+  var hasImages = false;
+  if (typeof dayKeys === 'function') {
+    dayKeys().forEach(function(d) {
+      var s = DAYS_DATA[d]?.stops?.find(function(x) { return x.id === stopId; });
+      if (s && s.noteImages && s.noteImages.length) hasImages = true;
+    });
+  }
+  if (text || hasImages) {
+    if (textEl) textEl.innerHTML = _linkifyN(text).replace(/\n/g, '<br>');
     preview.style.display = 'block';
     if (row) row.style.display = 'none';
   } else {
+    if (textEl) textEl.innerHTML = '';
     preview.style.display = 'none';
     if (row) row.style.display = '';
   }
@@ -465,48 +476,90 @@ function removeStopNoteImage(stopId, idx) {
 
 function _renderStopNoteImages(stopId) {
   let container = document.getElementById('stop-note-images-' + stopId);
-  if (!container) {
-    const wrap = document.getElementById('stop-note-wrap-' + stopId);
-    if (!wrap) return;
-    container = document.createElement('div');
-    container.id = 'stop-note-images-' + stopId;
-    container.className = 'note-images-row';
-    wrap.appendChild(container);
-  }
+  if (!container) return;
   let stop = null;
   dayKeys().forEach(d => {
     const s = DAYS_DATA[d]?.stops?.find(x => x.id === stopId);
     if (s) stop = s;
   });
-  if (!stop || !stop.noteImages || !stop.noteImages.length) { container.innerHTML = ''; container.style.display = 'none'; return; }
-  container.style.display = 'flex';
-  const isAdm = typeof isAdmin === 'function' && isAdmin();
+  if (!stop || !stop.noteImages || !stop.noteImages.length) { container.innerHTML = ''; return; }
   container.innerHTML = stop.noteImages.map((url, i) =>
     `<div class="note-img-thumb-wrap">
-      <img src="${url}" class="note-img-thumb" onclick="openChatPhoto('${_escN(url)}')" alt="">
-      ${isAdm ? `<button class="pending-thumb-remove" onclick="removeStopNoteImage('${_escN(stopId)}',${i})">×</button>` : ''}
+      <img src="${_escN(url)}" class="note-img-thumb" onclick="event.stopPropagation();openChatPhoto(this)" alt="">
+      <button class="pending-thumb-remove" onclick="event.stopPropagation();removeStopNoteImage('${_escN(stopId)}',${i})">×</button>
     </div>`
   ).join('');
+  // Ensure display bubble and wrap are visible
+  var display = document.getElementById('stop-note-preview-' + stopId);
+  if (display) display.style.display = 'block';
+  var wrap = document.getElementById('stop-note-wrap-' + stopId);
+  if (wrap) wrap.style.display = 'block';
 }
 
-// Patch _renderNotesList to show images
+// ── PHOTO UPLOAD BUTTONS (notes) ─────────────────────────────────────────────
+function triggerStopNotePhoto(stopId, day) {
+  var inp = document.getElementById('_stopNotePhotoInput');
+  if (!inp) {
+    inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = 'image/*'; inp.multiple = true;
+    inp.id = '_stopNotePhotoInput'; inp.style.display = 'none';
+    document.body.appendChild(inp);
+  }
+  inp.onchange = function() {
+    if (!inp.files.length) return;
+    var files = Array.from(inp.files).slice(0, MAX_NOTE_IMAGES);
+    files.forEach(function(file) {
+      if (typeof _compressToBase64 === 'function') {
+        _compressToBase64(file, 800, 0.6).then(function(dataUrl) {
+          _addStopNoteImage(stopId, dataUrl);
+        }).catch(function(err) { console.error('Stop note photo error:', err); });
+      }
+    });
+    inp.value = '';
+  };
+  inp.click();
+}
+
+function triggerNoteTabPhoto() {
+  var inp = document.getElementById('_noteTabPhotoInput');
+  if (!inp) {
+    inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = 'image/*'; inp.multiple = true;
+    inp.id = '_noteTabPhotoInput'; inp.style.display = 'none';
+    document.body.appendChild(inp);
+  }
+  inp.onchange = function() {
+    if (!inp.files.length) return;
+    var files = Array.from(inp.files).slice(0, MAX_NOTE_IMAGES - _noteTabPendingImages.length);
+    files.forEach(function(file) {
+      if (typeof _compressToBase64 === 'function') {
+        _compressToBase64(file, 800, 0.6).then(function(dataUrl) {
+          _addNoteTabImage(dataUrl);
+        }).catch(function(err) { console.error('Note tab photo error:', err); });
+      }
+    });
+    inp.value = '';
+  };
+  inp.click();
+}
+
+// Patch _renderNotesList to show images inside note cards
 const _origRenderNotesList = _renderNotesList;
 _renderNotesList = function() {
   _origRenderNotesList();
-  // After render, add images to note items that have them
   Object.entries(_notesData).forEach(([key, entry]) => {
     if (!entry.images || !entry.images.length) return;
     const noteEl = document.getElementById('note-' + key);
     if (!noteEl) return;
-    let imgContainer = noteEl.querySelector('.note-images-row');
+    // Find or create inline images container inside the card
+    let imgContainer = noteEl.querySelector('.note-images-inline');
     if (!imgContainer) {
       imgContainer = document.createElement('div');
-      imgContainer.className = 'note-images-row';
+      imgContainer.className = 'note-images-inline';
       noteEl.appendChild(imgContainer);
     }
-    imgContainer.style.display = 'flex';
     imgContainer.innerHTML = entry.images.map(url =>
-      `<div class="note-img-thumb-wrap"><img src="${url}" class="note-img-thumb" onclick="openChatPhoto('${_escN(url)}')" alt=""></div>`
+      `<div class="note-img-thumb-wrap"><img src="${_escN(url)}" class="note-img-thumb" onclick="openChatPhoto(this)" alt=""></div>`
     ).join('');
   });
 };
