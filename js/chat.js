@@ -30,7 +30,13 @@ const EMOJI_LIST = [
 
 // ── SESSION ID ─────────────────────────────────────────────────────────────────
 function getSessionId() {
-  let id = localStorage.getItem('travel_session_id');
+  // Prefer Firebase Anonymous Auth uid (server-side, survives cache clear)
+  if (window._firebaseUid) return window._firebaseUid;
+  // Fallback: cached uid from previous auth
+  var cached = localStorage.getItem('travel_firebase_uid');
+  if (cached) return cached;
+  // Last resort: random localStorage id (demo/offline)
+  var id = localStorage.getItem('travel_session_id');
   if (!id) { id = Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem('travel_session_id', id); }
   return id;
 }

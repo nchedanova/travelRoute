@@ -43,6 +43,23 @@ function initGps() {
     const cfg = Object.assign({}, FIREBASE_CONFIG, { apiKey: localStorage.getItem('travel_firebase_key') || '' });
     firebase.initializeApp(cfg);
   }
+
+  // Anonymous Auth — серверный uid вместо localStorage sessionId
+  if (firebase.auth) {
+    firebase.auth().signInAnonymously().catch(e => console.warn('[auth] anonymous sign-in failed:', e));
+    firebase.auth().onAuthStateChanged(user => {
+      if (!user) return;
+      var oldId = localStorage.getItem('travel_session_id');
+      window._firebaseUid = user.uid;
+      localStorage.setItem('travel_firebase_uid', user.uid);
+      console.log('[auth] uid:', user.uid);
+      // Migrate: clean up old presence entry if sessionId changed
+      if (oldId && oldId !== user.uid && firebase.database) {
+        try { firebase.database().ref('chat_presence/' + oldId).remove(); } catch(e) {}
+      }
+    });
+  }
+
   _db = firebase.database();
 
   // Запускаем чат и заметки

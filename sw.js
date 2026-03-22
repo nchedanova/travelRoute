@@ -1,5 +1,5 @@
 // ── SERVICE WORKER · Дорожный журнал ───────────────────────────────────────────
-const CACHE_STATIC  = 'travel-static-v13';
+const CACHE_STATIC  = 'travel-static-v14';
 const CACHE_TILES   = 'travel-tiles-v1';
 const CACHE_FONTS   = 'travel-fonts-v1';
 
@@ -76,6 +76,8 @@ self.addEventListener('fetch', e => {
   // 4) Firebase / GitHub API / external APIs → network only (no cache)
   if (url.hostname.includes('firebase') ||
       url.hostname.includes('gstatic.com/firebasejs') ||
+      url.hostname.includes('identitytoolkit.googleapis.com') ||
+      url.hostname.includes('securetoken.googleapis.com') ||
       url.hostname.includes('api.github.com') ||
       url.hostname.includes('gist.githubusercontent.com') ||
       url.hostname.includes('firebasestorage.googleapis.com')) {
