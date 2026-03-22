@@ -1246,10 +1246,15 @@ function onChatTabClose() { _chatVisible = false; clearInterval(_presenceTimer);
 
 function renderChatHeader() {
   const el = document.getElementById('chatNameDisplay');
+  var _isGoogle = isGoogleUser();
   if (el) {
-    var gBadge = isGoogleUser() ? ' <span class="google-badge" title="Google">G</span>' : '';
+    var gBadge = _isGoogle ? ' <span class="google-badge" title="Google">G</span>' : '';
     el.innerHTML = getChatName() ? _esc(getChatName()) + ' ' + getRoleBadge() + gBadge : '';
   }
+  // Google sign-in button — hide if already signed in with Google
+  var gBtn = document.getElementById('chatGoogleBtn');
+  if (gBtn) gBtn.style.display = _isGoogle ? 'none' : '';
+  // Clear chat — admin only
   const clearBtn = document.getElementById('chatClearBtn');
   if (clearBtn) clearBtn.style.display = (typeof isAdmin === 'function' && isAdmin()) ? 'inline-flex' : 'none';
 }
@@ -1421,8 +1426,8 @@ function _renderRoomTabs() {
 
   container.innerHTML = html;
 
-  // Hide tabs bar entirely if only group tab (viewer)
-  container.style.display = (!_isAdm && !_savedDmRooms.length) ? 'none' : '';
+  // Hide tabs bar for viewers entirely
+  container.style.display = _isAdm ? '' : 'none';
 
   // Long-press on DM tabs to delete (admin only)
   if (_isAdm) {
