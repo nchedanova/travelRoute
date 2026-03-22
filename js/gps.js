@@ -46,6 +46,39 @@ function initGps() {
 
   // Auth — use existing session (Google/anonymous) or create anonymous
   if (firebase.auth) {
+    // Handle redirect result from Google Sign-In
+    firebase.auth().getRedirectResult().then(function(result) {
+      if (result && result.user) {
+        var u = result.user;
+        window._firebaseUid = u.uid;
+        localStorage.setItem('travel_firebase_uid', u.uid);
+        var name = u.displayName || u.email?.split('@')[0] || 'User';
+        // Check for custom name in Firebase
+        if (firebase.database) {
+          firebase.database().ref('users/' + u.uid + '/name').once('value').then(function(snap) {
+            if (snap.val()) name = snap.val();
+            localStorage.setItem('travel_chat_name', name);
+            if (typeof renderChatHeader === 'function') renderChatHeader();
+          });
+        } else {
+          localStorage.setItem('travel_chat_name', name);
+        }
+        localStorage.setItem('travel_auth_provider', 'google');
+        console.log('[auth] Google redirect ok, uid:', u.uid, 'name:', name);
+        // Close nickname modal if open
+        var modal = document.getElementById('nicknameModal');
+        if (modal) modal.classList.remove('show');
+        if (typeof renderChatHeader === 'function') renderChatHeader();
+      }
+    }).catch(function(err) {
+      console.warn('[auth] redirect result error:', err.code);
+      // If credential-already-in-use during link, sign in directly
+      if (err.code === 'auth/credential-already-in-use') {
+        var provider = new firebase.auth.GoogleAuthProvider();
+        firebase.auth().signInWithRedirect(provider);
+      }
+    });
+
     firebase.auth().onAuthStateChanged(user => {
       if (user) {
         window._firebaseUid = user.uid;
@@ -57,11 +90,20 @@ function initGps() {
         if (oldId && oldId !== user.uid && firebase.database) {
           try { firebase.database().ref('chat_presence/' + oldId).remove(); } catch(e) {}
         }
-        // If Google user, auto-set name from profile
-        if (user.displayName && provider === 'google.com') {
-          localStorage.setItem('travel_chat_name', user.displayName);
+        // If Google user, fetch custom name or use profile name
+        if (provider === 'google.com' && firebase.database) {
           localStorage.setItem('travel_auth_provider', 'google');
+          firebase.database().ref('users/' + user.uid + '/name').once('value').then(function(snap) {
+            var customName = snap.val();
+            if (customName) {
+              localStorage.setItem('travel_chat_name', customName);
+            } else if (user.displayName) {
+              localStorage.setItem('travel_chat_name', user.displayName);
+            }
+            if (typeof renderChatHeader === 'function') renderChatHeader();
+          });
         }
+        if (typeof renderChatHeader === 'function') renderChatHeader();
       } else {
         // No user → sign in anonymously for immediate uid
         firebase.auth().signInAnonymously().catch(e => console.warn('[auth] anonymous sign-in failed:', e));

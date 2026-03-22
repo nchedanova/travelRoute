@@ -358,40 +358,19 @@ function showAnonNameStep() {
 
 function signInWithGoogle() {
   if (typeof firebase === 'undefined' || !firebase.auth) return;
-  var errEl = document.getElementById('authError');
   var provider = new firebase.auth.GoogleAuthProvider();
   var user = firebase.auth().currentUser;
 
-  // If currently anonymous, link to Google (preserves uid + existing DMs)
-  var promise = (user && user.isAnonymous)
-    ? user.linkWithPopup(provider).catch(function(err) {
-        // If account already exists, sign in directly instead of linking
-        if (err.code === 'auth/credential-already-in-use' || err.code === 'auth/email-already-in-use') {
-          return firebase.auth().signInWithPopup(provider);
-        }
-        throw err;
-      })
-    : firebase.auth().signInWithPopup(provider);
-
-  promise.then(function(result) {
-    var u = result.user;
-    window._firebaseUid = u.uid;
-    localStorage.setItem('travel_firebase_uid', u.uid);
-    // Use Google display name
-    var name = u.displayName || u.email?.split('@')[0] || 'User';
-    localStorage.setItem('travel_chat_name', name);
-    localStorage.setItem('travel_auth_provider', 'google');
-    document.getElementById('nicknameModal').classList.remove('show');
-    renderChatHeader();
-    console.log('[auth] Google sign-in ok, uid:', u.uid, 'name:', name);
-    if (window._nicknameModalCb) { window._nicknameModalCb(); window._nicknameModalCb = null; }
-  }).catch(function(err) {
-    console.error('[auth] Google sign-in error:', err);
-    if (errEl) {
-      errEl.textContent = err.code === 'auth/popup-closed-by-user' ? 'Окно входа закрыто' : 'Ошибка: ' + (err.message || err.code);
-      errEl.style.display = 'block';
-    }
-  });
+  // Use redirect (more reliable than popup in PWA/mobile)
+  if (user && user.isAnonymous) {
+    // Try linking anonymous to Google
+    user.linkWithRedirect(provider).catch(function(err) {
+      console.warn('[auth] linkWithRedirect failed, trying signIn:', err.code);
+      firebase.auth().signInWithRedirect(provider);
+    });
+  } else {
+    firebase.auth().signInWithRedirect(provider);
+  }
 }
 
 function saveNickname() {
@@ -1259,16 +1238,34 @@ function renderChatHeader() {
   if (clearBtn) clearBtn.style.display = (typeof isAdmin === 'function' && isAdmin()) ? 'inline-flex' : 'none';
 }
 function changeChatName() {
-  // Just change display name, don't touch auth
+  var el = document.getElementById('chatNameDisplay');
+  if (!el) return;
   var current = getChatName();
-  var name = prompt('Имя в чате:', current);
-  if (name === null) return; // cancelled
-  name = name.trim();
-  if (!name) return;
-  localStorage.setItem('travel_chat_name', name);
-  renderChatHeader();
-  _writePresence();
-  showToast('✅ Имя изменено');
+  var inp = document.createElement('input');
+  inp.type = 'text';
+  inp.value = current;
+  inp.maxLength = 24;
+  inp.className = 'chat-name-edit';
+  inp.style.cssText = 'background:var(--surface2);border:1px solid var(--amber);border-radius:4px;color:var(--text);font-family:inherit;font-size:12px;padding:2px 6px;width:100px;outline:none;';
+  el.innerHTML = '';
+  el.appendChild(inp);
+  inp.focus();
+  inp.select();
+  var commit = function() {
+    var name = inp.value.trim() || current;
+    localStorage.setItem('travel_chat_name', name);
+    // Sync to Firebase for cross-device (Google users)
+    if (isGoogleUser() && _chatDb && window._firebaseUid) {
+      _chatDb.ref('users/' + window._firebaseUid + '/name').set(name);
+    }
+    renderChatHeader();
+    _writePresence();
+  };
+  inp.addEventListener('blur', commit);
+  inp.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') inp.blur();
+    if (e.key === 'Escape') { inp.value = current; inp.blur(); }
+  });
 }
 
 // ── PASTE LISTENER (chat) ────────────────────────────────────────────────────
@@ -1395,22 +1392,22 @@ function _renderRoomTabs() {
 
   // DMs — only for admin
   if (_isAdm) {
-    // Saved DM rooms
+    // Saved DM rooms (only show admin contacts)
     _savedDmRooms.forEach(function(dm) {
+      var contact = _knownContacts.find(function(c) { return c.uid === dm.uid; });
+      var role    = contact ? contact.role : (dm.role || 'viewer');
+      if (role !== 'admin') return; // skip viewer DMs
       var roomKey = 'dm_' + dm.roomId;
       var active  = _currentRoom === roomKey ? ' active' : '';
       var unread  = (_dmUnread[roomKey] || 0) > 0 && _currentRoom !== roomKey;
-      var contact = _knownContacts.find(function(c) { return c.uid === dm.uid; });
       var name    = contact ? contact.name : dm.name;
-      var role    = contact ? contact.role : (dm.role || 'viewer');
-      var badge   = role === 'admin' ? ' ✏' : ' 👁';
       html += '<button class="chat-room-tab' + active + '" onclick="switchChatRoom(\'' + roomKey + '\')">'
-           + _esc(name) + '<span class="room-role-badge">' + badge + '</span>'
+           + _esc(name) + '<span class="room-role-badge"> ✏</span>'
            + (unread ? '<span class="room-unread-dot"></span>' : '')
            + '</button>';
     });
 
-    // Online contacts (exclude self, exclude already saved)
+    // Online admin contacts (exclude self, exclude already saved)
     var savedUids = {};
     _savedDmRooms.forEach(function(dm) { savedUids[dm.uid] = true; });
     var recentThreshold = Date.now() - 3600000;
@@ -1418,9 +1415,9 @@ function _renderRoomTabs() {
       if (savedUids[c.uid]) return;
       if (c.ts < recentThreshold) return;
       if (c.name === '?' || !c.name) return;
-      var badge = c.role === 'admin' ? ' ✏' : ' 👁';
+      if (c.role !== 'admin') return; // only show admins
       html += '<button class="chat-room-tab contact" onclick="openDmWith(\'' + _esc(c.uid) + '\',\'' + _esc(c.name) + '\',\'' + _esc(c.role) + '\')">'
-           + '+ ' + _esc(c.name) + '<span class="room-role-badge">' + badge + '</span></button>';
+           + '+ ' + _esc(c.name) + '<span class="room-role-badge"> ✏</span></button>';
     });
   }
 
