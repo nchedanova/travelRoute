@@ -97,6 +97,7 @@ header {
   border:1px solid var(--border); background:transparent;
   color:var(--muted); font-family:'JetBrains Mono',monospace;
   font-size:11px; cursor:pointer; transition:all 0.2s; white-space:nowrap; flex-shrink:0;
+  outline:none; -webkit-tap-highlight-color:transparent;
 }
 .day-tab.active { background:var(--amber); color:var(--accent-text-on); border-color:var(--amber); font-weight:500; }
 .day-tab:hover:not(.active) { border-color:var(--amber-dim); color:var(--text); }
@@ -130,7 +131,8 @@ header {
 }
 
 .day-section { display:none; }
-.day-section.visible { display:block; }
+.day-section.visible { display:block; animation:dayFadeIn 0.18s ease-out; }
+@keyframes dayFadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
 
 .day-header {
   padding:14px 18px 10px; border-bottom:1px solid var(--border);
