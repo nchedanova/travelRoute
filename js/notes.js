@@ -403,7 +403,7 @@ function _handleNotePaste(e) {
     if (!blob) return;
     // Сжимаем с тем же алгоритмом что и чат
     if (typeof _compressToBase64 === 'function') {
-      _compressToBase64(blob, 800, 0.6).then(dataUrl => {
+      _compressToBase64(blob, 1200, 0.7).then(dataUrl => {
         if (isNoteTab) {
           _addNoteTabImage(dataUrl);
         } else if (stopMatch) {

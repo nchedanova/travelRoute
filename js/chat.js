@@ -646,7 +646,7 @@ async function _sendPendingImages() {
   try {
     const urls = [];
     for (const p of _pendingImages) {
-      urls.push(await _compressToBase64(p.blob, 800, 0.6));
+      urls.push(await _compressToBase64(p.blob, 1200, 0.7));
     }
     _clearPending();
     document.getElementById('msg-' + pendingKey)?.remove();
@@ -691,7 +691,7 @@ function _compressToBase64(file, maxDim, quality) {
       const dataUrl = canvas.toDataURL('image/jpeg', quality);
       // Проверка размера (~100KB лимит для Realtime DB)
       const sizeKB = Math.round(dataUrl.length * 0.75 / 1024);
-      if (sizeKB > 200) {
+      if (sizeKB > 300) {
         // Пережимаем сильнее
         canvas.width = Math.round(w * 0.7); canvas.height = Math.round(h * 0.7);
         canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
@@ -1464,12 +1464,14 @@ function _renderRoomTabs() {
     var savedUids = {};
     _savedDmRooms.forEach(function(dm) { savedUids[dm.uid] = true; });
     var recentThreshold = Date.now() - 1800000; // 30 minutes
+    var myName = getChatName();
     var bestByName = {}; // name → {uid, ts, ...} — keep most recent per name
     _knownContacts.forEach(function(c) {
       if (savedUids[c.uid]) return;
       if (c.ts < recentThreshold) return;
       if (c.name === '?' || !c.name) return;
       if (c.role !== 'admin') return;
+      if (c.name === myName) return; // don't show yourself
       if (!bestByName[c.name] || c.ts > bestByName[c.name].ts) {
         bestByName[c.name] = c;
       }
