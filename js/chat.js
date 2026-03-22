@@ -356,7 +356,8 @@ function _listenPresence() {
       if (sid === myId) return;
       const ts   = typeof val === 'object' ? (val.ts || 0) : (val || 0);
       const name = typeof val === 'object' ? (val.name || '?') : '?';
-      _knownContacts.push({ uid: sid, name, ts });
+      const role = typeof val === 'object' ? (val.role || 'viewer') : 'viewer';
+      _knownContacts.push({ uid: sid, name, ts, role });
     });
     _renderRoomTabs();
 
@@ -398,7 +399,7 @@ function _listenDmPresence() {
 }
 
 function _writePresence() {
-  var payload = { ts: Date.now(), name: getChatName() || '?' };
+  var payload = { ts: Date.now(), name: getChatName() || '?', role: getChatRole() };
   // Always write to global presence (for contacts list)
   if (_globalPresRef) _globalPresRef.child(getSessionId()).set(payload);
   // Also write to DM-specific read ref if in a DM
@@ -852,6 +853,10 @@ function _appendMessageAt(key, msg, beforeNode) {
   const list = document.getElementById('chatMessages');
   if (!list || document.getElementById('msg-' + key)) return;
 
+  // Remove empty-state placeholder on first message
+  var emptyEl = document.getElementById('chatEmptyState');
+  if (emptyEl) emptyEl.remove();
+
   const sid    = getSessionId();
   // В демо-режиме совпадение только по имени (роль в DEMO_CHAT может отличаться)
   const isMine = (msg.name === getChatName()) &&
@@ -1193,7 +1198,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ── DM: ROOM SWITCHING ───────────────────────────────────────────────────────
 function _dmRoomId(otherUid) {
-  var myUid = getSessionId();
+  // Always use Firebase uid for room IDs (required for security rules)
+  var myUid = window._firebaseUid || getSessionId();
   return [myUid, otherUid].sort().join('_');
 }
 
@@ -1201,16 +1207,30 @@ function _saveDmRooms() {
   try { localStorage.setItem('travel_dm_rooms', JSON.stringify(_savedDmRooms)); } catch(e) {}
 }
 
-function openDmWith(uid, name) {
+function openDmWith(uid, name, role) {
   if (!_chatInited || !_chatDb) return;
+  if (!window._firebaseUid) { showToast('⏳ Подождите, авторизация…'); return; }
   var roomId = _dmRoomId(uid);
   // Save to known DM rooms
   if (!_savedDmRooms.find(r => r.roomId === roomId)) {
-    _savedDmRooms.push({ roomId: roomId, name: name, uid: uid });
+    _savedDmRooms.push({ roomId: roomId, name: name, uid: uid, role: role || 'viewer' });
     _saveDmRooms();
     _startDmRoomListener(roomId);
   }
   switchChatRoom('dm_' + roomId);
+}
+
+function deleteDmRoom(roomKey) {
+  var roomId = roomKey.replace('dm_', '');
+  _savedDmRooms = _savedDmRooms.filter(function(r) { return r.roomId !== roomId; });
+  _saveDmRooms();
+  // Detach listener
+  if (_dmListeners[roomId]) { _dmListeners[roomId].off(); delete _dmListeners[roomId]; }
+  delete _dmUnread[roomKey];
+  // If currently in this DM, switch to group
+  if (_currentRoom === roomKey) switchChatRoom('group');
+  else _renderRoomTabs();
+  showToast('🗑 Чат удалён');
 }
 
 function switchChatRoom(roomId) {
@@ -1226,7 +1246,7 @@ function switchChatRoom(roomId) {
   // Cancel any editing/reply state
   if (_editingKey) cancelEdit();
   if (_replyingTo) cancelReply();
-  _clearPending();
+  if (typeof _clearPending === 'function') _clearPending();
 
   // Save last-seen for current room
   var lsKey = 'travel_chat_seen_' + _currentRoom;
@@ -1250,7 +1270,13 @@ function switchChatRoom(roomId) {
 
   // Clear messages and re-listen
   var list = document.getElementById('chatMessages');
-  if (list) list.innerHTML = '';
+  if (list) {
+    list.innerHTML = '';
+    if (roomId !== 'group') {
+      // Show empty-state placeholder (will be replaced when messages arrive)
+      list.innerHTML = '<div class="chat-empty-state" id="chatEmptyState">Начните переписку 💬</div>';
+    }
+  }
   _listenMessages();
   _writePresence();
 
@@ -1267,7 +1293,6 @@ function _updateRoomHeader() {
   if (_currentRoom === 'group') {
     if (clearBtn) clearBtn.style.display = (typeof isAdmin === 'function' && isAdmin()) ? 'inline-flex' : 'none';
   } else {
-    // No clear button in DMs (or admin-only)
     if (clearBtn) clearBtn.style.display = 'none';
   }
 }
@@ -1284,48 +1309,68 @@ function _renderRoomTabs() {
   html += '<button class="chat-room-tab' + groupActive + '" data-room="group" onclick="switchChatRoom(\'group\')">'
        + '💬 Общий' + (groupUnread ? '<span class="room-unread-dot"></span>' : '') + '</button>';
 
-  // Contacts from presence (only show those not already in savedDmRooms)
-  var shownUids = {};
-  // First: saved DM rooms (persistent)
+  // Saved DM rooms
   _savedDmRooms.forEach(function(dm) {
-    shownUids[dm.uid] = true;
     var roomKey = 'dm_' + dm.roomId;
     var active  = _currentRoom === roomKey ? ' active' : '';
     var unread  = (_dmUnread[roomKey] || 0) > 0 && _currentRoom !== roomKey;
-    // Update name from presence if available
     var contact = _knownContacts.find(function(c) { return c.uid === dm.uid; });
     var name    = contact ? contact.name : dm.name;
-    html += '<button class="chat-room-tab' + active + '" data-room="' + roomKey + '" onclick="switchChatRoom(\'' + roomKey + '\')">'
-         + _esc(name) + (unread ? '<span class="room-unread-dot"></span>' : '') + '</button>';
+    var role    = contact ? contact.role : (dm.role || 'viewer');
+    var badge   = role === 'admin' ? ' ✏' : ' 👁';
+    html += '<button class="chat-room-tab' + active + '" onclick="switchChatRoom(\'' + roomKey + '\')">'
+         + _esc(name) + '<span class="room-role-badge">' + badge + '</span>'
+         + (unread ? '<span class="room-unread-dot"></span>' : '')
+         + '</button>';
   });
 
-  // Then: online contacts not in saved rooms (as "start DM" options)
-  var recentThreshold = Date.now() - 3600000; // active in last hour
+  // Online contacts (exclude self, exclude already saved)
+  var savedUids = {};
+  _savedDmRooms.forEach(function(dm) { savedUids[dm.uid] = true; });
+  var recentThreshold = Date.now() - 3600000;
   _knownContacts.forEach(function(c) {
-    if (shownUids[c.uid]) return;
+    if (savedUids[c.uid]) return;
     if (c.ts < recentThreshold) return;
-    if (c.name === '?') return;
-    html += '<button class="chat-room-tab contact" onclick="openDmWith(\'' + _esc(c.uid) + '\',\'' + _esc(c.name) + '\')">'
-         + '+ ' + _esc(c.name) + '</button>';
+    if (c.name === '?' || !c.name) return;
+    var badge = c.role === 'admin' ? ' ✏' : ' 👁';
+    html += '<button class="chat-room-tab contact" onclick="openDmWith(\'' + _esc(c.uid) + '\',\'' + _esc(c.name) + '\',\'' + _esc(c.role) + '\')">'
+         + '+ ' + _esc(c.name) + '<span class="room-role-badge">' + badge + '</span></button>';
   });
 
   container.innerHTML = html;
+
+  // Long-press on DM tabs to delete
+  container.querySelectorAll('.chat-room-tab[onclick^="switchChatRoom(\'dm_"]').forEach(function(btn) {
+    var roomKey = btn.getAttribute('onclick').match(/switchChatRoom\('([^']+)'\)/)?.[1];
+    if (!roomKey) return;
+    var pressTimer = null;
+    btn.addEventListener('contextmenu', function(e) { e.preventDefault(); _confirmDeleteDm(roomKey); });
+    btn.addEventListener('touchstart', function() { pressTimer = setTimeout(function() { _confirmDeleteDm(roomKey); }, 600); }, { passive: true });
+    btn.addEventListener('touchend', function() { clearTimeout(pressTimer); });
+    btn.addEventListener('touchmove', function() { clearTimeout(pressTimer); });
+  });
+}
+
+function _confirmDeleteDm(roomKey) {
+  var dm = _savedDmRooms.find(function(r) { return 'dm_' + r.roomId === roomKey; });
+  var name = dm ? dm.name : 'этот чат';
+  if (confirm('Удалить переписку с ' + name + '?')) {
+    deleteDmRoom(roomKey);
+  }
 }
 
 // ── DM: BACKGROUND UNREAD TRACKING ──────────────────────────────────────────
 function _startDmUnreadListeners() {
+  if (!_chatDb) return;
   // Listen to group chat for unread when in DM
-  if (_chatDb) {
-    var groupRef = _chatDb.ref('chat');
-    groupRef.orderByChild('ts').startAt(Date.now()).on('child_added', function(snap) {
-      if (_currentRoom !== 'group') {
-        _dmUnread['group'] = (_dmUnread['group'] || 0) + 1;
-        _renderRoomTabs();
-        var msg = snap.val();
-        if (msg && _chatVisible) _playDing();
-      }
-    });
-  }
+  var groupRef = _chatDb.ref('chat');
+  groupRef.orderByChild('ts').startAt(Date.now()).on('child_added', function(snap) {
+    if (_currentRoom !== 'group') {
+      _dmUnread['group'] = (_dmUnread['group'] || 0) + 1;
+      _renderRoomTabs();
+      if (_chatVisible) _playDing();
+    }
+  });
 
   // Listen to saved DM rooms for unread
   _savedDmRooms.forEach(function(dm) {

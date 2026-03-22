@@ -2168,3 +2168,19 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
   animation: pulse 1.5s ease-in-out infinite;
 }
 @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+
+/* ── Chat empty state ─────────────────────────────────────────────────────── */
+.chat-empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  font-size: 13px;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ── Room tab role badge ──────────────────────────────────────────────────── */
+.room-role-badge {
+  font-size: 8px;
+  opacity: 0.7;
+  margin-left: 1px;
+}
