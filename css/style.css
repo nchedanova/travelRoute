@@ -96,9 +96,12 @@ header {
   padding:5px 12px; border-radius:4px;
   border:1px solid var(--border); background:transparent;
   color:var(--muted); font-family:'JetBrains Mono',monospace;
-  font-size:11px; cursor:pointer; transition:all 0.2s; white-space:nowrap; flex-shrink:0;
-  outline:none; -webkit-tap-highlight-color:transparent;
+  font-size:11px; cursor:pointer; white-space:nowrap; flex-shrink:0;
+  transition: color 0.15s;
+  outline:none !important; box-shadow:none !important;
+  -webkit-tap-highlight-color:transparent;
 }
+.day-tab:focus, .day-tab:focus-visible { outline:none !important; box-shadow:none !important; }
 .day-tab.active { background:var(--amber); color:var(--accent-text-on); border-color:var(--amber); font-weight:500; }
 .day-tab:hover:not(.active) { border-color:var(--amber-dim); color:var(--text); }
 
@@ -132,7 +135,10 @@ header {
 
 .day-section { display:none; }
 .day-section.visible { display:block; animation:dayFadeIn 0.18s ease-out; }
-@keyframes dayFadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
+@keyframes dayFadeIn { from { opacity:0; } to { opacity:1; } }
+
+/* Suppress all transitions during back-button state restore */
+.nav-restoring * { transition:none !important; animation:none !important; }
 
 .day-header {
   padding:14px 18px 10px; border-bottom:1px solid var(--border);

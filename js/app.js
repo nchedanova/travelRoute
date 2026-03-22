@@ -1280,6 +1280,10 @@ function _navPush() {
 function _navRestore(state) {
   if (!state) return;
   _navFromHistory = true;
+
+  // Suppress transitions during programmatic state restore
+  document.body.classList.add('nav-restoring');
+
   var sb  = document.getElementById('sidebar');
   var btn = document.getElementById('toggleBtn');
 
@@ -1304,6 +1308,7 @@ function _navRestore(state) {
   }
 
   _navFromHistory = false;
+  requestAnimationFrame(function() { document.body.classList.remove('nav-restoring'); });
   setTimeout(function() { map && map.invalidateSize(); }, 340);
 }
 
