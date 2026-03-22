@@ -361,15 +361,68 @@ function signInWithGoogle() {
   var provider = new firebase.auth.GoogleAuthProvider();
   var user = firebase.auth().currentUser;
 
-  // Use redirect (more reliable than popup in PWA/mobile)
-  if (user && user.isAnonymous) {
-    // Try linking anonymous to Google
-    user.linkWithRedirect(provider).catch(function(err) {
-      console.warn('[auth] linkWithRedirect failed, trying signIn:', err.code);
-      firebase.auth().signInWithRedirect(provider);
+  // Try popup first (works better on mobile/PWA), fallback to redirect
+  var popupFn = (user && user.isAnonymous)
+    ? user.linkWithPopup.bind(user, provider)
+    : firebase.auth().signInWithPopup.bind(firebase.auth(), provider);
+
+  popupFn().then(function(result) {
+    _handleGoogleResult(result);
+  }).catch(function(err) {
+    if (err.code === 'auth/credential-already-in-use' || err.code === 'auth/email-already-in-use') {
+      // Account exists — sign in directly
+      firebase.auth().signInWithPopup(provider).then(_handleGoogleResult).catch(function(err2) {
+        // Popup blocked → try redirect
+        if (err2.code === 'auth/popup-blocked' || err2.code === 'auth/popup-closed-by-user') {
+          firebase.auth().signInWithRedirect(provider);
+        } else {
+          _showAuthError(err2);
+        }
+      });
+    } else if (err.code === 'auth/popup-blocked') {
+      // Popup blocked → fallback to redirect
+      if (user && user.isAnonymous) {
+        user.linkWithRedirect(provider).catch(function() { firebase.auth().signInWithRedirect(provider); });
+      } else {
+        firebase.auth().signInWithRedirect(provider);
+      }
+    } else if (err.code === 'auth/popup-closed-by-user') {
+      // User closed — do nothing
+    } else {
+      _showAuthError(err);
+    }
+  });
+}
+
+function _handleGoogleResult(result) {
+  if (!result || !result.user) return;
+  var u = result.user;
+  window._firebaseUid = u.uid;
+  localStorage.setItem('travel_firebase_uid', u.uid);
+  localStorage.setItem('travel_auth_provider', 'google');
+  var name = u.displayName || u.email?.split('@')[0] || 'User';
+  // Check for custom name
+  if (_chatDb) {
+    _chatDb.ref('users/' + u.uid + '/name').once('value').then(function(snap) {
+      if (snap.val()) name = snap.val();
+      localStorage.setItem('travel_chat_name', name);
+      renderChatHeader();
     });
   } else {
-    firebase.auth().signInWithRedirect(provider);
+    localStorage.setItem('travel_chat_name', name);
+  }
+  document.getElementById('nicknameModal')?.classList.remove('show');
+  renderChatHeader();
+  console.log('[auth] Google sign-in ok, uid:', u.uid);
+  if (window._nicknameModalCb) { window._nicknameModalCb(); window._nicknameModalCb = null; }
+}
+
+function _showAuthError(err) {
+  console.error('[auth] Google sign-in error:', err);
+  var errEl = document.getElementById('authError');
+  if (errEl) {
+    errEl.textContent = 'Ошибка: ' + (err.message || err.code);
+    errEl.style.display = 'block';
   }
 }
 
