@@ -321,20 +321,32 @@ function saveNickname() {
 function nicknameKeydown(e) { if (e.key === 'Enter') saveNickname(); }
 
 // ── PRESENCE ───────────────────────────────────────────────────────────────────
+let _otherReaders = []; // [{name, ts, sid}]
+
 function _listenPresence() {
   _presenceRef.on('value', snap => {
     const data = snap.val() || {};
     const myId = getSessionId();
-    let maxOther = 0;
-    Object.entries(data).forEach(([sid, ts]) => { if (sid !== myId && ts > maxOther) maxOther = ts; });
-    _otherReadTs = maxOther;
+    _otherReaders = [];
+    _otherReadTs = 0;
+    Object.entries(data).forEach(([sid, val]) => {
+      if (sid === myId) return;
+      // Backward compat: old format = just timestamp, new = {ts, name}
+      const ts   = typeof val === 'object' ? (val.ts || 0) : (val || 0);
+      const name = typeof val === 'object' ? (val.name || '?') : '?';
+      if (ts > _otherReadTs) _otherReadTs = ts;
+      _otherReaders.push({ sid, name, ts });
+    });
     document.querySelectorAll('.chat-msg.mine[data-ts]').forEach(el => {
       _updateTicks(el.id.replace('msg-',''), parseInt(el.dataset.ts));
     });
   });
 }
 function _writePresence() {
-  if (_presenceRef) _presenceRef.child(getSessionId()).set(Date.now());
+  if (_presenceRef) _presenceRef.child(getSessionId()).set({
+    ts: Date.now(),
+    name: getChatName() || '?'
+  });
 }
 
 // ── LISTEN ─────────────────────────────────────────────────────────────────────
@@ -877,8 +889,72 @@ function _renderReactions(key, reactions, sid) {
 function _updateTicks(key, ts) {
   const el = document.getElementById('ticks-' + key); if (!el) return;
   el.classList.remove('pending', 'delivered', 'read');
-  el.classList.add(ts && _otherReadTs >= ts ? 'read' : 'delivered');
+
+  // Count readers who have seen this message
+  const readers = _otherReaders.filter(r => r.ts >= ts);
+  const isRead  = readers.length > 0;
+
+  el.classList.add(ts && isRead ? 'read' : 'delivered');
+
+  // Show reader count badge
+  let badge = el.querySelector('.read-count');
+  if (isRead && readers.length > 0) {
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.className = 'read-count';
+      el.appendChild(badge);
+    }
+    badge.textContent = readers.length;
+    // Store reader names for popup
+    el.dataset.readers = readers.map(r => r.name).join(', ');
+  } else if (badge) {
+    badge.remove();
+  }
 }
+
+// ── Read-by popup ─────────────────────────────────────────────────────────────
+let _readPopupEl = null;
+
+function _showReadPopup(el) {
+  const names = el.dataset.readers;
+  if (!names) return;
+  _closeReadPopup();
+
+  _readPopupEl = document.createElement('div');
+  _readPopupEl.className = 'read-popup';
+  _readPopupEl.textContent = '👁 ' + names;
+
+  // Position near the ticks element
+  const rect  = el.getBoundingClientRect();
+  const panel = el.closest('.chat-panel') || document.getElementById('sidebar');
+  const pRect = panel ? panel.getBoundingClientRect() : { left:0, top:0 };
+
+  _readPopupEl.style.position = 'absolute';
+  _readPopupEl.style.bottom   = (pRect.bottom - rect.top + 4) + 'px';
+  _readPopupEl.style.right    = (pRect.right - rect.right) + 'px';
+
+  if (panel) { panel.style.position = 'relative'; panel.appendChild(_readPopupEl); }
+  else document.body.appendChild(_readPopupEl);
+
+  // Auto-close
+  setTimeout(_closeReadPopup, 3000);
+}
+
+function _closeReadPopup() {
+  if (_readPopupEl) { _readPopupEl.remove(); _readPopupEl = null; }
+}
+
+// Tap on ticks → show who read
+document.addEventListener('click', e => {
+  const ticks = e.target.closest('.chat-ticks.read');
+  if (ticks && ticks.dataset.readers) {
+    e.stopPropagation();
+    _showReadPopup(ticks);
+    return;
+  }
+  // Close popup on outside click
+  if (_readPopupEl && !e.target.closest('.read-popup')) _closeReadPopup();
+});
 
 function _esc(s) {
   if (!s) return '';

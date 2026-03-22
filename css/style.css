@@ -1398,11 +1398,31 @@ body.driving-active .stop-card.gps-nearest .stop-num {
 .note-action-btn.danger:hover { color: var(--red); }
 
 /* ── CHAT TICKS (message status) ── */
-.chat-ticks { display: inline-flex; align-items: center; }
+.chat-ticks { display: inline-flex; align-items: center; gap: 2px; cursor: pointer; }
 .tick-svg   { width: 18px; height: 10px; }
-.chat-ticks.pending   { color: var(--muted); opacity: 0.35; }
-.chat-ticks.delivered { color: var(--muted); }
+.chat-ticks.pending   { color: var(--muted); opacity: 0.35; cursor: default; }
+.chat-ticks.delivered { color: var(--muted); cursor: default; }
 .chat-ticks.read      { color: var(--amber); }
+.read-count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: var(--amber);
+  min-width: 10px;
+  text-align: center;
+}
+.read-popup {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text);
+  white-space: nowrap;
+  z-index: 500;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  animation: dayFadeIn 0.12s ease-out;
+}
 
 /* ── REACTIONS ── */
 .chat-reactions {
