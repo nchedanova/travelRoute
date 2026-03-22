@@ -1,18 +1,28 @@
 // ── CHAT MODULE ────────────────────────────────────────────────────────────────
 // Firebase /chat/{id} → {name, role, text, imgUrl, ts, edited, reactions:{emoji:[sids]}}
-// Firebase /chat_presence/{sessionId} → timestamp
+// Firebase /chat_presence/{sessionId} → {ts, name}
+// Firebase /dm/{roomId}/messages/{id} → same as chat
+// Firebase /dm/{roomId}/read/{sessionId} → {ts, name}
 
 let _chatDb       = null;
 let _chatRef      = null;
 let _presenceRef  = null;
+let _globalPresRef = null; // always points to /chat_presence (for contacts)
 let _chatInited   = false;
 let _chatUnread   = 0;
 let _chatVisible  = false;
 let _chatLoadTs   = 0;
 let _otherReadTs  = 0;
 let _presenceTimer = null;
-let _editingKey   = null;   // key сообщения в режиме редактирования
-let _replyingTo   = null;   // { key, name, text } — цитируемое сообщение
+let _editingKey   = null;
+let _replyingTo   = null;
+
+// ── DM STATE ──────────────────────────────────────────────────────────────────
+let _currentRoom    = 'group';       // 'group' | 'dm_{uid1}_{uid2}'
+let _knownContacts  = [];            // [{uid, name, ts}] from presence
+let _savedDmRooms   = [];            // [{roomId, name, uid}] from localStorage
+let _dmUnread       = {};            // {roomId: count}
+let _dmListeners    = {};            // {roomId: ref} for background unread tracking
 
 const REACTIONS = ['👍','❤️','🆗','🙂','🥰','👀','💯','🤝','🎉','😱','😔'];
 const EMOJI_LIST = [
@@ -190,14 +200,21 @@ function initChat() {
   }
 
   if (typeof firebase === 'undefined' || !firebase.apps.length) return;
-  _chatDb      = firebase.database();
-  _chatRef     = _chatDb.ref('chat');
-  _presenceRef = _chatDb.ref('chat_presence');
-  _chatInited  = true;
+  _chatDb         = firebase.database();
+  _chatRef        = _chatDb.ref('chat');
+  _presenceRef    = _chatDb.ref('chat_presence');
+  _globalPresRef  = _chatDb.ref('chat_presence');
+  _chatInited     = true;
+  _currentRoom    = 'group';
+
+  // Load saved DM rooms from localStorage
+  try { _savedDmRooms = JSON.parse(localStorage.getItem('travel_dm_rooms') || '[]'); } catch(e) { _savedDmRooms = []; }
+
   _listenPresence();
   _ensureNickname(() => _listenMessages());
   _monitorConnection();
   _monitorVisibility();
+  _startDmUnreadListeners();
 }
 
 function _renderDemoChat() {
@@ -330,16 +347,47 @@ function nicknameKeydown(e) { if (e.key === 'Enter') saveNickname(); }
 let _otherReaders = []; // [{name, ts, sid}]
 
 function _listenPresence() {
-  _presenceRef.on('value', snap => {
+  // Always listen to global presence for contact list
+  _globalPresRef.on('value', snap => {
     const data = snap.val() || {};
     const myId = getSessionId();
+    _knownContacts = [];
+    Object.entries(data).forEach(([sid, val]) => {
+      if (sid === myId) return;
+      const ts   = typeof val === 'object' ? (val.ts || 0) : (val || 0);
+      const name = typeof val === 'object' ? (val.name || '?') : '?';
+      _knownContacts.push({ uid: sid, name, ts });
+    });
+    _renderRoomTabs();
+
+    // If currently in group chat, update readers from global presence
+    if (_currentRoom === 'group') {
+      _otherReaders = _knownContacts.map(c => ({ sid: c.uid, name: c.name, ts: c.ts }));
+      _otherReadTs = _otherReaders.reduce((max, r) => Math.max(max, r.ts), 0);
+      document.querySelectorAll('.chat-msg.mine[data-ts]').forEach(el => {
+        _updateTicks(el.id.replace('msg-',''), parseInt(el.dataset.ts));
+      });
+    }
+  });
+
+  // If in a DM, also listen to DM-specific read receipts
+  if (_currentRoom !== 'group') {
+    _listenDmPresence();
+  }
+}
+
+function _listenDmPresence() {
+  if (_currentRoom === 'group' || !_chatDb) return;
+  var dmReadRef = _chatDb.ref('dm/' + _currentRoom.replace('dm_','') + '/read');
+  dmReadRef.on('value', snap => {
+    var data = snap.val() || {};
+    var myId = getSessionId();
     _otherReaders = [];
     _otherReadTs = 0;
     Object.entries(data).forEach(([sid, val]) => {
       if (sid === myId) return;
-      // Backward compat: old format = just timestamp, new = {ts, name}
-      const ts   = typeof val === 'object' ? (val.ts || 0) : (val || 0);
-      const name = typeof val === 'object' ? (val.name || '?') : '?';
+      var ts   = typeof val === 'object' ? (val.ts || 0) : (val || 0);
+      var name = typeof val === 'object' ? (val.name || '?') : '?';
       if (ts > _otherReadTs) _otherReadTs = ts;
       _otherReaders.push({ sid, name, ts });
     });
@@ -348,11 +396,15 @@ function _listenPresence() {
     });
   });
 }
+
 function _writePresence() {
-  if (_presenceRef) _presenceRef.child(getSessionId()).set({
-    ts: Date.now(),
-    name: getChatName() || '?'
-  });
+  var payload = { ts: Date.now(), name: getChatName() || '?' };
+  // Always write to global presence (for contacts list)
+  if (_globalPresRef) _globalPresRef.child(getSessionId()).set(payload);
+  // Also write to DM-specific read ref if in a DM
+  if (_currentRoom !== 'group' && _chatDb) {
+    _chatDb.ref('dm/' + _currentRoom.replace('dm_','') + '/read/' + getSessionId()).set(payload);
+  }
 }
 
 // ── LISTEN ─────────────────────────────────────────────────────────────────────
@@ -1138,3 +1190,162 @@ document.addEventListener('DOMContentLoaded', () => {
   const chatInp = document.getElementById('chatInput');
   if (chatInp) chatInp.addEventListener('paste', _handleChatPaste);
 });
+
+// ── DM: ROOM SWITCHING ───────────────────────────────────────────────────────
+function _dmRoomId(otherUid) {
+  var myUid = getSessionId();
+  return [myUid, otherUid].sort().join('_');
+}
+
+function _saveDmRooms() {
+  try { localStorage.setItem('travel_dm_rooms', JSON.stringify(_savedDmRooms)); } catch(e) {}
+}
+
+function openDmWith(uid, name) {
+  if (!_chatInited || !_chatDb) return;
+  var roomId = _dmRoomId(uid);
+  // Save to known DM rooms
+  if (!_savedDmRooms.find(r => r.roomId === roomId)) {
+    _savedDmRooms.push({ roomId: roomId, name: name, uid: uid });
+    _saveDmRooms();
+    _startDmRoomListener(roomId);
+  }
+  switchChatRoom('dm_' + roomId);
+}
+
+function switchChatRoom(roomId) {
+  if (!_chatDb || _currentRoom === roomId) return;
+
+  // Detach old listeners
+  if (_chatRef) _chatRef.off();
+  // Detach DM presence listener
+  if (_currentRoom !== 'group') {
+    try { _chatDb.ref('dm/' + _currentRoom.replace('dm_','') + '/read').off(); } catch(e) {}
+  }
+
+  // Cancel any editing/reply state
+  if (_editingKey) cancelEdit();
+  if (_replyingTo) cancelReply();
+  _clearPending();
+
+  // Save last-seen for current room
+  var lsKey = 'travel_chat_seen_' + _currentRoom;
+  try { localStorage.setItem(lsKey, Date.now().toString()); } catch(e) {}
+
+  _currentRoom = roomId;
+  _lastMsgTs = 0;
+  _otherReaders = [];
+  _otherReadTs = 0;
+
+  // Set new refs
+  if (roomId === 'group') {
+    _chatRef     = _chatDb.ref('chat');
+    _presenceRef = _globalPresRef;
+  } else {
+    var fbRoom   = roomId.replace('dm_', '');
+    _chatRef     = _chatDb.ref('dm/' + fbRoom + '/messages');
+    _presenceRef = _chatDb.ref('dm/' + fbRoom + '/read');
+    _listenDmPresence();
+  }
+
+  // Clear messages and re-listen
+  var list = document.getElementById('chatMessages');
+  if (list) list.innerHTML = '';
+  _listenMessages();
+  _writePresence();
+
+  // Clear unread for this room
+  _dmUnread[roomId] = 0;
+
+  // Update UI
+  _renderRoomTabs();
+  _updateRoomHeader();
+}
+
+function _updateRoomHeader() {
+  var clearBtn = document.getElementById('chatClearBtn');
+  if (_currentRoom === 'group') {
+    if (clearBtn) clearBtn.style.display = (typeof isAdmin === 'function' && isAdmin()) ? 'inline-flex' : 'none';
+  } else {
+    // No clear button in DMs (or admin-only)
+    if (clearBtn) clearBtn.style.display = 'none';
+  }
+}
+
+// ── DM: ROOM TABS RENDERING ─────────────────────────────────────────────────
+function _renderRoomTabs() {
+  var container = document.getElementById('chatRoomTabs');
+  if (!container) return;
+
+  var html = '';
+  // Group tab
+  var groupActive = _currentRoom === 'group' ? ' active' : '';
+  var groupUnread = (_dmUnread['group'] || 0) > 0 && _currentRoom !== 'group';
+  html += '<button class="chat-room-tab' + groupActive + '" data-room="group" onclick="switchChatRoom(\'group\')">'
+       + '💬 Общий' + (groupUnread ? '<span class="room-unread-dot"></span>' : '') + '</button>';
+
+  // Contacts from presence (only show those not already in savedDmRooms)
+  var shownUids = {};
+  // First: saved DM rooms (persistent)
+  _savedDmRooms.forEach(function(dm) {
+    shownUids[dm.uid] = true;
+    var roomKey = 'dm_' + dm.roomId;
+    var active  = _currentRoom === roomKey ? ' active' : '';
+    var unread  = (_dmUnread[roomKey] || 0) > 0 && _currentRoom !== roomKey;
+    // Update name from presence if available
+    var contact = _knownContacts.find(function(c) { return c.uid === dm.uid; });
+    var name    = contact ? contact.name : dm.name;
+    html += '<button class="chat-room-tab' + active + '" data-room="' + roomKey + '" onclick="switchChatRoom(\'' + roomKey + '\')">'
+         + _esc(name) + (unread ? '<span class="room-unread-dot"></span>' : '') + '</button>';
+  });
+
+  // Then: online contacts not in saved rooms (as "start DM" options)
+  var recentThreshold = Date.now() - 3600000; // active in last hour
+  _knownContacts.forEach(function(c) {
+    if (shownUids[c.uid]) return;
+    if (c.ts < recentThreshold) return;
+    if (c.name === '?') return;
+    html += '<button class="chat-room-tab contact" onclick="openDmWith(\'' + _esc(c.uid) + '\',\'' + _esc(c.name) + '\')">'
+         + '+ ' + _esc(c.name) + '</button>';
+  });
+
+  container.innerHTML = html;
+}
+
+// ── DM: BACKGROUND UNREAD TRACKING ──────────────────────────────────────────
+function _startDmUnreadListeners() {
+  // Listen to group chat for unread when in DM
+  if (_chatDb) {
+    var groupRef = _chatDb.ref('chat');
+    groupRef.orderByChild('ts').startAt(Date.now()).on('child_added', function(snap) {
+      if (_currentRoom !== 'group') {
+        _dmUnread['group'] = (_dmUnread['group'] || 0) + 1;
+        _renderRoomTabs();
+        var msg = snap.val();
+        if (msg && _chatVisible) _playDing();
+      }
+    });
+  }
+
+  // Listen to saved DM rooms for unread
+  _savedDmRooms.forEach(function(dm) {
+    _startDmRoomListener(dm.roomId);
+  });
+}
+
+function _startDmRoomListener(roomId) {
+  if (_dmListeners[roomId] || !_chatDb) return;
+  var ref = _chatDb.ref('dm/' + roomId + '/messages');
+  _dmListeners[roomId] = ref;
+  ref.orderByChild('ts').startAt(Date.now()).on('child_added', function(snap) {
+    var roomKey = 'dm_' + roomId;
+    if (_currentRoom !== roomKey) {
+      _dmUnread[roomKey] = (_dmUnread[roomKey] || 0) + 1;
+      _renderRoomTabs();
+      if (_chatVisible) _playDing();
+      var msg = snap.val();
+      if (msg) _showNotification(msg.name, msg.text);
+    }
+  });
+}
+

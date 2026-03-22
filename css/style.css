@@ -2115,3 +2115,56 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
   .pv-close { top: 8px; right: 8px; }
   .pv-counter { top: 10px; font-size: 11px; }
 }
+
+/* ── CHAT ROOM TABS (DM) ─────────────────────────────────────────────────────── */
+.chat-room-tabs {
+  display: flex;
+  gap: 5px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  flex-shrink: 0;
+}
+.chat-room-tabs::-webkit-scrollbar { display: none; }
+.chat-room-tab {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  position: relative;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.chat-room-tab:hover { border-color: var(--amber); color: var(--text); }
+.chat-room-tab.active {
+  background: var(--amber);
+  color: var(--accent-text-on);
+  border-color: var(--amber);
+  font-weight: 500;
+}
+.chat-room-tab.contact {
+  border-style: dashed;
+  color: var(--muted);
+  font-size: 9px;
+}
+.chat-room-tab.contact:hover { border-color: var(--amber); color: var(--amber); border-style: solid; }
+.room-unread-dot {
+  display: inline-block;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--amber);
+  margin-left: 4px;
+  vertical-align: middle;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }

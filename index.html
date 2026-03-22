@@ -99,6 +99,9 @@
         <button class="chat-sound-btn" id="chatSoundBtn" onclick="toggleChatSound()" title="Звук уведомлений">🔔</button>
         <button class="chat-clear-btn" id="chatClearBtn" onclick="openClearChatConfirm()" title="Очистить чат" style="display:none">🗑</button>
       </div>
+      <div class="chat-room-tabs" id="chatRoomTabs">
+        <button class="chat-room-tab active" data-room="group" onclick="switchChatRoom('group')">💬 Общий</button>
+      </div>
       <div id="chatMessages" class="chat-messages"></div>
       <!-- Context menu -->
       <div id="chatMsgMenu" class="chat-msg-menu" style="display:none" onclick="event.stopPropagation()">
