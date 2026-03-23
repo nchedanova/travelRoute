@@ -328,20 +328,20 @@ function _ensureNickname(cb) {
   if (getChatName()) { cb && cb(); return; }
   // If returning from Google redirect — wait for result before showing modal
   if (localStorage.getItem('travel_auth_redirect_pending')) {
-    // Wait up to 5s for redirect result
+    // Wait up to 8s for redirect result
     var waited = 0;
     var check = setInterval(function() {
-      waited += 200;
+      waited += 300;
       if (getChatName()) {
         clearInterval(check);
         localStorage.removeItem('travel_auth_redirect_pending');
         cb && cb();
-      } else if (waited >= 5000) {
+      } else if (waited >= 8000) {
         clearInterval(check);
         localStorage.removeItem('travel_auth_redirect_pending');
         _showNicknameModal(cb); // redirect failed, show modal
       }
-    }, 200);
+    }, 300);
     return;
   }
   _showNicknameModal(cb);

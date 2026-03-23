@@ -108,7 +108,12 @@ function initGps() {
 
         // If Google user, fetch custom name or use profile name
         if (provider === 'google.com' && firebase.database) {
+          localStorage.removeItem('travel_auth_redirect_pending');
           localStorage.setItem('travel_auth_provider', 'google');
+          // Set name immediately so chat modal polling sees it
+          if (user.displayName && !getChatName()) {
+            localStorage.setItem('travel_chat_name', user.displayName);
+          }
           firebase.database().ref('users/' + user.uid + '/name').once('value').then(function(snap) {
             var customName = snap.val();
             if (customName) {
@@ -121,8 +126,12 @@ function initGps() {
         }
         if (typeof renderChatHeader === 'function') renderChatHeader();
       } else {
-        // No user → sign in anonymously for immediate uid
-        firebase.auth().signInAnonymously().catch(e => console.warn('[auth] anonymous sign-in failed:', e));
+        // No user — but don't create anonymous if Google redirect is pending
+        if (localStorage.getItem('travel_auth_redirect_pending')) {
+          console.log('[auth] waiting for redirect result, skipping anonymous sign-in');
+        } else {
+          firebase.auth().signInAnonymously().catch(e => console.warn('[auth] anonymous sign-in failed:', e));
+        }
       }
     });
   }
