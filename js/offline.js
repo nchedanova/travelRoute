@@ -143,31 +143,34 @@ function getTilesAlongRoute(stops, zooms, paddingTiles) {
   const urls = new Set();
   const points = stops.filter(s => s.lat && s.lng);
 
-  for (const zoom of zooms) {
-    // Get bounding tiles for each pair of consecutive points
-    for (let i = 0; i < points.length; i++) {
-      const p = points[i];
-      const tx = lng2tile(p.lng, zoom);
-      const ty = lat2tile(p.lat, zoom);
-      // Add padding around each point
-      for (let dx = -paddingTiles; dx <= paddingTiles; dx++) {
-        for (let dy = -paddingTiles; dy <= paddingTiles; dy++) {
-          urls.add(`https://tile.openstreetmap.org/${zoom}/${tx + dx}/${ty + dy}.png`);
-        }
+  function addWithPadding(tx, ty, zoom, pad) {
+    for (let dx = -pad; dx <= pad; dx++) {
+      for (let dy = -pad; dy <= pad; dy++) {
+        urls.add(`https://tile.openstreetmap.org/${zoom}/${tx + dx}/${ty + dy}.png`);
       }
     }
+  }
 
-    // Fill gaps between consecutive points
+  for (const zoom of zooms) {
+    // Padding around each stop point
+    for (let i = 0; i < points.length; i++) {
+      addWithPadding(lng2tile(points[i].lng, zoom), lat2tile(points[i].lat, zoom), zoom, paddingTiles);
+    }
+
+    // Walk along line between consecutive points (Bresenham) with padding
     for (let i = 0; i < points.length - 1; i++) {
-      const a = points[i], b = points[i + 1];
-      const ax = lng2tile(a.lng, zoom), ay = lat2tile(a.lat, zoom);
-      const bx = lng2tile(b.lng, zoom), by = lat2tile(b.lat, zoom);
-      const minX = Math.min(ax, bx) - 1, maxX = Math.max(ax, bx) + 1;
-      const minY = Math.min(ay, by) - 1, maxY = Math.max(ay, by) + 1;
-      for (let x = minX; x <= maxX; x++) {
-        for (let y = minY; y <= maxY; y++) {
-          urls.add(`https://tile.openstreetmap.org/${zoom}/${x}/${y}.png`);
-        }
+      const ax = lng2tile(points[i].lng, zoom),     ay = lat2tile(points[i].lat, zoom);
+      const bx = lng2tile(points[i + 1].lng, zoom), by = lat2tile(points[i + 1].lat, zoom);
+      let dx = Math.abs(bx - ax), dy = Math.abs(by - ay);
+      let sx = ax < bx ? 1 : -1, sy = ay < by ? 1 : -1;
+      let err = dx - dy;
+      let cx = ax, cy = ay;
+      while (true) {
+        addWithPadding(cx, cy, zoom, 1);
+        if (cx === bx && cy === by) break;
+        const e2 = 2 * err;
+        if (e2 > -dy) { err -= dy; cx += sx; }
+        if (e2 <  dx) { err += dx; cy += sy; }
       }
     }
   }
@@ -217,4 +220,13 @@ if (navigator.serviceWorker) {
       setTimeout(() => setSyncStatus && setSyncStatus('☁ ок', 'var(--muted)'), 5000);
     }
   });
+}
+
+async function clearTileCache() {
+  if (!navigator.serviceWorker?.controller) {
+    showToast && showToast('⚠ Service Worker не активен');
+    return;
+  }
+  navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_TILE_CACHE' });
+  showToast && showToast('🗑 Кэш карты очищен');
 }
