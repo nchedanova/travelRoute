@@ -269,29 +269,47 @@ function doDeleteNote() {
 function onNotesTabOpen() { if (!_notesInited) initNotes(); }
 
 // ── STOP NOTES (admin only) ────────────────────────────────────────────────────
-// Quiet save — blur handler, no toast, no hide
-function saveStopNoteQuiet(stopId, day) {
-  if (typeof isDemoMode === 'function' && isDemoMode()) {
-    saveStopNoteDemo(stopId, day); return;
-  }
-  var inp = document.getElementById('stop-note-' + stopId); if (!inp) return;
-  var s = DAYS_DATA[day]?.stops?.find(function(x) { return x.id === stopId; }); if (!s) return;
-  s.note = inp.value.trim();
-  var c = inp.closest('.stop-card'); if (c) c.draggable = true;
-  saveData();
-}
+var _pendingStopImages = {}; // {stopId: [dataUrl, ...]}
 
-// Commit — saves + closes edit + shows preview + toast
+// No-op quiet save — blur does nothing now (save only on ✓)
+function saveStopNoteQuiet() {}
+function saveStopNote(stopId, day) { saveStopNoteQuiet(); }
+
+// Commit — the ONLY save action. Saves text + images → preview → toast
 function commitStopNote(stopId, day) {
-  saveStopNoteQuiet(stopId, day);
-  var s = null;
-  dayKeys().forEach(function(d) { var x = DAYS_DATA[d]?.stops?.find(function(x) { return x.id === stopId; }); if (x) s = x; });
-  var hasContent = (s && s.note) || (s && s.noteImages && s.noteImages.length);
+  var inp = document.getElementById('stop-note-' + stopId);
+  var s = null, dayNum = null;
+  dayKeys().forEach(function(d) {
+    var x = DAYS_DATA[d]?.stops?.find(function(x) { return x.id === stopId; });
+    if (x) { s = x; dayNum = d; }
+  });
+  if (!s) return;
+
+  // Save text
+  s.note = inp ? inp.value.trim() : '';
+
+  // Commit pending images
+  if (_pendingStopImages[stopId] && _pendingStopImages[stopId].length) {
+    if (!s.noteImages) s.noteImages = [];
+    s.noteImages = s.noteImages.concat(_pendingStopImages[stopId]);
+    delete _pendingStopImages[stopId];
+  }
+
+  var hasContent = s.note || (s.noteImages && s.noteImages.length);
+
+  // If empty — full cleanup
+  if (!hasContent) {
+    s.note = '';
+    delete s.noteImages;
+    delete _pendingStopImages[stopId];
+  }
+
   // Update preview
   var textEl = document.getElementById('stop-note-text-' + stopId);
-  if (textEl) textEl.innerHTML = _linkifyN(s?.note || '').replace(/\n/g, '<br>');
+  if (textEl) textEl.innerHTML = _linkifyN(s.note || '').replace(/\n/g, '<br>');
   _renderStopNotePreviewImages(stopId);
-  // Toggle edit/preview
+
+  // Switch to preview / hide
   var edit = document.getElementById('stop-note-edit-' + stopId);
   var preview = document.getElementById('stop-note-preview-' + stopId);
   var wrap = document.getElementById('stop-note-wrap-' + stopId);
@@ -304,21 +322,122 @@ function commitStopNote(stopId, day) {
     if (preview) preview.style.display = 'none';
     if (wrap) wrap.style.display = 'none';
   }
+
+  // Re-enable drag
+  var card = inp?.closest('.stop-card');
+  if (card) card.draggable = true;
+
+  saveData();
   typeof showToast === 'function' && showToast('💾 Сохранено');
 }
 
-// Open edit mode — shows textarea + images, hides preview
+// Open edit mode
 function openStopNoteEdit(stopId) {
   var edit = document.getElementById('stop-note-edit-' + stopId);
   var preview = document.getElementById('stop-note-preview-' + stopId);
-  if (edit) edit.style.display = 'block';
+  if (edit) edit.style.display = 'flex';
   if (preview) preview.style.display = 'none';
+  // Load current saved images into edit view
+  _renderStopNoteEditImages(stopId);
   var ta = document.getElementById('stop-note-' + stopId);
   if (ta) { autoResizeNote(ta); setTimeout(function() { ta.focus(); }, 50); }
 }
 
-// Legacy wrapper for backward compatibility
-function saveStopNote(stopId, day) { saveStopNoteQuiet(stopId, day); }
+// Add photo to pending (not saved yet)
+function addPendingStopImage(stopId, dataUrl) {
+  if (!_pendingStopImages[stopId]) _pendingStopImages[stopId] = [];
+  if (_pendingStopImages[stopId].length + _getStopImageCount(stopId) >= MAX_NOTE_IMAGES) {
+    showToast('📷 Максимум ' + MAX_NOTE_IMAGES + ' фото');
+    return;
+  }
+  _pendingStopImages[stopId].push(dataUrl);
+  _renderStopNoteEditImages(stopId);
+}
+
+// Remove from pending or saved
+function removePendingStopImage(stopId, idx) {
+  var saved = _getStopImages(stopId);
+  var pending = _pendingStopImages[stopId] || [];
+  var all = saved.concat(pending);
+  if (idx < saved.length) {
+    // Remove from saved
+    var stop = null;
+    dayKeys().forEach(function(d) {
+      var s = DAYS_DATA[d]?.stops?.find(function(x) { return x.id === stopId; });
+      if (s) stop = s;
+    });
+    if (stop && stop.noteImages) stop.noteImages.splice(idx, 1);
+  } else {
+    // Remove from pending
+    var pendingIdx = idx - saved.length;
+    pending.splice(pendingIdx, 1);
+    _pendingStopImages[stopId] = pending;
+  }
+  _renderStopNoteEditImages(stopId);
+}
+
+function _getStopImages(stopId) {
+  var stop = null;
+  dayKeys().forEach(function(d) {
+    var s = DAYS_DATA[d]?.stops?.find(function(x) { return x.id === stopId; });
+    if (s) stop = s;
+  });
+  return (stop && stop.noteImages) || [];
+}
+
+function _getStopImageCount(stopId) {
+  return _getStopImages(stopId).length + ((_pendingStopImages[stopId] || []).length);
+}
+
+// Render images in edit mode (saved + pending, all with × buttons)
+function _renderStopNoteEditImages(stopId) {
+  var container = document.getElementById('stop-note-edit-images-' + stopId);
+  if (!container) return;
+  var saved = _getStopImages(stopId);
+  var pending = _pendingStopImages[stopId] || [];
+  var all = saved.concat(pending);
+  if (!all.length) { container.innerHTML = ''; return; }
+  container.innerHTML = all.map(function(url, i) {
+    return '<div class="note-img-thumb-wrap"><img src="' + _escN(url) + '" class="note-img-thumb" onclick="event.stopPropagation();openChatPhoto(this)" alt=""><button class="pending-thumb-remove" onclick="event.stopPropagation();removePendingStopImage(\'' + _escN(stopId) + '\',' + i + ')">×</button></div>';
+  }).join('');
+}
+
+// Render images in preview (no × buttons)
+function _renderStopNotePreviewImages(stopId) {
+  var container = document.getElementById('stop-note-images-' + stopId);
+  if (!container) return;
+  var imgs = _getStopImages(stopId);
+  container.innerHTML = imgs.map(function(url) {
+    return '<div class="note-img-thumb-wrap"><img src="' + _escN(url) + '" class="note-img-thumb" onclick="event.stopPropagation();openChatPhoto(this)" alt=""></div>';
+  }).join('');
+}
+
+// Photo file picker → adds to pending
+function triggerStopNotePhoto(stopId, day) {
+  var inp = document.getElementById('_stopNotePhotoInput');
+  if (!inp) {
+    inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = 'image/*'; inp.multiple = true;
+    inp.id = '_stopNotePhotoInput'; inp.style.display = 'none';
+    document.body.appendChild(inp);
+  }
+  inp.onchange = function() {
+    if (!inp.files.length) return;
+    var files = Array.from(inp.files).slice(0, MAX_NOTE_IMAGES);
+    files.forEach(function(file) {
+      if (typeof _compressToBase64 === 'function') {
+        _compressToBase64(file, 1200, 0.7).then(function(dataUrl) {
+          addPendingStopImage(stopId, dataUrl);
+        }).catch(function(err) { console.error('Stop note photo error:', err); });
+      }
+    });
+    inp.value = '';
+  };
+  inp.click();
+}
+
+// Legacy compat
+function _renderStopNoteImages(stopId) { _renderStopNoteEditImages(stopId); }
 
 function autoResizeNote(el) {
   el.style.height = 'auto';
@@ -481,96 +600,7 @@ function _renderNoteTabPending() {
   ).join('');
 }
 
-// ── Stop Note Images ─────────────────────────────────────────────────────────
-function _addStopNoteImage(stopId, dataUrl) {
-  // Найти точку
-  let stop = null, dayNum = null;
-  dayKeys().forEach(d => {
-    const s = DAYS_DATA[d]?.stops?.find(x => x.id === stopId);
-    if (s) { stop = s; dayNum = d; }
-  });
-  if (!stop) return;
-  if (!stop.noteImages) stop.noteImages = [];
-  if (stop.noteImages.length >= MAX_NOTE_IMAGES) { showToast('📷 Максимум ' + MAX_NOTE_IMAGES + ' фото'); return; }
-  stop.noteImages.push(dataUrl);
-  _renderStopNoteImages(stopId);
-  if (typeof saveData === 'function') saveData();
-  showToast('📷 Фото добавлено');
-}
-
-function removeStopNoteImage(stopId, idx) {
-  let stop = null;
-  dayKeys().forEach(d => {
-    const s = DAYS_DATA[d]?.stops?.find(x => x.id === stopId);
-    if (s) stop = s;
-  });
-  if (!stop || !stop.noteImages) return;
-  stop.noteImages.splice(idx, 1);
-  _renderStopNoteImages(stopId);
-  if (typeof saveData === 'function') saveData();
-}
-
-function _renderStopNoteImages(stopId) {
-  var stop = null;
-  dayKeys().forEach(function(d) {
-    var s = DAYS_DATA[d]?.stops?.find(function(x) { return x.id === stopId; });
-    if (s) stop = s;
-  });
-  var imgs = (stop && stop.noteImages) || [];
-  // Edit-mode images (with delete buttons)
-  var editContainer = document.getElementById('stop-note-edit-images-' + stopId);
-  if (editContainer) {
-    editContainer.innerHTML = imgs.map(function(url, i) {
-      return '<div class="note-img-thumb-wrap"><img src="' + _escN(url) + '" class="note-img-thumb" onclick="event.stopPropagation();openChatPhoto(this)" alt=""><button class="pending-thumb-remove" onclick="event.stopPropagation();removeStopNoteImage(\'' + _escN(stopId) + '\',' + i + ')">×</button></div>';
-    }).join('');
-  }
-  // Preview images (no delete buttons)
-  _renderStopNotePreviewImages(stopId);
-  // Ensure wrap + edit are visible
-  var wrap = document.getElementById('stop-note-wrap-' + stopId);
-  var edit = document.getElementById('stop-note-edit-' + stopId);
-  if (wrap) wrap.style.display = 'block';
-  if (edit) edit.style.display = 'block';
-}
-
-function _renderStopNotePreviewImages(stopId) {
-  var stop = null;
-  dayKeys().forEach(function(d) {
-    var s = DAYS_DATA[d]?.stops?.find(function(x) { return x.id === stopId; });
-    if (s) stop = s;
-  });
-  var imgs = (stop && stop.noteImages) || [];
-  var container = document.getElementById('stop-note-images-' + stopId);
-  if (!container) return;
-  container.innerHTML = imgs.map(function(url) {
-    return '<div class="note-img-thumb-wrap"><img src="' + _escN(url) + '" class="note-img-thumb" onclick="event.stopPropagation();openChatPhoto(this)" alt=""></div>';
-  }).join('');
-}
-
-// ── PHOTO UPLOAD BUTTONS (notes) ─────────────────────────────────────────────
-function triggerStopNotePhoto(stopId, day) {
-  var inp = document.getElementById('_stopNotePhotoInput');
-  if (!inp) {
-    inp = document.createElement('input');
-    inp.type = 'file'; inp.accept = 'image/*'; inp.multiple = true;
-    inp.id = '_stopNotePhotoInput'; inp.style.display = 'none';
-    document.body.appendChild(inp);
-  }
-  inp.onchange = function() {
-    if (!inp.files.length) return;
-    var files = Array.from(inp.files).slice(0, MAX_NOTE_IMAGES);
-    files.forEach(function(file) {
-      if (typeof _compressToBase64 === 'function') {
-        _compressToBase64(file, 1200, 0.7).then(function(dataUrl) {
-          _addStopNoteImage(stopId, dataUrl);
-        }).catch(function(err) { console.error('Stop note photo error:', err); });
-      }
-    });
-    inp.value = '';
-  };
-  inp.click();
-}
-
+// ── NOTE TAB PHOTO BUTTON ───────────────────────────────────────────────────
 function triggerNoteTabPhoto() {
   var inp = document.getElementById('_noteTabPhotoInput');
   if (!inp) {

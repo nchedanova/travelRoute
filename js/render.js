@@ -261,17 +261,18 @@ function makeStopCard(s, day) {
     ${isAdmin() ? `
     <div class="stop-note-wrap" id="stop-note-wrap-${s.id}" style="display:${(s.note || (s.noteImages && s.noteImages.length)) ? 'block' : 'none'}"
       ontouchstart="event.stopPropagation()" ontouchmove="event.stopPropagation()" onmousedown="event.stopPropagation()">
-      <div class="stop-note-edit" id="stop-note-edit-${s.id}" style="display:${(s.note || (s.noteImages && s.noteImages.length)) ? 'none' : 'block'}">
-        <textarea class="stop-note-input" id="stop-note-${s.id}"
-          placeholder="Заметка к точке…"
-          style="touch-action:auto"
-          oninput="autoResizeNote(this)"
-          onblur="saveStopNoteQuiet('${s.id}',${day})"
-          onfocus="var c=this.closest('.stop-card');if(c)c.draggable=false"
-          ontouchstart="event.stopPropagation()" ontouchmove="event.stopPropagation()"
-          onmousedown="event.stopPropagation()">${s.note || ''}</textarea>
-        <div class="stop-note-edit-images note-images-inline" id="stop-note-edit-images-${s.id}">${s.noteImages && s.noteImages.length ? s.noteImages.map((url,i)=>`<div class="note-img-thumb-wrap"><img src="${typeof _escN==='function'?_escN(url):url}" class="note-img-thumb" onclick="event.stopPropagation();openChatPhoto(this)" alt=""><button class="pending-thumb-remove" onclick="event.stopPropagation();removeStopNoteImage('${s.id}',${i})">×</button></div>`).join('') : ''}</div>
-        <div class="stop-note-actions">
+      <div class="stop-note-edit" id="stop-note-edit-${s.id}" style="display:${(s.note || (s.noteImages && s.noteImages.length)) ? 'none' : 'flex'}">
+        <div class="stop-note-bubble">
+          <textarea class="stop-note-input" id="stop-note-${s.id}"
+            placeholder="Заметка к точке…"
+            style="touch-action:auto"
+            oninput="autoResizeNote(this)"
+            onfocus="var c=this.closest('.stop-card');if(c)c.draggable=false"
+            ontouchstart="event.stopPropagation()" ontouchmove="event.stopPropagation()"
+            onmousedown="event.stopPropagation()">${s.note || ''}</textarea>
+          <div class="note-images-inline" id="stop-note-edit-images-${s.id}">${s.noteImages && s.noteImages.length ? s.noteImages.map((url,i)=>`<div class="note-img-thumb-wrap"><img src="${typeof _escN==='function'?_escN(url):url}" class="note-img-thumb" onclick="event.stopPropagation();openChatPhoto(this)" alt=""><button class="pending-thumb-remove" onclick="event.stopPropagation();removePendingStopImage('${s.id}',${i})">×</button></div>`).join('') : ''}</div>
+        </div>
+        <div class="stop-note-btns">
           <button class="stop-note-photo-btn" onmousedown="event.preventDefault()" onclick="triggerStopNotePhoto('${s.id}',${day})" title="Добавить фото">📷</button>
           <button class="stop-note-save-btn" onmousedown="event.preventDefault()" onclick="commitStopNote('${s.id}',${day})" title="Сохранить">✓</button>
         </div>

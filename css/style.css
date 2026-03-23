@@ -1306,26 +1306,7 @@ body.driving-active .stop-card.gps-nearest .stop-num {
 .stop-note-wrap {
   padding: 0 12px 10px;
 }
-.stop-note-input {
-  width: 100%;
-  box-sizing: border-box;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-left: 2px solid var(--amber);
-  border-radius: 4px;
-  color: var(--text);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  padding: 7px 9px;
-  resize: none;
-  min-height: 52px;
-  max-height: 200px;
-  overflow-y: auto;
-  outline: none;
-  transition: border-color 0.15s;
-}
-.stop-note-input:focus { border-color: var(--amber); border-left-color: var(--amber); }
-.stop-note-input { -webkit-user-select: text; user-select: text; }
+.stop-note-input:focus { outline: none; }
 .stop-note-readonly {
   font-size: 11px;
   color: var(--muted);
@@ -1992,18 +1973,39 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 /* ── STOP NOTE: edit layout ─────────────────────────────────────────────────── */
 .stop-note-edit {
   display: flex;
-  flex-direction: column;
+  align-items: flex-start;
   gap: 6px;
 }
-.stop-note-edit .stop-note-input {
+.stop-note-bubble {
   flex: 1;
   min-width: 0;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--amber);
+  border-radius: 4px;
+  overflow: hidden;
 }
-.stop-note-edit-images:empty { display: none; }
-.stop-note-actions {
+.stop-note-bubble .stop-note-input {
+  width: 100%; box-sizing: border-box;
+  background: transparent; border: none;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 7px 9px;
+  resize: none;
+  min-height: 36px; max-height: 200px;
+  overflow-y: auto; outline: none;
+  -webkit-user-select: text; user-select: text;
+}
+.stop-note-bubble .note-images-inline {
+  padding: 0 6px 6px;
+}
+.stop-note-bubble .note-images-inline:empty { display: none; padding: 0; }
+.stop-note-btns {
   display: flex;
-  gap: 6px;
-  justify-content: flex-end;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 2px;
 }
 .stop-note-save-btn {
   width: 28px; height: 28px;
