@@ -270,7 +270,7 @@ function makeStopCard(s, day) {
           onfocus="var c=this.closest('.stop-card');if(c)c.draggable=false"
           ontouchstart="event.stopPropagation()" ontouchmove="event.stopPropagation()"
           onmousedown="event.stopPropagation()">${s.note || ''}</textarea>
-        <button class="stop-note-photo-btn" onclick="triggerStopNotePhoto('${s.id}',${day})" title="Добавить фото">📷</button>
+        <button class="stop-note-photo-btn" onmousedown="event.preventDefault()" onclick="triggerStopNotePhoto('${s.id}',${day})" title="Добавить фото">📷</button>
         <button class="stop-note-add-btn" data-note-save="${s.id}" onclick="saveStopNoteBtn('${s.id}',${day})" title="Сохранить заметку">✓</button>
       </div>
       <div class="stop-note-display" id="stop-note-preview-${s.id}" style="display:${(s.note || (s.noteImages && s.noteImages.length)) ? 'block' : 'none'};cursor:pointer"
