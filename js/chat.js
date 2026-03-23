@@ -328,7 +328,6 @@ function _ensureNickname(cb) {
   if (getChatName()) { cb && cb(); return; }
   // If returning from Google redirect — wait for result before showing modal
   if (localStorage.getItem('travel_auth_redirect_pending')) {
-    if (typeof showToast === 'function') showToast('🔑 Ожидание входа…');
     var waited = 0;
     var check = setInterval(function() {
       waited += 300;
@@ -339,7 +338,6 @@ function _ensureNickname(cb) {
       } else if (waited >= 8000) {
         clearInterval(check);
         localStorage.removeItem('travel_auth_redirect_pending');
-        if (typeof showToast === 'function') showToast('⚠ Вход не удался');
         _showNicknameModal(cb);
       }
     }, 300);
@@ -378,36 +376,9 @@ function showAnonNameStep() {
 function signInWithGoogle() {
   if (typeof firebase === 'undefined' || !firebase.auth) return;
   var provider = new firebase.auth.GoogleAuthProvider();
-  var user = firebase.auth().currentUser;
-  var isMobile = window.innerWidth <= 700 || /Mobi|Android/i.test(navigator.userAgent);
-
-  if (isMobile) {
-    // Mobile/PWA: always use redirect (popups are blocked)
-    localStorage.setItem('travel_auth_redirect_pending', '1');
-    if (user && user.isAnonymous) {
-      user.linkWithRedirect(provider).catch(function() { firebase.auth().signInWithRedirect(provider); });
-    } else {
-      firebase.auth().signInWithRedirect(provider);
-    }
-    return;
-  }
-
-  // Desktop: try popup
-  var popupFn = (user && user.isAnonymous)
-    ? user.linkWithPopup.bind(user, provider)
-    : firebase.auth().signInWithPopup.bind(firebase.auth(), provider);
-
-  popupFn().then(function(result) {
-    _handleGoogleResult(result);
-  }).catch(function(err) {
-    if (err.code === 'auth/credential-already-in-use' || err.code === 'auth/email-already-in-use') {
-      firebase.auth().signInWithPopup(provider).then(_handleGoogleResult).catch(_showAuthError);
-    } else if (err.code === 'auth/popup-blocked') {
-      // Fallback to redirect
-      firebase.auth().signInWithRedirect(provider);
-    } else if (err.code !== 'auth/popup-closed-by-user') {
-      _showAuthError(err);
-    }
+  firebase.auth().signInWithPopup(provider).then(_handleGoogleResult).catch(function(err) {
+    if (err.code === 'auth/popup-closed-by-user') return;
+    _showAuthError(err);
   });
 }
 
@@ -436,9 +407,11 @@ function _handleGoogleResult(result) {
 
 function _showAuthError(err) {
   console.error('[auth] Google sign-in error:', err);
+  // Show on screen for mobile debugging
+  if (typeof showToast === 'function') showToast('❌ ' + (err.code || err.message || 'Ошибка'));
   var errEl = document.getElementById('authError');
   if (errEl) {
-    errEl.textContent = 'Ошибка: ' + (err.message || err.code);
+    errEl.textContent = 'Ошибка: ' + (err.code || err.message || '?');
     errEl.style.display = 'block';
   }
 }

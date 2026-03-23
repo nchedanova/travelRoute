@@ -46,8 +46,7 @@ function initGps() {
 
   // Auth — use existing session (Google/anonymous) or create anonymous
   if (firebase.auth) {
-    // Handle redirect result from Google Sign-In
-    var _dt = function(m) { if (typeof showToast === 'function') showToast('🔑 ' + m); console.log('[auth] ' + m); };
+    // Handle redirect result from Google Sign-In (fallback for popup-blocked)
     firebase.auth().getRedirectResult().then(function(result) {
       if (result && result.user) {
         var u = result.user;
@@ -55,7 +54,7 @@ function initGps() {
         localStorage.setItem('travel_firebase_uid', u.uid);
         localStorage.removeItem('travel_auth_redirect_pending');
         var name = u.displayName || u.email?.split('@')[0] || 'User';
-        _dt('redirect ok: ' + name);
+        console.log('[auth] redirect ok:', name);
         if (firebase.database) {
           firebase.database().ref('users/' + u.uid + '/name').once('value').then(function(snap) {
             if (snap.val()) name = snap.val();
@@ -70,17 +69,11 @@ function initGps() {
         if (modal) modal.classList.remove('show');
         if (typeof renderChatHeader === 'function') renderChatHeader();
       } else {
-        var pending = localStorage.getItem('travel_auth_redirect_pending');
-        _dt('no redirect result' + (pending ? ' (was pending!)' : ''));
         localStorage.removeItem('travel_auth_redirect_pending');
       }
     }).catch(function(err) {
-      _dt('redirect error: ' + err.code);
+      console.warn('[auth] redirect error:', err.code);
       localStorage.removeItem('travel_auth_redirect_pending');
-      if (err.code === 'auth/credential-already-in-use' || err.code === 'auth/email-already-in-use') {
-        var provider = new firebase.auth.GoogleAuthProvider();
-        firebase.auth().signInWithRedirect(provider);
-      }
     });
 
     firebase.auth().onAuthStateChanged(user => {
@@ -89,7 +82,7 @@ function initGps() {
         window._firebaseUid = newUid;
         localStorage.setItem('travel_firebase_uid', newUid);
         var provider = user.providerData?.length ? user.providerData[0].providerId : 'anonymous';
-        _dt('user: ' + (user.displayName || newUid.slice(0,8)) + ' (' + provider + ')');
+        console.log('[auth] uid:', newUid, '(' + provider + ')');
 
         // Clean up ALL old presence entries (localStorage sessionId + old firebase uid)
         if (firebase.database) {
