@@ -20,6 +20,7 @@ function switchDay(d) {
     }
   });
   switchMapDay(d);
+  listenWeather(d);
   if (prev !== d) _navPush();
 }
 
@@ -1218,12 +1219,19 @@ document.addEventListener('click', e => {
 });
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
-var APP_VERSION = '2.2.0';
+var APP_VERSION = '2.3.0';
 var APP_BUILD   = 48;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 
 var APP_CHANGELOG = [
+  { ver: '2.3.0', date: '23.03.2026', items: [
+    '\uD83C\uDF24 Погода на каждой точке маршрута (Open-Meteo)',
+    '\u2601\uFE0F Погода синхронизируется через Firebase — один нажал, все видят',
+    '\uD83D\uDDFA\uFE0F Оптимизация скачивания карты — в 3-5\u00D7 меньше тайлов',
+    '\uD83D\uDDD1 Кнопка «Удалить кэш карты» в навигаторе',
+    '\uD83D\uDC41 Читатель: скрыты ненужные кнопки (скачать карту, координаты, отмена)'
+  ]},
   { ver: '2.2.0', date: '22.03.2026', items: [
     '📷 Мультивыбор фото (до 10 в одном сообщении)',
     '📋 Вставка фото из буфера (Ctrl+V / Вставить)',
@@ -1284,6 +1292,9 @@ setTimeout(function() {
   }
 }, 800);
 
+// Start weather listener for initial day once Firebase is available
+setTimeout(function() { listenWeather(currentDay); }, 1500);
+
 // ── NAVIGATION HISTORY (back button / swipe-back) ────────────────────────────
 var _navFromHistory = false;
 
@@ -1337,8 +1348,10 @@ function _navRestore(state) {
 // Set initial state so first "back" doesn't exit immediately
 history.replaceState(_navState(), '');
 
-// ── WEATHER (Open-Meteo) ──────────────────────────────────────────────────────
+// ── WEATHER (Open-Meteo + Firebase sync) ─────────────────────────────────────
 var _weatherCache = {};
+var _weatherRef = null;
+var _weatherDay = null;
 
 var _wmoEmoji = {
   0:['\u2600\uFE0F','\uD83C\uDF19'],  1:['\uD83C\uDF24\uFE0F','\uD83C\uDF19'],
@@ -1376,6 +1389,32 @@ function _wmoDesc(code) {
   return 'гроза';
 }
 
+function _getWeatherDb() {
+  if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length) {
+    return firebase.database();
+  }
+  return null;
+}
+
+function listenWeather(day) {
+  if (_weatherRef && _weatherDay !== null) {
+    _weatherRef.off('value');
+  }
+  _weatherDay = day;
+  var db = _getWeatherDb();
+  if (!db) return;
+  _weatherRef = db.ref('weather/' + day);
+  _weatherRef.on('value', function(snap) {
+    var val = snap.val();
+    if (!val || !val.points) return;
+    var pts = val.points;
+    Object.keys(pts).forEach(function(id) {
+      _weatherCache[id] = pts[id];
+      _renderWeather(id);
+    });
+  });
+}
+
 async function fetchDayWeather(day) {
   var data = DAYS_DATA[day];
   if (!data) return;
@@ -1392,7 +1431,7 @@ async function fetchDayWeather(day) {
   });
   if (!points.length) return;
 
-  showToast && showToast('🌤️ Загрузка погоды…');
+  showToast && showToast('\uD83C\uDF24\uFE0F Загрузка погоды\u2026');
 
   var lats = points.map(function(p) { return p.lat; }).join(',');
   var lngs = points.map(function(p) { return p.lng; }).join(',');
@@ -1405,6 +1444,8 @@ async function fetchDayWeather(day) {
     var resp = await fetch(url);
     var json = await resp.json();
     var results = Array.isArray(json) ? json : [json];
+
+    var fbPoints = {};
 
     points.forEach(function(pt, i) {
       var fc = results[i];
@@ -1429,21 +1470,25 @@ async function fetchDayWeather(day) {
       var emoji = _wmoIcon(code, isDay);
       var timeStr = fc.hourly.time[bestIdx].substring(11, 16);
       var tempStr = (temp > 0 ? '+' : '') + temp + '\u00B0';
-      var precipStr = precip > 0 ? (precip.toFixed(1) + ' мм') : 'без осадков';
+      var precipStr = precip > 0 ? (precip.toFixed(1) + ' \u043C\u043C') : '\u0431\u0435\u0437 \u043E\u0441\u0430\u0434\u043A\u043E\u0432';
       var desc = _wmoDesc(code);
 
-      _weatherCache[pt.id] = {
-        tempStr: tempStr, emoji: emoji, wind: wind,
-        precipStr: precipStr, desc: desc, timeStr: timeStr
-      };
-
+      var w = { tempStr: tempStr, emoji: emoji, wind: wind,
+                precipStr: precipStr, desc: desc, timeStr: timeStr };
+      _weatherCache[pt.id] = w;
+      fbPoints[pt.id] = w;
       _renderWeather(pt.id);
     });
 
-    showToast && showToast('✅ Погода обновлена');
+    var db = _getWeatherDb();
+    if (db) {
+      db.ref('weather/' + day).set({ ts: Date.now(), points: fbPoints });
+    }
+
+    showToast && showToast('\u2705 \u041F\u043E\u0433\u043E\u0434\u0430 \u043E\u0431\u043D\u043E\u0432\u043B\u0435\u043D\u0430');
   } catch(e) {
     console.error('[weather]', e);
-    showToast && showToast('⚠ Ошибка загрузки погоды');
+    showToast && showToast('\u26A0 \u041E\u0448\u0438\u0431\u043A\u0430 \u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0438 \u043F\u043E\u0433\u043E\u0434\u044B');
   }
 }
 
@@ -1467,7 +1512,7 @@ function _renderWeather(id) {
     strip.innerHTML =
       '<span style="font-size:14px">' + w.emoji + '</span>' +
       '<span class="weather-strip-temp">' + w.tempStr + 'C</span>' +
-      '<span class="weather-strip-detail">ветер ' + w.wind + ' м/с</span>' +
+      '<span class="weather-strip-detail">\u0432\u0435\u0442\u0435\u0440 ' + w.wind + ' \u043C/\u0441</span>' +
       '<span class="weather-strip-detail">\u00B7 ' + w.precipStr + '</span>' +
       '<span class="weather-strip-time">' + w.timeStr + '</span>';
     strip.style.display = 'none';
