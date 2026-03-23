@@ -199,6 +199,7 @@ function makeStopCard(s, day) {
             autocomplete="off"
             ${isAdmin() ? `oninput="applyMask(this)" onblur="padTime(this)"` : `readonly style="pointer-events:none;border-style:solid;"`}>
         </div>
+        <span class="weather-badge" id="wb-${s.id}" style="display:none"></span>
       </div>
     </div>` : `<div></div>`;
 
@@ -253,10 +254,12 @@ function makeStopCard(s, day) {
               autocomplete="off"
               ${isAdmin() ? `oninput="applyMask(this)" onblur="padTime(this)"` : `readonly style="pointer-events:none;border-style:solid;"`}>
           </div>
+          ${!hasDepart ? `<span class="weather-badge" id="wb-${s.id}" style="display:none"></span>` : ''}
         </div>
       </div>
       ${depBlock}
     </div>
+    <div class="weather-strip" id="ws-${s.id}" style="display:none"></div>
     <div class="stop-edit-form" id="edit-form-${s.id}" style="display:none;"></div>
     ${isAdmin() ? `
     <div class="stop-note-wrap" id="stop-note-wrap-${s.id}" style="display:${(s.note || (s.noteImages && s.noteImages.length)) ? 'block' : 'none'}"
@@ -331,22 +334,23 @@ function renderDaySection(d) {
         <div class="day-route" id="d${d}-route"></div>
       </div>
       <button class="nav-day-btn" onclick="openShareDay(${d})" title="Открыть маршрут в навигаторе">🗺 НАВИГАТОР</button>
-      ${isAdmin() ? `
       <div class="day-overflow-wrap" style="position:relative">
         <button class="nav-day-btn" onclick="toggleDayMenu(${d})" title="Ещё">···</button>
         <div class="day-overflow-menu" id="dayMenu${d}">
+          ${isAdmin() ? `
           <button onclick="reverseDay(${d});closeDayMenus()">↩ Обратный маршрут</button>
           <button onclick="confirmDeleteDay(${d});closeDayMenus()" style="color:var(--red)">✕ Удалить день</button>
-          <button onclick="confirmReset(${d});closeDayMenus()">⟳ Сбросить факт</button>
+          <button onclick="confirmReset(${d});closeDayMenus()">⟳ Сбросить факт</button>` : ''}
+          <button onclick="fetchDayWeather(${d});closeDayMenus()">🌤 Погода</button>
         </div>
-      </div>` : ''}
+      </div>
     </div>
     <div class="depart-row">
       <div class="depart-icon">🚗</div>
-      <div class="depart-label" style="${isAdmin() ? 'cursor:pointer;' : ''}display:flex;align-items:center;gap:4px;"
+      <div class="depart-label" style="${isAdmin() ? 'cursor:pointer;' : ''}display:flex;align-items:center;gap:4px;min-width:0;overflow:hidden;"
            ${isAdmin() ? `onclick="openEditStart(${d})" title="Изменить точку старта"` : ''}>
-        <span id="d${d}-start-name">${data.start.icon} ${data.start.name}</span>
-        ${isAdmin() ? `<span style="font-size:9px;color:var(--border)">✎</span>` : ''}
+        <span id="d${d}-start-name" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${data.start.icon} ${data.start.name}</span>
+        ${isAdmin() ? `<span style="font-size:9px;color:var(--border);flex-shrink:0">✎</span>` : ''}
       </div>
       <div class="depart-times">
         <div class="time-pair">
@@ -362,8 +366,10 @@ function renderDaySection(d) {
             autocomplete="off"
             ${isAdmin() ? `oninput="applyMask(this)" onblur="padTime(this)"` : `readonly style="pointer-events:none;border-style:solid;"`}>
         </div>
+        <span class="weather-badge" id="wb-d${d}-start" style="display:none"></span>
       </div>
     </div>
+    <div class="weather-strip" id="ws-d${d}-start" style="display:none"></div>
     <div class="day-progress">
       <div class="progress-label"><span>Прогресс</span><span id="d${d}-pct">0%</span></div>
       <div class="progress-bar"><div class="progress-fill" id="d${d}-fill"></div></div>

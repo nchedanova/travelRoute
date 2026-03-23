@@ -1219,7 +1219,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.2.0';
-var APP_BUILD   = 47;
+var APP_BUILD   = 48;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 
@@ -1336,6 +1336,147 @@ function _navRestore(state) {
 
 // Set initial state so first "back" doesn't exit immediately
 history.replaceState(_navState(), '');
+
+// ── WEATHER (Open-Meteo) ──────────────────────────────────────────────────────
+var _weatherCache = {};
+
+var _wmoEmoji = {
+  0:['\u2600\uFE0F','\uD83C\uDF19'],  1:['\uD83C\uDF24\uFE0F','\uD83C\uDF19'],
+  2:['\u26C5','\u2601\uFE0F'],         3:['\u2601\uFE0F','\u2601\uFE0F'],
+  45:['\uD83C\uDF2B\uFE0F','\uD83C\uDF2B\uFE0F'], 48:['\uD83C\uDF2B\uFE0F','\uD83C\uDF2B\uFE0F'],
+  51:['\uD83C\uDF26\uFE0F','\uD83C\uDF27\uFE0F'], 53:['\uD83C\uDF26\uFE0F','\uD83C\uDF27\uFE0F'],
+  55:['\uD83C\uDF27\uFE0F','\uD83C\uDF27\uFE0F'], 56:['\uD83C\uDF27\uFE0F','\uD83C\uDF27\uFE0F'],
+  57:['\uD83C\uDF27\uFE0F','\uD83C\uDF27\uFE0F'],
+  61:['\uD83C\uDF27\uFE0F','\uD83C\uDF27\uFE0F'], 63:['\uD83C\uDF27\uFE0F','\uD83C\uDF27\uFE0F'],
+  65:['\uD83C\uDF27\uFE0F','\uD83C\uDF27\uFE0F'],
+  66:['\uD83C\uDF27\uFE0F','\uD83C\uDF27\uFE0F'], 67:['\uD83C\uDF27\uFE0F','\uD83C\uDF27\uFE0F'],
+  71:['\uD83C\uDF28\uFE0F','\uD83C\uDF28\uFE0F'], 73:['\uD83C\uDF28\uFE0F','\uD83C\uDF28\uFE0F'],
+  75:['\u2744\uFE0F','\u2744\uFE0F'],  77:['\uD83C\uDF28\uFE0F','\uD83C\uDF28\uFE0F'],
+  80:['\uD83C\uDF27\uFE0F','\uD83C\uDF27\uFE0F'], 81:['\uD83C\uDF27\uFE0F','\uD83C\uDF27\uFE0F'],
+  82:['\uD83C\uDF27\uFE0F','\uD83C\uDF27\uFE0F'],
+  85:['\uD83C\uDF28\uFE0F','\uD83C\uDF28\uFE0F'], 86:['\uD83C\uDF28\uFE0F','\uD83C\uDF28\uFE0F'],
+  95:['\u26C8\uFE0F','\u26C8\uFE0F'],  96:['\u26C8\uFE0F','\u26C8\uFE0F'],
+  99:['\u26C8\uFE0F','\u26C8\uFE0F']
+};
+
+function _wmoIcon(code, isDay) {
+  var e = _wmoEmoji[code] || _wmoEmoji[0];
+  return isDay ? e[0] : e[1];
+}
+
+function _wmoDesc(code) {
+  if (code === 0) return 'ясно';
+  if (code <= 3) return 'облачно';
+  if (code <= 48) return 'туман';
+  if (code <= 57) return 'морось';
+  if (code <= 67) return 'дождь';
+  if (code <= 77) return 'снег';
+  if (code <= 82) return 'ливень';
+  if (code <= 86) return 'снегопад';
+  return 'гроза';
+}
+
+async function fetchDayWeather(day) {
+  var data = DAYS_DATA[day];
+  if (!data) return;
+
+  var points = [];
+  if (data.start && data.start.lat && data.start.lng) {
+    points.push({ id: 'd' + day + '-start', lat: data.start.lat, lng: data.start.lng,
+                  time: data.departP || '08:00' });
+  }
+  data.stops.forEach(function(s) {
+    if (s.lat && s.lng) {
+      points.push({ id: s.id, lat: s.lat, lng: s.lng, time: s.arrP || '12:00' });
+    }
+  });
+  if (!points.length) return;
+
+  showToast && showToast('🌤️ Загрузка погоды…');
+
+  var lats = points.map(function(p) { return p.lat; }).join(',');
+  var lngs = points.map(function(p) { return p.lng; }).join(',');
+
+  try {
+    var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lats +
+      '&longitude=' + lngs +
+      '&hourly=temperature_2m,weather_code,wind_speed_10m,precipitation,is_day' +
+      '&timezone=auto&forecast_days=2';
+    var resp = await fetch(url);
+    var json = await resp.json();
+    var results = Array.isArray(json) ? json : [json];
+
+    points.forEach(function(pt, i) {
+      var fc = results[i];
+      if (!fc || !fc.hourly) return;
+
+      var parts = pt.time.split(':');
+      var targetMin = (parseInt(parts[0]) || 12) * 60 + (parseInt(parts[1]) || 0);
+      var bestIdx = 0, bestDiff = 99999;
+
+      fc.hourly.time.forEach(function(t, j) {
+        var h = parseInt(t.substring(11, 13)) || 0;
+        var diff = Math.abs(h * 60 - targetMin);
+        if (diff < bestDiff) { bestDiff = diff; bestIdx = j; }
+      });
+
+      var temp = Math.round(fc.hourly.temperature_2m[bestIdx]);
+      var code = fc.hourly.weather_code[bestIdx];
+      var windKmh = fc.hourly.wind_speed_10m[bestIdx];
+      var wind = Math.round(windKmh * 10 / 36);
+      var precip = fc.hourly.precipitation[bestIdx] || 0;
+      var isDay = fc.hourly.is_day[bestIdx];
+      var emoji = _wmoIcon(code, isDay);
+      var timeStr = fc.hourly.time[bestIdx].substring(11, 16);
+      var tempStr = (temp > 0 ? '+' : '') + temp + '\u00B0';
+      var precipStr = precip > 0 ? (precip.toFixed(1) + ' мм') : 'без осадков';
+      var desc = _wmoDesc(code);
+
+      _weatherCache[pt.id] = {
+        tempStr: tempStr, emoji: emoji, wind: wind,
+        precipStr: precipStr, desc: desc, timeStr: timeStr
+      };
+
+      _renderWeather(pt.id);
+    });
+
+    showToast && showToast('✅ Погода обновлена');
+  } catch(e) {
+    console.error('[weather]', e);
+    showToast && showToast('⚠ Ошибка загрузки погоды');
+  }
+}
+
+function _renderWeather(id) {
+  var w = _weatherCache[id];
+  if (!w) return;
+
+  var badge = document.getElementById('wb-' + id);
+  var strip = document.getElementById('ws-' + id);
+  if (!badge) return;
+
+  badge.textContent = w.tempStr + ' ' + w.emoji;
+  badge.style.display = '';
+  badge.onclick = function() {
+    if (!strip) return;
+    badge.style.display = 'none';
+    strip.style.display = 'flex';
+  };
+
+  if (strip) {
+    strip.innerHTML =
+      '<span style="font-size:14px">' + w.emoji + '</span>' +
+      '<span class="weather-strip-temp">' + w.tempStr + 'C</span>' +
+      '<span class="weather-strip-detail">ветер ' + w.wind + ' м/с</span>' +
+      '<span class="weather-strip-detail">\u00B7 ' + w.precipStr + '</span>' +
+      '<span class="weather-strip-time">' + w.timeStr + '</span>';
+    strip.style.display = 'none';
+    strip.onclick = function() {
+      strip.style.display = 'none';
+      badge.style.display = '';
+    };
+  }
+}
 
 // ── SHEET DRAG (mobile: resize sidebar / map split) ──────────────────────────
 (function() {
