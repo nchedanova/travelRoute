@@ -1664,6 +1664,17 @@ body.driving-active .stop-card.gps-nearest .stop-num {
   transition: opacity 0.15s;
 }
 .notes-add-btn:hover { opacity: 0.85; }
+.notes-photo-btn {
+  padding: 0 10px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 14px; cursor: pointer;
+  align-self: stretch;
+  transition: border-color 0.15s, color 0.15s;
+}
+.notes-photo-btn:hover { border-color: var(--amber); color: var(--amber); }
 
 /* ── NOTES: item card ── */
 .note-item {

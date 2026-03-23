@@ -510,7 +510,7 @@ function triggerStopNotePhoto(stopId, day) {
     var files = Array.from(inp.files).slice(0, MAX_NOTE_IMAGES);
     files.forEach(function(file) {
       if (typeof _compressToBase64 === 'function') {
-        _compressToBase64(file, 800, 0.6).then(function(dataUrl) {
+        _compressToBase64(file, 1200, 0.7).then(function(dataUrl) {
           _addStopNoteImage(stopId, dataUrl);
         }).catch(function(err) { console.error('Stop note photo error:', err); });
       }
@@ -533,7 +533,7 @@ function triggerNoteTabPhoto() {
     var files = Array.from(inp.files).slice(0, MAX_NOTE_IMAGES - _noteTabPendingImages.length);
     files.forEach(function(file) {
       if (typeof _compressToBase64 === 'function') {
-        _compressToBase64(file, 800, 0.6).then(function(dataUrl) {
+        _compressToBase64(file, 1200, 0.7).then(function(dataUrl) {
           _addNoteTabImage(dataUrl);
         }).catch(function(err) { console.error('Note tab photo error:', err); });
       }
