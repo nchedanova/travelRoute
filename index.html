@@ -341,6 +341,7 @@
       </div>
       <div class="modal-actions" style="flex-wrap:wrap;gap:8px;">
         <button class="nav-link-btn" onclick="prefetchRouteTiles(currentDay)" style="padding:6px 14px;">📥 Скачать карту</button>
+        <button class="nav-link-btn" onclick="clearTileCache()" style="padding:6px 14px;">🗑 Удалить кэш</button>
         <button id="copy-coords-btn" class="nav-link-btn" onclick="copyShareText()" style="padding:6px 14px;">📋 Координаты</button>
         <button class="modal-cancel" onclick="closeShareModal()">Закрыть</button>
       </div>
@@ -447,17 +448,17 @@
 
 <!-- Scripts: порядок важен — config и data первыми -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="js/config.js?v=46"></script>
-<script src="js/data.js?v=46"></script>
-<script src="js/storage.js?v=46"></script>
-<script src="js/offline.js?v=46"></script>
-<script src="js/map.js?v=46"></script>
-<script src="js/render.js?v=46"></script>
-<script src="js/app.js?v=46"></script>
-<script src="js/gps.js?v=46"></script>
-<script src="js/chat.js?v=46"></script>
-<script src="js/notes.js?v=46"></script>
-<script src="js/gpx.js?v=46"></script>
+<script src="js/config.js?v=47"></script>
+<script src="js/data.js?v=47"></script>
+<script src="js/storage.js?v=47"></script>
+<script src="js/offline.js?v=47"></script>
+<script src="js/map.js?v=47"></script>
+<script src="js/render.js?v=47"></script>
+<script src="js/app.js?v=47"></script>
+<script src="js/gps.js?v=47"></script>
+<script src="js/chat.js?v=47"></script>
+<script src="js/notes.js?v=47"></script>
+<script src="js/gpx.js?v=47"></script>
 <script>
   // Service Worker registration
   if ('serviceWorker' in navigator) {
