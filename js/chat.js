@@ -326,6 +326,24 @@ function isGoogleUser() {
 
 function _ensureNickname(cb) {
   if (getChatName()) { cb && cb(); return; }
+  // If returning from Google redirect — wait for result before showing modal
+  if (localStorage.getItem('travel_auth_redirect_pending')) {
+    // Wait up to 5s for redirect result
+    var waited = 0;
+    var check = setInterval(function() {
+      waited += 200;
+      if (getChatName()) {
+        clearInterval(check);
+        localStorage.removeItem('travel_auth_redirect_pending');
+        cb && cb();
+      } else if (waited >= 5000) {
+        clearInterval(check);
+        localStorage.removeItem('travel_auth_redirect_pending');
+        _showNicknameModal(cb); // redirect failed, show modal
+      }
+    }, 200);
+    return;
+  }
   _showNicknameModal(cb);
 }
 
@@ -364,6 +382,7 @@ function signInWithGoogle() {
 
   if (isMobile) {
     // Mobile/PWA: always use redirect (popups are blocked)
+    localStorage.setItem('travel_auth_redirect_pending', '1');
     if (user && user.isAnonymous) {
       user.linkWithRedirect(provider).catch(function() { firebase.auth().signInWithRedirect(provider); });
     } else {

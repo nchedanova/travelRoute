@@ -52,6 +52,7 @@ function initGps() {
         var u = result.user;
         window._firebaseUid = u.uid;
         localStorage.setItem('travel_firebase_uid', u.uid);
+        localStorage.removeItem('travel_auth_redirect_pending');
         var name = u.displayName || u.email?.split('@')[0] || 'User';
         // Check for custom name in Firebase
         if (firebase.database) {
@@ -69,10 +70,13 @@ function initGps() {
         var modal = document.getElementById('nicknameModal');
         if (modal) modal.classList.remove('show');
         if (typeof renderChatHeader === 'function') renderChatHeader();
+      } else {
+        // No pending redirect — clear flag
+        localStorage.removeItem('travel_auth_redirect_pending');
       }
     }).catch(function(err) {
       console.warn('[auth] redirect result error:', err.code);
-      // If credential-already-in-use during link, sign in directly
+      localStorage.removeItem('travel_auth_redirect_pending');
       if (err.code === 'auth/credential-already-in-use' || err.code === 'auth/email-already-in-use') {
         var provider = new firebase.auth.GoogleAuthProvider();
         firebase.auth().signInWithRedirect(provider);
