@@ -340,9 +340,9 @@
 
       </div>
       <div class="modal-actions" style="flex-wrap:wrap;gap:8px;">
-        <button class="nav-link-btn" onclick="prefetchRouteTiles(currentDay)" style="padding:6px 14px;">📥 Скачать карту</button>
-        <button class="nav-link-btn" onclick="clearTileCache()" style="padding:6px 14px;">🗑 Удалить кэш</button>
-        <button id="copy-coords-btn" class="nav-link-btn" onclick="copyShareText()" style="padding:6px 14px;">📋 Координаты</button>
+        <button class="nav-link-btn admin-only-el" onclick="prefetchRouteTiles(currentDay)" style="padding:6px 14px;">📥 Скачать карту</button>
+        <button class="nav-link-btn admin-only-el" onclick="clearTileCache()" style="padding:6px 14px;">🗑 Удалить кэш</button>
+        <button id="copy-coords-btn" class="nav-link-btn admin-only-el" onclick="copyShareText()" style="padding:6px 14px;">📋 Координаты</button>
         <button class="modal-cancel" onclick="closeShareModal()">Закрыть</button>
       </div>
     </div>
