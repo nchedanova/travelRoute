@@ -47,6 +47,7 @@ function initGps() {
   // Auth — use existing session (Google/anonymous) or create anonymous
   if (firebase.auth) {
     // Handle redirect result from Google Sign-In
+    var _dt = function(m) { if (typeof showToast === 'function') showToast('🔑 ' + m); console.log('[auth] ' + m); };
     firebase.auth().getRedirectResult().then(function(result) {
       if (result && result.user) {
         var u = result.user;
@@ -54,7 +55,7 @@ function initGps() {
         localStorage.setItem('travel_firebase_uid', u.uid);
         localStorage.removeItem('travel_auth_redirect_pending');
         var name = u.displayName || u.email?.split('@')[0] || 'User';
-        // Check for custom name in Firebase
+        _dt('redirect ok: ' + name);
         if (firebase.database) {
           firebase.database().ref('users/' + u.uid + '/name').once('value').then(function(snap) {
             if (snap.val()) name = snap.val();
@@ -65,17 +66,16 @@ function initGps() {
           localStorage.setItem('travel_chat_name', name);
         }
         localStorage.setItem('travel_auth_provider', 'google');
-        console.log('[auth] Google redirect ok, uid:', u.uid, 'name:', name);
-        // Close nickname modal if open
         var modal = document.getElementById('nicknameModal');
         if (modal) modal.classList.remove('show');
         if (typeof renderChatHeader === 'function') renderChatHeader();
       } else {
-        // No pending redirect — clear flag
+        var pending = localStorage.getItem('travel_auth_redirect_pending');
+        _dt('no redirect result' + (pending ? ' (was pending!)' : ''));
         localStorage.removeItem('travel_auth_redirect_pending');
       }
     }).catch(function(err) {
-      console.warn('[auth] redirect result error:', err.code);
+      _dt('redirect error: ' + err.code);
       localStorage.removeItem('travel_auth_redirect_pending');
       if (err.code === 'auth/credential-already-in-use' || err.code === 'auth/email-already-in-use') {
         var provider = new firebase.auth.GoogleAuthProvider();
@@ -89,7 +89,7 @@ function initGps() {
         window._firebaseUid = newUid;
         localStorage.setItem('travel_firebase_uid', newUid);
         var provider = user.providerData?.length ? user.providerData[0].providerId : 'anonymous';
-        console.log('[auth] uid:', newUid, '(' + provider + ')');
+        _dt('user: ' + (user.displayName || newUid.slice(0,8)) + ' (' + provider + ')');
 
         // Clean up ALL old presence entries (localStorage sessionId + old firebase uid)
         if (firebase.database) {

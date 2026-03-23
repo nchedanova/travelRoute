@@ -328,7 +328,7 @@ function _ensureNickname(cb) {
   if (getChatName()) { cb && cb(); return; }
   // If returning from Google redirect — wait for result before showing modal
   if (localStorage.getItem('travel_auth_redirect_pending')) {
-    // Wait up to 8s for redirect result
+    if (typeof showToast === 'function') showToast('🔑 Ожидание входа…');
     var waited = 0;
     var check = setInterval(function() {
       waited += 300;
@@ -339,7 +339,8 @@ function _ensureNickname(cb) {
       } else if (waited >= 8000) {
         clearInterval(check);
         localStorage.removeItem('travel_auth_redirect_pending');
-        _showNicknameModal(cb); // redirect failed, show modal
+        if (typeof showToast === 'function') showToast('⚠ Вход не удался');
+        _showNicknameModal(cb);
       }
     }, 300);
     return;
