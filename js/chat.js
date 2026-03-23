@@ -1261,7 +1261,11 @@ function onChatTabOpen() {
   clearInterval(_presenceTimer);
   _presenceTimer = setInterval(_writePresence, 30000);
   if (!_chatInited) initChat();
+  // Aggressive scroll: multiple attempts to beat browser scroll restoration
+  _scrollToBottom();
   setTimeout(_scrollToBottom, 50);
+  setTimeout(_scrollToBottom, 200);
+  setTimeout(_scrollToBottom, 500);
   renderChatHeader();
 }
 function onChatTabClose() { _chatVisible = false; clearInterval(_presenceTimer); }
@@ -1408,6 +1412,8 @@ function switchChatRoom(roomId) {
   // Update UI
   _renderRoomTabs();
   _updateRoomHeader();
+  setTimeout(_scrollToBottom, 100);
+  setTimeout(_scrollToBottom, 400);
 }
 
 function _updateRoomHeader() {
