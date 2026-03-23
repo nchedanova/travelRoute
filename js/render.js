@@ -199,7 +199,6 @@ function makeStopCard(s, day) {
             autocomplete="off"
             ${isAdmin() ? `oninput="applyMask(this)" onblur="padTime(this)"` : `readonly style="pointer-events:none;border-style:solid;"`}>
         </div>
-        <span class="weather-badge" id="wb-${s.id}" style="display:none"></span>
       </div>
     </div>` : `<div></div>`;
 
@@ -233,6 +232,7 @@ function makeStopCard(s, day) {
           <span class="stop-icon" id="stop-icon-disp-${s.id}">${s.icon}</span>
           <span class="stop-name-text" id="stop-name-disp-${s.id}">${s.name}</span>
           <span class="stop-type" id="stop-type-disp-${s.id}">${s.type}</span>
+          <span class="weather-badge" id="wb-${s.id}" style="display:none" onclick="event.stopPropagation();toggleWeatherStrip('${s.id}')"></span>
         </div>
       </div>
     </div>
@@ -254,12 +254,11 @@ function makeStopCard(s, day) {
               autocomplete="off"
               ${isAdmin() ? `oninput="applyMask(this)" onblur="padTime(this)"` : `readonly style="pointer-events:none;border-style:solid;"`}>
           </div>
-          ${!hasDepart ? `<span class="weather-badge" id="wb-${s.id}" style="display:none"></span>` : ''}
         </div>
       </div>
       ${depBlock}
     </div>
-    <div class="weather-strip" id="ws-${s.id}" style="display:none"></div>
+    <div class="weather-strip" id="ws-${s.id}" style="display:none" onclick="event.stopPropagation();toggleWeatherStrip('${s.id}')"></div>
     <div class="stop-edit-form" id="edit-form-${s.id}" style="display:none;"></div>
     ${isAdmin() ? `
     <div class="stop-note-wrap" id="stop-note-wrap-${s.id}" style="display:${(s.note || (s.noteImages && s.noteImages.length)) ? 'block' : 'none'}"
@@ -307,6 +306,7 @@ function renderStops(day) {
   DAYS_DATA[day].stops.forEach(s => container.appendChild(makeStopCard(s, day)));
   const cntEl = document.getElementById('d' + day + '-stop-count');
   if (cntEl) cntEl.textContent = DAYS_DATA[day].stops.length;
+  if (typeof _reapplyDayWeather === 'function') _reapplyDayWeather(day);
 }
 
 // ── DAY SECTION ───────────────────────────────────────────────────────────────
@@ -351,6 +351,7 @@ function renderDaySection(d) {
            ${isAdmin() ? `onclick="openEditStart(${d})" title="Изменить точку старта"` : ''}>
         <span id="d${d}-start-name" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${data.start.icon} ${data.start.name}</span>
         ${isAdmin() ? `<span style="font-size:9px;color:var(--border);flex-shrink:0">✎</span>` : ''}
+        <span class="weather-badge" id="wb-d${d}-start" style="display:none" onclick="event.stopPropagation();toggleWeatherStrip('d${d}-start')"></span>
       </div>
       <div class="depart-times">
         <div class="time-pair">
@@ -366,10 +367,9 @@ function renderDaySection(d) {
             autocomplete="off"
             ${isAdmin() ? `oninput="applyMask(this)" onblur="padTime(this)"` : `readonly style="pointer-events:none;border-style:solid;"`}>
         </div>
-        <span class="weather-badge" id="wb-d${d}-start" style="display:none"></span>
       </div>
     </div>
-    <div class="weather-strip" id="ws-d${d}-start" style="display:none"></div>
+    <div class="weather-strip" id="ws-d${d}-start" style="display:none" onclick="toggleWeatherStrip('d${d}-start')"></div>
     <div class="day-progress">
       <div class="progress-label"><span>Прогресс</span><span id="d${d}-pct">0%</span></div>
       <div class="progress-bar"><div class="progress-fill" id="d${d}-fill"></div></div>

@@ -83,3 +83,12 @@ function isAdmin() {
 function isViewer() {
   return !isAdmin();
 }
+
+// Set viewer-mode class on body as early as possible (CSS hides admin-only elements)
+if (document.body) {
+  if (isViewer()) document.body.classList.add('viewer-mode');
+} else {
+  document.addEventListener('DOMContentLoaded', function() {
+    if (isViewer()) document.body.classList.add('viewer-mode');
+  });
+}

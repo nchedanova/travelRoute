@@ -1153,6 +1153,9 @@ function initSidebarTabs() {
   if (typeof isViewer === 'function' && isViewer()) {
     const notesTab = document.getElementById('tabNotes');
     if (notesTab) notesTab.style.display = 'none';
+    document.querySelectorAll('.admin-only-el').forEach(function(el) { el.style.display = 'none'; });
+    var undoEl = document.getElementById('undoBtn');
+    if (undoEl) undoEl.style.display = 'none';
   }
 }
 
@@ -1220,7 +1223,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.3.0';
-var APP_BUILD   = 48;
+var APP_BUILD   = 49;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 
@@ -1282,14 +1285,12 @@ function closeChangelog() {
   try { localStorage.setItem('changelog_seen', APP_VERSION); } catch(e) {}
 }
 
-// Show on load if admin and new version
+// Show on load if new version
 setTimeout(function() {
-  if (typeof isAdmin === 'function' && isAdmin()) {
-    try {
-      var seen = localStorage.getItem('changelog_seen');
-      if (seen !== APP_VERSION) showChangelog();
-    } catch(e) {}
-  }
+  try {
+    var seen = localStorage.getItem('changelog_seen');
+    if (seen !== APP_VERSION) showChangelog();
+  } catch(e) {}
 }, 800);
 
 // Start weather listener for initial day once Firebase is available
@@ -1492,6 +1493,12 @@ async function fetchDayWeather(day) {
   }
 }
 
+function toggleWeatherStrip(id) {
+  var strip = document.getElementById('ws-' + id);
+  if (!strip) return;
+  strip.style.display = strip.style.display === 'flex' ? 'none' : 'flex';
+}
+
 function _renderWeather(id) {
   var w = _weatherCache[id];
   if (!w) return;
@@ -1502,11 +1509,6 @@ function _renderWeather(id) {
 
   badge.textContent = w.tempStr + ' ' + w.emoji;
   badge.style.display = '';
-  badge.onclick = function() {
-    if (!strip) return;
-    badge.style.display = 'none';
-    strip.style.display = 'flex';
-  };
 
   if (strip) {
     strip.innerHTML =
@@ -1516,11 +1518,17 @@ function _renderWeather(id) {
       '<span class="weather-strip-detail">\u00B7 ' + w.precipStr + '</span>' +
       '<span class="weather-strip-time">' + w.timeStr + '</span>';
     strip.style.display = 'none';
-    strip.onclick = function() {
-      strip.style.display = 'none';
-      badge.style.display = '';
-    };
   }
+}
+
+function _reapplyDayWeather(day) {
+  var startId = 'd' + day + '-start';
+  if (_weatherCache[startId]) _renderWeather(startId);
+  var data = DAYS_DATA[day];
+  if (!data) return;
+  data.stops.forEach(function(s) {
+    if (_weatherCache[s.id]) _renderWeather(s.id);
+  });
 }
 
 // ── SHEET DRAG (mobile: resize sidebar / map split) ──────────────────────────
