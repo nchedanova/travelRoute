@@ -73,7 +73,7 @@ function initGps() {
     }).catch(function(err) {
       console.warn('[auth] redirect result error:', err.code);
       // If credential-already-in-use during link, sign in directly
-      if (err.code === 'auth/credential-already-in-use') {
+      if (err.code === 'auth/credential-already-in-use' || err.code === 'auth/email-already-in-use') {
         var provider = new firebase.auth.GoogleAuthProvider();
         firebase.auth().signInWithRedirect(provider);
       }

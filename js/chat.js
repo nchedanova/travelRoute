@@ -360,8 +360,19 @@ function signInWithGoogle() {
   if (typeof firebase === 'undefined' || !firebase.auth) return;
   var provider = new firebase.auth.GoogleAuthProvider();
   var user = firebase.auth().currentUser;
+  var isMobile = window.innerWidth <= 700 || /Mobi|Android/i.test(navigator.userAgent);
 
-  // Try popup first (works better on mobile/PWA), fallback to redirect
+  if (isMobile) {
+    // Mobile/PWA: always use redirect (popups are blocked)
+    if (user && user.isAnonymous) {
+      user.linkWithRedirect(provider).catch(function() { firebase.auth().signInWithRedirect(provider); });
+    } else {
+      firebase.auth().signInWithRedirect(provider);
+    }
+    return;
+  }
+
+  // Desktop: try popup
   var popupFn = (user && user.isAnonymous)
     ? user.linkWithPopup.bind(user, provider)
     : firebase.auth().signInWithPopup.bind(firebase.auth(), provider);
@@ -370,25 +381,11 @@ function signInWithGoogle() {
     _handleGoogleResult(result);
   }).catch(function(err) {
     if (err.code === 'auth/credential-already-in-use' || err.code === 'auth/email-already-in-use') {
-      // Account exists — sign in directly
-      firebase.auth().signInWithPopup(provider).then(_handleGoogleResult).catch(function(err2) {
-        // Popup blocked → try redirect
-        if (err2.code === 'auth/popup-blocked' || err2.code === 'auth/popup-closed-by-user') {
-          firebase.auth().signInWithRedirect(provider);
-        } else {
-          _showAuthError(err2);
-        }
-      });
+      firebase.auth().signInWithPopup(provider).then(_handleGoogleResult).catch(_showAuthError);
     } else if (err.code === 'auth/popup-blocked') {
-      // Popup blocked → fallback to redirect
-      if (user && user.isAnonymous) {
-        user.linkWithRedirect(provider).catch(function() { firebase.auth().signInWithRedirect(provider); });
-      } else {
-        firebase.auth().signInWithRedirect(provider);
-      }
-    } else if (err.code === 'auth/popup-closed-by-user') {
-      // User closed — do nothing
-    } else {
+      // Fallback to redirect
+      firebase.auth().signInWithRedirect(provider);
+    } else if (err.code !== 'auth/popup-closed-by-user') {
       _showAuthError(err);
     }
   });
