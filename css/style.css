@@ -1231,7 +1231,7 @@ body.driving-active .stop-card.gps-nearest .stop-num {
 /* ── Photo button for notes ────────────────────── */
 .stop-note-photo-btn {
   flex-shrink: 0;
-  width: 26px; height: 26px;
+  width: 28px; height: 28px;
   border-radius: 50%;
   border: 1px solid var(--border);
   background: var(--surface2);
@@ -1239,7 +1239,7 @@ body.driving-active .stop-card.gps-nearest .stop-num {
   font-size: 12px; line-height: 1;
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  margin-top: 4px; padding: 0;
+  padding: 0;
   transition: background 0.15s, border-color 0.15s;
 }
 .stop-note-photo-btn:hover { background: rgba(245,166,35,0.15); border-color: var(--amber); }
@@ -2005,7 +2005,7 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding-top: 2px;
+  flex-shrink: 0;
 }
 .stop-note-save-btn {
   width: 28px; height: 28px;

@@ -1176,8 +1176,23 @@ function toggleStopNote(stopId) {
   const wrap = document.getElementById('stop-note-wrap-' + stopId);
   if (!wrap) return;
   const visible = wrap.style.display !== 'none';
-  wrap.style.display = visible ? 'none' : 'block';
-  if (!visible) {
+  if (visible) {
+    wrap.style.display = 'none';
+    return;
+  }
+  // Opening — decide whether to show edit or preview
+  wrap.style.display = 'block';
+  const edit = document.getElementById('stop-note-edit-' + stopId);
+  const preview = document.getElementById('stop-note-preview-' + stopId);
+  const hasPreviewContent = preview && preview.textContent.trim();
+  if (hasPreviewContent) {
+    // Has saved content → show preview (click on it opens edit)
+    if (edit) edit.style.display = 'none';
+    if (preview) preview.style.display = 'block';
+  } else {
+    // Empty → show edit
+    if (edit) edit.style.display = 'flex';
+    if (preview) preview.style.display = 'none';
     const ta = document.getElementById('stop-note-' + stopId);
     if (ta) { autoResizeNote(ta); setTimeout(() => ta.focus(), 50); }
   }
@@ -1204,7 +1219,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.2.0';
-var APP_BUILD   = 44;
+var APP_BUILD   = 46;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 
