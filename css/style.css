@@ -424,8 +424,10 @@ body.viewer-mode #undoBtn { display:none !important; }
 .stop-edit-form {
   padding:10px 14px 12px;
 }
-.edit-row { display:flex; gap:8px; margin-bottom:8px; align-items:flex-start; }
-.edit-field { display:flex; flex-direction:column; gap:3px; }
+.edit-row { display:flex; gap:8px; margin-bottom:8px; align-items:flex-start; min-width:0; }
+.edit-field { display:flex; flex-direction:column; gap:3px; min-width:0; }
+.edit-field-grow { flex:1; min-width:0; }
+.edit-input-coord { width:100%; min-width:0; box-sizing:border-box; }
 .edit-label { font-size:8px; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); }
 .edit-input {
   background:var(--bg); border:1px solid var(--border);

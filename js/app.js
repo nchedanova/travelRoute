@@ -1005,15 +1005,15 @@ function editStop(id, day) {
       </div>
     </div>
     <div class="edit-row">
-      <div class="edit-field">
+      <div class="edit-field edit-field-grow">
         <div class="edit-label">Широта (lat)</div>
-        <input class="edit-input" id="ei-lat-${id}" type="text" inputmode="decimal"
+        <input class="edit-input edit-input-coord" id="ei-lat-${id}" type="text" inputmode="decimal"
           value="${s.lat ? s.lat.toFixed(6) : ''}" placeholder="55.7965"
           oninput="splitCoordsInput(this,'ei-lng-${id}','ei-coords-${id}');onManualCoordInput('ei-lat-${id}','ei-lng-${id}','ei-coords-${id}')">
       </div>
-      <div class="edit-field">
+      <div class="edit-field edit-field-grow">
         <div class="edit-label">Долгота (lng)</div>
-        <input class="edit-input" id="ei-lng-${id}" type="text" inputmode="decimal"
+        <input class="edit-input edit-input-coord" id="ei-lng-${id}" type="text" inputmode="decimal"
           value="${s.lng ? s.lng.toFixed(6) : ''}" placeholder="37.9475"
           oninput="onManualCoordInput('ei-lat-${id}','ei-lng-${id}','ei-coords-${id}')">
       </div>
@@ -1487,7 +1487,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.3.0';
-var APP_BUILD   = 51;
+var APP_BUILD   = 52;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 
