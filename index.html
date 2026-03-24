@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=49">
+<link rel="stylesheet" href="css/style.css?v=51">
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
@@ -191,11 +191,11 @@
       <div class="modal-row" style="margin-bottom:14px;">
         <div class="modal-field" style="margin-bottom:0">
           <div class="modal-label">Широта (lat)</div>
-          <input class="modal-input" id="new-stop-lat" type="number" step="any" placeholder="55.7965">
+          <input class="modal-input" id="new-stop-lat" type="text" inputmode="decimal" placeholder="55.7965" oninput="splitCoordsInput(this,'new-stop-lng','new-stop-coords')">
         </div>
         <div class="modal-field" style="margin-bottom:0">
           <div class="modal-label">Долгота (lng)</div>
-          <input class="modal-input" id="new-stop-lng" type="number" step="any" placeholder="37.9475">
+          <input class="modal-input" id="new-stop-lng" type="text" inputmode="decimal" placeholder="37.9475" oninput="onManualCoordInput('new-stop-lat','new-stop-lng','new-stop-coords')">
         </div>
       </div>
       <div class="modal-actions">
@@ -253,11 +253,11 @@
       <div class="modal-row">
         <div class="modal-field">
           <div class="modal-label">Широта (lat)</div>
-          <input class="modal-input" id="edit-start-lat" type="number" step="any" placeholder="55.7965">
+          <input class="modal-input" id="edit-start-lat" type="text" inputmode="decimal" placeholder="55.7965" oninput="splitCoordsInput(this,'edit-start-lng','edit-start-coords')">
         </div>
         <div class="modal-field">
           <div class="modal-label">Долгота (lng)</div>
-          <input class="modal-input" id="edit-start-lng" type="number" step="any" placeholder="37.9475">
+          <input class="modal-input" id="edit-start-lng" type="text" inputmode="decimal" placeholder="37.9475" oninput="onManualCoordInput('edit-start-lat','edit-start-lng','edit-start-coords')">
         </div>
       </div>
       <div class="modal-actions">
@@ -448,17 +448,17 @@
 
 <!-- Scripts: порядок важен — config и data первыми -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="js/config.js?v=49"></script>
-<script src="js/data.js?v=49"></script>
-<script src="js/storage.js?v=49"></script>
-<script src="js/offline.js?v=49"></script>
-<script src="js/map.js?v=49"></script>
-<script src="js/render.js?v=49"></script>
-<script src="js/app.js?v=49"></script>
-<script src="js/gps.js?v=49"></script>
-<script src="js/chat.js?v=49"></script>
-<script src="js/notes.js?v=49"></script>
-<script src="js/gpx.js?v=49"></script>
+<script src="js/config.js?v=51"></script>
+<script src="js/data.js?v=51"></script>
+<script src="js/storage.js?v=51"></script>
+<script src="js/offline.js?v=51"></script>
+<script src="js/map.js?v=51"></script>
+<script src="js/render.js?v=51"></script>
+<script src="js/app.js?v=51"></script>
+<script src="js/gps.js?v=51"></script>
+<script src="js/chat.js?v=51"></script>
+<script src="js/notes.js?v=51"></script>
+<script src="js/gpx.js?v=51"></script>
 <script>
   // Service Worker registration
   if ('serviceWorker' in navigator) {

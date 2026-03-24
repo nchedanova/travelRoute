@@ -170,6 +170,65 @@ let addStopDay  = null;
 let newStopLat  = null, newStopLng = null;
 let nominatimTimer = null;
 
+// Split "lat, lng" paste into two fields.
+// Supports: "47.261417, 39.719283"  |  "47.261417 39.719283"  |  "47.261417; 39.719283"
+function splitCoordsInput(latInput, lngFieldId, displayId) {
+  var val = latInput.value;
+  var latPart, lngPart;
+
+  // 1. Comma separator (most common from Google Maps copy)
+  var commaIdx = val.indexOf(',');
+  if (commaIdx !== -1) {
+    latPart = val.slice(0, commaIdx).trim();
+    lngPart = val.slice(commaIdx + 1).trim();
+  }
+  // 2. Semicolon separator
+  else if (val.indexOf(';') !== -1) {
+    var semParts = val.split(';');
+    latPart = semParts[0].trim();
+    lngPart = semParts[1] ? semParts[1].trim() : '';
+  }
+  // 3. Space separator — only if BOTH tokens look like coordinate numbers
+  else {
+    var spaceIdx = val.lastIndexOf(' ');
+    if (spaceIdx !== -1) {
+      var a = val.slice(0, spaceIdx).trim();
+      var b = val.slice(spaceIdx + 1).trim();
+      if (/^-?\d+\.\d+$/.test(a) && /^-?\d+\.\d+$/.test(b)) {
+        latPart = a;
+        lngPart = b;
+      }
+    }
+  }
+
+  if (!latPart || !lngPart) return;
+
+  latInput.value = latPart;
+  var lngInput = document.getElementById(lngFieldId);
+  if (lngInput) {
+    lngInput.value = lngPart;
+    lngInput.focus();
+  }
+  if (displayId) _updateCoordsDisplay(displayId, latPart, lngPart);
+}
+
+// Refresh the small green "📍 lat, lng" badge shown in modals
+function _updateCoordsDisplay(displayId, latVal, lngVal) {
+  var lat = parseFloat(latVal), lng = parseFloat(lngVal);
+  if (isNaN(lat) || isNaN(lng)) return;
+  var disp = document.getElementById(displayId + '-display');
+  var text = document.getElementById(displayId + '-text');
+  if (disp) disp.style.display = 'block';
+  if (text) text.textContent = lat.toFixed(5) + ', ' + lng.toFixed(5);
+}
+
+// Called when user manually types in a lat or lng field in modals
+function onManualCoordInput(latFieldId, lngFieldId, displayId) {
+  var lat = parseFloat(document.getElementById(latFieldId).value);
+  var lng = parseFloat(document.getElementById(lngFieldId).value);
+  if (!isNaN(lat) && !isNaN(lng)) _updateCoordsDisplay(displayId, lat, lng);
+}
+
 function openAddStop(day, prefillLat, prefillLng) {
   addStopDay = day;
   newStopLat = prefillLat || null;
@@ -914,8 +973,8 @@ function editStop(id, day) {
         <div class="search-results" id="ei-results-${id}"></div>
       </div>
     </div>
-    <div id="ei-coords-display-${id}" style="font-size:10px;color:var(--green);margin-bottom:6px;display:${s.lat ? 'block' : 'none'};">
-      📍 <span id="ei-coords-text-${id}">${s.lat ? s.lat.toFixed(5) + ', ' + s.lng.toFixed(5) : ''}</span>
+    <div id="ei-coords-${id}-display" style="font-size:10px;color:var(--green);margin-bottom:6px;display:${s.lat ? 'block' : 'none'};">
+      📍 <span id="ei-coords-${id}-text">${s.lat ? s.lat.toFixed(5) + ', ' + s.lng.toFixed(5) : ''}</span>
     </div>
     <div class="edit-row">
       <div class="edit-field">
@@ -943,6 +1002,20 @@ function editStop(id, day) {
         <div class="edit-label">Отпр. план</div>
         <input class="edit-input edit-input-time" id="ei-depP-${id}" value="${s.depP}" maxlength="5"
           oninput="applyMask(this)" onblur="padTime(this)" placeholder="--:--">
+      </div>
+    </div>
+    <div class="edit-row">
+      <div class="edit-field">
+        <div class="edit-label">Широта (lat)</div>
+        <input class="edit-input" id="ei-lat-${id}" type="text" inputmode="decimal"
+          value="${s.lat ? s.lat.toFixed(6) : ''}" placeholder="55.7965"
+          oninput="splitCoordsInput(this,'ei-lng-${id}','ei-coords-${id}');onManualCoordInput('ei-lat-${id}','ei-lng-${id}','ei-coords-${id}')">
+      </div>
+      <div class="edit-field">
+        <div class="edit-label">Долгота (lng)</div>
+        <input class="edit-input" id="ei-lng-${id}" type="text" inputmode="decimal"
+          value="${s.lng ? s.lng.toFixed(6) : ''}" placeholder="37.9475"
+          oninput="onManualCoordInput('ei-lat-${id}','ei-lng-${id}','ei-coords-${id}')">
       </div>
     </div>
     <div class="edit-actions-row">
@@ -982,8 +1055,8 @@ function editStopSearch(q, id) {
             nameEl.value = main;
           }
           document.getElementById('ei-search-' + id).value = item.display_name;
-          document.getElementById('ei-coords-text-' + id).textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-          document.getElementById('ei-coords-display-' + id).style.display = 'block';
+          document.getElementById('ei-coords-' + id + '-text').textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+          document.getElementById('ei-coords-' + id + '-display').style.display = 'block';
           res.classList.remove('show');
         };
         res.appendChild(el);
@@ -1017,12 +1090,19 @@ function saveStopEdit(id, day) {
   s.arrP = document.getElementById('ei-arrP-' + id)?.value.trim() || '';
   s.depP = document.getElementById('ei-depP-' + id)?.value.trim() || '';
 
-  // Update coordinates if a new location was selected via search
+  // Update coordinates: prefer search result, fall back to manual lat/lng fields
   const coords = _editStopCoords[id];
   if (coords && coords.lat && coords.lng) {
     s.lat = coords.lat;
     s.lng = coords.lng;
     delete _editStopCoords[id];
+  } else {
+    const manLat = parseFloat(document.getElementById('ei-lat-' + id)?.value);
+    const manLng = parseFloat(document.getElementById('ei-lng-' + id)?.value);
+    if (!isNaN(manLat) && !isNaN(manLng)) {
+      s.lat = manLat;
+      s.lng = manLng;
+    }
   }
 
   // Update display in-place without full re-render (keeps actual time inputs intact)
@@ -1407,7 +1487,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.3.0';
-var APP_BUILD   = 49;
+var APP_BUILD   = 51;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 
