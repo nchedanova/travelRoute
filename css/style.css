@@ -1466,12 +1466,31 @@ body.driving-active .stop-card.gps-nearest .stop-num {
   padding-bottom: 8px;
   border-bottom: 1px solid var(--border);
   margin-bottom: 6px;
+  /* Скроллбар скрыт только на тач-устройствах */
   scrollbar-width: none;
   -ms-overflow-style: none;
-  /* Убеждаемся что строка реакций не вылезает за меню */
   width: 100%;
 }
 .msg-menu-reactions::-webkit-scrollbar { display: none; }
+
+/* На десктопе — показываем тонкий скроллбар */
+@media (hover: hover) and (pointer: fine) {
+  .msg-menu-reactions {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+    padding-bottom: 10px;
+  }
+  .msg-menu-reactions::-webkit-scrollbar {
+    display: block;
+    height: 3px;
+  }
+  .msg-menu-reactions::-webkit-scrollbar-track { background: transparent; }
+  .msg-menu-reactions::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 2px;
+  }
+  .msg-menu-reactions::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+}
 .msg-menu-emoji {
   background: none;
   border: none;

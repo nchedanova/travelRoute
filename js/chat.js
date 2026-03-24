@@ -852,9 +852,19 @@ function openMsgMenu(e, key, isMine) {
   if (!menu) return;
 
   // Reactions row
-  menu.querySelector('.msg-menu-reactions').innerHTML = REACTIONS.map(em =>
+  const reactRow = menu.querySelector('.msg-menu-reactions');
+  reactRow.innerHTML = REACTIONS.map(em =>
     `<button class="msg-menu-emoji" onclick="toggleReaction('${key}','${em}')">${em}</button>`
   ).join('');
+  // Горизонтальный скролл колёсиком мыши на десктопе
+  if (!reactRow._wheelBound) {
+    reactRow._wheelBound = true;
+    reactRow.addEventListener('wheel', function(ev) {
+      if (ev.deltaY === 0) return;
+      ev.preventDefault();
+      reactRow.scrollLeft += ev.deltaY * 1.5;
+    }, { passive: false });
+  }
 
   // Actions — admin sees all; viewer sees own only
   const canEdit   = isMine;
