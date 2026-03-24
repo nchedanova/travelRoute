@@ -347,12 +347,12 @@ function renderDaySection(d) {
     </div>
     <div class="depart-row">
       <div class="depart-icon">🚗</div>
-      <div class="depart-label" style="${isAdmin() ? 'cursor:pointer;' : ''}display:flex;align-items:center;gap:4px;min-width:0;overflow:hidden;"
+      <div class="depart-label" style="${isAdmin() ? 'cursor:pointer' : ''}"
            ${isAdmin() ? `onclick="openEditStart(${d})" title="Изменить точку старта"` : ''}>
-        <span id="d${d}-start-name" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${data.start.icon} ${data.start.name}</span>
-        ${isAdmin() ? `<span style="font-size:9px;color:var(--border);flex-shrink:0">✎</span>` : ''}
-        <span class="weather-badge" id="wb-d${d}-start" style="display:none" onclick="event.stopPropagation();toggleWeatherStrip('d${d}-start')"></span>
+        <span id="d${d}-start-name">${data.start.icon} ${data.start.name}</span>
+        ${isAdmin() ? `<span style="font-size:9px;color:var(--border)">✎</span>` : ''}
       </div>
+      <span class="weather-badge" id="wb-d${d}-start" style="display:none" onclick="event.stopPropagation();toggleWeatherStrip('d${d}-start')"></span>
       <div class="depart-times">
         <div class="time-pair">
           <div class="time-label">план</div>

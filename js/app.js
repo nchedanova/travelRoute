@@ -1100,6 +1100,190 @@ function copyShareText() {
   });
 }
 
+// ── WEATHER (Open-Meteo + Firebase sync) ─────────────────────────────────────
+var _weatherCache = {};
+var _weatherRef = null;
+var _weatherDay = null;
+
+var _wmoEmoji = {
+  0:['\u2600\uFE0F','\uD83C\uDF19'],  1:['\uD83C\uDF24\uFE0F','\uD83C\uDF19'],
+  2:['\u26C5','\u2601\uFE0F'],         3:['\u2601\uFE0F','\u2601\uFE0F'],
+  45:['\uD83C\uDF2B\uFE0F','\uD83C\uDF2B\uFE0F'], 48:['\uD83C\uDF2B\uFE0F','\uD83C\uDF2B\uFE0F'],
+  51:['\uD83C\uDF26\uFE0F','\uD83C\uDF27\uFE0F'], 53:['\uD83C\uDF26\uFE0F','\uD83C\uDF27\uFE0F'],
+  55:['\uD83C\uDF27\uFE0F','\uD83C\uDF27\uFE0F'], 56:['\uD83C\uDF27\uFE0F','\uD83C\uDF27\uFE0F'],
+  57:['\uD83C\uDF27\uFE0F','\uD83C\uDF27\uFE0F'],
+  61:['\uD83C\uDF27\uFE0F','\uD83C\uDF27\uFE0F'], 63:['\uD83C\uDF27\uFE0F','\uD83C\uDF27\uFE0F'],
+  65:['\uD83C\uDF27\uFE0F','\uD83C\uDF27\uFE0F'],
+  66:['\uD83C\uDF27\uFE0F','\uD83C\uDF27\uFE0F'], 67:['\uD83C\uDF27\uFE0F','\uD83C\uDF27\uFE0F'],
+  71:['\uD83C\uDF28\uFE0F','\uD83C\uDF28\uFE0F'], 73:['\uD83C\uDF28\uFE0F','\uD83C\uDF28\uFE0F'],
+  75:['\u2744\uFE0F','\u2744\uFE0F'],  77:['\uD83C\uDF28\uFE0F','\uD83C\uDF28\uFE0F'],
+  80:['\uD83C\uDF27\uFE0F','\uD83C\uDF27\uFE0F'], 81:['\uD83C\uDF27\uFE0F','\uD83C\uDF27\uFE0F'],
+  82:['\uD83C\uDF27\uFE0F','\uD83C\uDF27\uFE0F'],
+  85:['\uD83C\uDF28\uFE0F','\uD83C\uDF28\uFE0F'], 86:['\uD83C\uDF28\uFE0F','\uD83C\uDF28\uFE0F'],
+  95:['\u26C8\uFE0F','\u26C8\uFE0F'],  96:['\u26C8\uFE0F','\u26C8\uFE0F'],
+  99:['\u26C8\uFE0F','\u26C8\uFE0F']
+};
+
+function _wmoIcon(code, isDay) {
+  var e = _wmoEmoji[code] || _wmoEmoji[0];
+  if (!e) return '\u2601\uFE0F';
+  return isDay ? e[0] : e[1];
+}
+
+function _wmoDesc(code) {
+  if (code === 0) return 'ясно';
+  if (code <= 3) return 'облачно';
+  if (code <= 48) return 'туман';
+  if (code <= 57) return 'морось';
+  if (code <= 67) return 'дождь';
+  if (code <= 77) return 'снег';
+  if (code <= 82) return 'ливень';
+  if (code <= 86) return 'снегопад';
+  return 'гроза';
+}
+
+function _getWeatherDb() {
+  if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length) {
+    return firebase.database();
+  }
+  return null;
+}
+
+function listenWeather(day) {
+  if (_weatherRef && _weatherDay !== null) {
+    _weatherRef.off('value');
+  }
+  _weatherDay = day;
+  var db = _getWeatherDb();
+  if (!db) return;
+  _weatherRef = db.ref('weather/' + day);
+  _weatherRef.on('value', function(snap) {
+    var val = snap.val();
+    if (!val || !val.points) return;
+    var pts = val.points;
+    Object.keys(pts).forEach(function(id) {
+      _weatherCache[id] = pts[id];
+      _renderWeather(id);
+    });
+  });
+}
+
+async function fetchDayWeather(day) {
+  var data = DAYS_DATA[day];
+  if (!data) return;
+
+  var points = [];
+  if (data.start && data.start.lat && data.start.lng) {
+    points.push({ id: 'd' + day + '-start', lat: data.start.lat, lng: data.start.lng,
+                  time: data.departP || '08:00' });
+  }
+  data.stops.forEach(function(s) {
+    if (s.lat && s.lng) {
+      points.push({ id: s.id, lat: s.lat, lng: s.lng, time: s.arrP || '12:00' });
+    }
+  });
+  if (!points.length) return;
+
+  showToast && showToast('\uD83C\uDF24\uFE0F Загрузка погоды\u2026');
+
+  var lats = points.map(function(p) { return p.lat; }).join(',');
+  var lngs = points.map(function(p) { return p.lng; }).join(',');
+
+  try {
+    var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lats +
+      '&longitude=' + lngs +
+      '&hourly=temperature_2m,weather_code,wind_speed_10m,precipitation,is_day' +
+      '&timezone=auto&forecast_days=2';
+    var resp = await fetch(url);
+    var json = await resp.json();
+    var results = Array.isArray(json) ? json : [json];
+
+    var fbPoints = {};
+
+    points.forEach(function(pt, i) {
+      var fc = results[i];
+      if (!fc || !fc.hourly) return;
+
+      var parts = pt.time.split(':');
+      var targetMin = (parseInt(parts[0]) || 12) * 60 + (parseInt(parts[1]) || 0);
+      var bestIdx = 0, bestDiff = 99999;
+
+      fc.hourly.time.forEach(function(t, j) {
+        var h = parseInt(t.substring(11, 13)) || 0;
+        var diff = Math.abs(h * 60 - targetMin);
+        if (diff < bestDiff) { bestDiff = diff; bestIdx = j; }
+      });
+
+      var temp = Math.round(fc.hourly.temperature_2m[bestIdx]);
+      var code = fc.hourly.weather_code[bestIdx] || 0;
+      var windKmh = fc.hourly.wind_speed_10m[bestIdx] || 0;
+      var wind = Math.round(windKmh * 10 / 36);
+      var precip = fc.hourly.precipitation[bestIdx] || 0;
+      var isDay = fc.hourly.is_day[bestIdx];
+      var emoji = _wmoIcon(code, isDay);
+      var timeStr = fc.hourly.time[bestIdx].substring(11, 16);
+      var tempStr = (temp > 0 ? '+' : '') + temp + '\u00B0';
+      var precipStr = precip > 0 ? (precip.toFixed(1) + ' \u043C\u043C') : '\u0431\u0435\u0437 \u043E\u0441\u0430\u0434\u043A\u043E\u0432';
+      var desc = _wmoDesc(code);
+
+      var w = { tempStr: tempStr, emoji: emoji, wind: wind,
+                precipStr: precipStr, desc: desc, timeStr: timeStr };
+      _weatherCache[pt.id] = w;
+      fbPoints[pt.id] = w;
+      _renderWeather(pt.id);
+    });
+
+    var db = _getWeatherDb();
+    if (db) {
+      db.ref('weather/' + day).set({ ts: Date.now(), points: fbPoints });
+    }
+
+    showToast && showToast('\u2705 \u041F\u043E\u0433\u043E\u0434\u0430 \u043E\u0431\u043D\u043E\u0432\u043B\u0435\u043D\u0430');
+  } catch(e) {
+    console.error('[weather]', e);
+    showToast && showToast('\u26A0 \u041E\u0448\u0438\u0431\u043A\u0430 \u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0438 \u043F\u043E\u0433\u043E\u0434\u044B');
+  }
+}
+
+function toggleWeatherStrip(id) {
+  var strip = document.getElementById('ws-' + id);
+  if (!strip) return;
+  strip.style.display = strip.style.display === 'flex' ? 'none' : 'flex';
+}
+
+function _renderWeather(id) {
+  var w = _weatherCache[id];
+  if (!w) return;
+
+  var badge = document.getElementById('wb-' + id);
+  var strip = document.getElementById('ws-' + id);
+  if (!badge) return;
+
+  badge.textContent = w.tempStr + ' ' + w.emoji;
+  badge.style.display = '';
+
+  if (strip) {
+    strip.innerHTML =
+      '<span style="font-size:14px">' + w.emoji + '</span>' +
+      '<span class="weather-strip-temp">' + w.tempStr + 'C</span>' +
+      '<span class="weather-strip-detail">\u0432\u0435\u0442\u0435\u0440 ' + w.wind + ' \u043C/\u0441</span>' +
+      '<span class="weather-strip-detail">\u00B7 ' + w.precipStr + '</span>' +
+      '<span class="weather-strip-time">' + w.timeStr + '</span>';
+    strip.style.display = 'none';
+  }
+}
+
+function _reapplyDayWeather(day) {
+  var startId = 'd' + day + '-start';
+  if (_weatherCache[startId]) _renderWeather(startId);
+  var data = DAYS_DATA[day];
+  if (!data) return;
+  data.stops.forEach(function(s) {
+    if (_weatherCache[s.id]) _renderWeather(s.id);
+  });
+}
+
+
 // ── INIT ──────────────────────────────────────────────────────────────────────
 initMap();
 dayKeys().forEach(d => redrawDay(d));
@@ -1348,188 +1532,6 @@ function _navRestore(state) {
 
 // Set initial state so first "back" doesn't exit immediately
 history.replaceState(_navState(), '');
-
-// ── WEATHER (Open-Meteo + Firebase sync) ─────────────────────────────────────
-var _weatherCache = {};
-var _weatherRef = null;
-var _weatherDay = null;
-
-var _wmoEmoji = {
-  0:['\u2600\uFE0F','\uD83C\uDF19'],  1:['\uD83C\uDF24\uFE0F','\uD83C\uDF19'],
-  2:['\u26C5','\u2601\uFE0F'],         3:['\u2601\uFE0F','\u2601\uFE0F'],
-  45:['\uD83C\uDF2B\uFE0F','\uD83C\uDF2B\uFE0F'], 48:['\uD83C\uDF2B\uFE0F','\uD83C\uDF2B\uFE0F'],
-  51:['\uD83C\uDF26\uFE0F','\uD83C\uDF27\uFE0F'], 53:['\uD83C\uDF26\uFE0F','\uD83C\uDF27\uFE0F'],
-  55:['\uD83C\uDF27\uFE0F','\uD83C\uDF27\uFE0F'], 56:['\uD83C\uDF27\uFE0F','\uD83C\uDF27\uFE0F'],
-  57:['\uD83C\uDF27\uFE0F','\uD83C\uDF27\uFE0F'],
-  61:['\uD83C\uDF27\uFE0F','\uD83C\uDF27\uFE0F'], 63:['\uD83C\uDF27\uFE0F','\uD83C\uDF27\uFE0F'],
-  65:['\uD83C\uDF27\uFE0F','\uD83C\uDF27\uFE0F'],
-  66:['\uD83C\uDF27\uFE0F','\uD83C\uDF27\uFE0F'], 67:['\uD83C\uDF27\uFE0F','\uD83C\uDF27\uFE0F'],
-  71:['\uD83C\uDF28\uFE0F','\uD83C\uDF28\uFE0F'], 73:['\uD83C\uDF28\uFE0F','\uD83C\uDF28\uFE0F'],
-  75:['\u2744\uFE0F','\u2744\uFE0F'],  77:['\uD83C\uDF28\uFE0F','\uD83C\uDF28\uFE0F'],
-  80:['\uD83C\uDF27\uFE0F','\uD83C\uDF27\uFE0F'], 81:['\uD83C\uDF27\uFE0F','\uD83C\uDF27\uFE0F'],
-  82:['\uD83C\uDF27\uFE0F','\uD83C\uDF27\uFE0F'],
-  85:['\uD83C\uDF28\uFE0F','\uD83C\uDF28\uFE0F'], 86:['\uD83C\uDF28\uFE0F','\uD83C\uDF28\uFE0F'],
-  95:['\u26C8\uFE0F','\u26C8\uFE0F'],  96:['\u26C8\uFE0F','\u26C8\uFE0F'],
-  99:['\u26C8\uFE0F','\u26C8\uFE0F']
-};
-
-function _wmoIcon(code, isDay) {
-  var e = _wmoEmoji[code] || _wmoEmoji[0];
-  return isDay ? e[0] : e[1];
-}
-
-function _wmoDesc(code) {
-  if (code === 0) return 'ясно';
-  if (code <= 3) return 'облачно';
-  if (code <= 48) return 'туман';
-  if (code <= 57) return 'морось';
-  if (code <= 67) return 'дождь';
-  if (code <= 77) return 'снег';
-  if (code <= 82) return 'ливень';
-  if (code <= 86) return 'снегопад';
-  return 'гроза';
-}
-
-function _getWeatherDb() {
-  if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length) {
-    return firebase.database();
-  }
-  return null;
-}
-
-function listenWeather(day) {
-  if (_weatherRef && _weatherDay !== null) {
-    _weatherRef.off('value');
-  }
-  _weatherDay = day;
-  var db = _getWeatherDb();
-  if (!db) return;
-  _weatherRef = db.ref('weather/' + day);
-  _weatherRef.on('value', function(snap) {
-    var val = snap.val();
-    if (!val || !val.points) return;
-    var pts = val.points;
-    Object.keys(pts).forEach(function(id) {
-      _weatherCache[id] = pts[id];
-      _renderWeather(id);
-    });
-  });
-}
-
-async function fetchDayWeather(day) {
-  var data = DAYS_DATA[day];
-  if (!data) return;
-
-  var points = [];
-  if (data.start && data.start.lat && data.start.lng) {
-    points.push({ id: 'd' + day + '-start', lat: data.start.lat, lng: data.start.lng,
-                  time: data.departP || '08:00' });
-  }
-  data.stops.forEach(function(s) {
-    if (s.lat && s.lng) {
-      points.push({ id: s.id, lat: s.lat, lng: s.lng, time: s.arrP || '12:00' });
-    }
-  });
-  if (!points.length) return;
-
-  showToast && showToast('\uD83C\uDF24\uFE0F Загрузка погоды\u2026');
-
-  var lats = points.map(function(p) { return p.lat; }).join(',');
-  var lngs = points.map(function(p) { return p.lng; }).join(',');
-
-  try {
-    var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lats +
-      '&longitude=' + lngs +
-      '&hourly=temperature_2m,weather_code,wind_speed_10m,precipitation,is_day' +
-      '&timezone=auto&forecast_days=2';
-    var resp = await fetch(url);
-    var json = await resp.json();
-    var results = Array.isArray(json) ? json : [json];
-
-    var fbPoints = {};
-
-    points.forEach(function(pt, i) {
-      var fc = results[i];
-      if (!fc || !fc.hourly) return;
-
-      var parts = pt.time.split(':');
-      var targetMin = (parseInt(parts[0]) || 12) * 60 + (parseInt(parts[1]) || 0);
-      var bestIdx = 0, bestDiff = 99999;
-
-      fc.hourly.time.forEach(function(t, j) {
-        var h = parseInt(t.substring(11, 13)) || 0;
-        var diff = Math.abs(h * 60 - targetMin);
-        if (diff < bestDiff) { bestDiff = diff; bestIdx = j; }
-      });
-
-      var temp = Math.round(fc.hourly.temperature_2m[bestIdx]);
-      var code = fc.hourly.weather_code[bestIdx];
-      var windKmh = fc.hourly.wind_speed_10m[bestIdx];
-      var wind = Math.round(windKmh * 10 / 36);
-      var precip = fc.hourly.precipitation[bestIdx] || 0;
-      var isDay = fc.hourly.is_day[bestIdx];
-      var emoji = _wmoIcon(code, isDay);
-      var timeStr = fc.hourly.time[bestIdx].substring(11, 16);
-      var tempStr = (temp > 0 ? '+' : '') + temp + '\u00B0';
-      var precipStr = precip > 0 ? (precip.toFixed(1) + ' \u043C\u043C') : '\u0431\u0435\u0437 \u043E\u0441\u0430\u0434\u043A\u043E\u0432';
-      var desc = _wmoDesc(code);
-
-      var w = { tempStr: tempStr, emoji: emoji, wind: wind,
-                precipStr: precipStr, desc: desc, timeStr: timeStr };
-      _weatherCache[pt.id] = w;
-      fbPoints[pt.id] = w;
-      _renderWeather(pt.id);
-    });
-
-    var db = _getWeatherDb();
-    if (db) {
-      db.ref('weather/' + day).set({ ts: Date.now(), points: fbPoints });
-    }
-
-    showToast && showToast('\u2705 \u041F\u043E\u0433\u043E\u0434\u0430 \u043E\u0431\u043D\u043E\u0432\u043B\u0435\u043D\u0430');
-  } catch(e) {
-    console.error('[weather]', e);
-    showToast && showToast('\u26A0 \u041E\u0448\u0438\u0431\u043A\u0430 \u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0438 \u043F\u043E\u0433\u043E\u0434\u044B');
-  }
-}
-
-function toggleWeatherStrip(id) {
-  var strip = document.getElementById('ws-' + id);
-  if (!strip) return;
-  strip.style.display = strip.style.display === 'flex' ? 'none' : 'flex';
-}
-
-function _renderWeather(id) {
-  var w = _weatherCache[id];
-  if (!w) return;
-
-  var badge = document.getElementById('wb-' + id);
-  var strip = document.getElementById('ws-' + id);
-  if (!badge) return;
-
-  badge.textContent = w.tempStr + ' ' + w.emoji;
-  badge.style.display = '';
-
-  if (strip) {
-    strip.innerHTML =
-      '<span style="font-size:14px">' + w.emoji + '</span>' +
-      '<span class="weather-strip-temp">' + w.tempStr + 'C</span>' +
-      '<span class="weather-strip-detail">\u0432\u0435\u0442\u0435\u0440 ' + w.wind + ' \u043C/\u0441</span>' +
-      '<span class="weather-strip-detail">\u00B7 ' + w.precipStr + '</span>' +
-      '<span class="weather-strip-time">' + w.timeStr + '</span>';
-    strip.style.display = 'none';
-  }
-}
-
-function _reapplyDayWeather(day) {
-  var startId = 'd' + day + '-start';
-  if (_weatherCache[startId]) _renderWeather(startId);
-  var data = DAYS_DATA[day];
-  if (!data) return;
-  data.stops.forEach(function(s) {
-    if (_weatherCache[s.id]) _renderWeather(s.id);
-  });
-}
 
 // ── SHEET DRAG (mobile: resize sidebar / map split) ──────────────────────────
 (function() {
