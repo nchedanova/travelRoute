@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=55">
+<link rel="stylesheet" href="css/style.css?v=56">
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
@@ -444,21 +444,68 @@
   </div>
 </div>
 
+
+<!-- ── ИМПОРТ ИЗ КАРТ ──────────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="importModal" onclick="if(event.target===this)closeImportModal()">
+  <div class="modal modal-import">
+    <div class="modal-title">↓ Импорт из карт</div>
+    <div class="modal-sub">Яндекс, Google Maps, 2GIS, OsmAnd — вставьте ссылку на маршрут</div>
+
+    <div id="importFormArea">
+      <div class="modal-label">Ссылка на маршрут</div>
+      <textarea class="modal-input modal-input-url" id="importUrlInput" rows="3"
+        placeholder="https://yandex.com/maps/?rtext=…"
+        oninput="onImportInput()"></textarea>
+      <div class="import-error" id="importError" style="display:none"></div>
+
+      <div class="import-preview" id="importPreview" style="display:none">
+        <div class="imp-row"><span class="imp-key">Сервис</span><span class="imp-service" id="importServiceName"></span></div>
+        <div class="imp-row"><span class="imp-key">Точек</span><span class="imp-val" id="importPointCount"></span></div>
+        <div class="import-preview-list" id="importPreviewList"></div>
+      </div>
+    </div>
+
+    <div id="importProgress" style="display:none">
+      <div class="imp-prog-header">
+        <span class="imp-spinner-inline"></span>Определяю названия точек…
+      </div>
+      <div class="import-preview">
+        <div class="imp-row" style="margin-bottom:6px">
+          <span class="imp-key">Прогресс</span>
+          <span class="imp-val" id="importProgressCount">0 / 0</span>
+        </div>
+        <div class="import-prog-bar"><div class="import-prog-fill" id="importProgressFill"></div></div>
+        <div class="import-preview-list" id="importProgressList" style="margin-top:8px"></div>
+      </div>
+    </div>
+
+    <div class="import-actions" id="importActionsMain" style="display:none">
+      <button class="imp-btn-new" onclick="doImport('new')">＋ Создать новый день</button>
+      <button class="imp-btn-current" onclick="doImport('current')">＋ В текущий день</button>
+      <button class="modal-cancel" onclick="closeImportModal()">Отмена</button>
+    </div>
+    <div class="import-actions-cancel" id="importActionsCancel">
+      <button class="modal-cancel" onclick="closeImportModal()">Отмена</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast">💾 Сохранено</div>
 
 <!-- Scripts: порядок важен — config и data первыми -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="js/config.js?v=55"></script>
-<script src="js/data.js?v=55"></script>
-<script src="js/storage.js?v=55"></script>
-<script src="js/offline.js?v=55"></script>
-<script src="js/map.js?v=55"></script>
-<script src="js/render.js?v=55"></script>
-<script src="js/app.js?v=55"></script>
-<script src="js/gps.js?v=55"></script>
-<script src="js/chat.js?v=55"></script>
-<script src="js/notes.js?v=55"></script>
-<script src="js/gpx.js?v=55"></script>
+<script src="js/config.js?v=56"></script>
+<script src="js/data.js?v=56"></script>
+<script src="js/storage.js?v=56"></script>
+<script src="js/offline.js?v=56"></script>
+<script src="js/map.js?v=56"></script>
+<script src="js/render.js?v=56"></script>
+<script src="js/app.js?v=56"></script>
+<script src="js/gps.js?v=56"></script>
+<script src="js/chat.js?v=56"></script>
+<script src="js/notes.js?v=56"></script>
+<script src="js/import.js?v=56"></script>
+<script src="js/gpx.js?v=56"></script>
 <script>
   // Service Worker registration
   if ('serviceWorker' in navigator) {

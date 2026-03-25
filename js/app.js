@@ -1488,12 +1488,18 @@ document.addEventListener('click', e => {
 });
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
-var APP_VERSION = '2.3.0';
-var APP_BUILD   = 55;
+var APP_VERSION = '2.4.0';
+var APP_BUILD   = 56;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 
 var APP_CHANGELOG = [
+  { ver: '2.4.0', date: '25.03.2026', items: [
+    '↓ Импорт маршрута из Яндекс Карт, Google Maps, 2GIS, OsmAnd',
+    'Вставь ссылку на маршрут — точки добавятся автоматически',
+    'Reverse geocoding: координаты превращаются в читаемые названия',
+    'Фикс: время старта пустого дня теперь сохраняется'
+  ]},
   { ver: '2.3.0', date: '23.03.2026', items: [
     '\uD83C\uDF24 Погода на каждой точке маршрута (Open-Meteo)',
     '\u2601\uFE0F Погода синхронизируется через Firebase — один нажал, все видят',

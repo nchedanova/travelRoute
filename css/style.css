@@ -2313,3 +2313,177 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
   flex-shrink: 0;
 }
 .chat-google-btn:hover { opacity: 0.8; }
+
+/* ── ИМПОРТ ИЗ КАРТ ─────────────────────────────────────────────────────────── */
+.modal-import {
+  max-width: 380px;
+  width: 94%;
+}
+.modal-sub {
+  font-size: 10px;
+  color: var(--muted);
+  margin-bottom: 14px;
+  line-height: 1.6;
+}
+.modal-input-url {
+  resize: none;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.import-error {
+  font-size: 10px;
+  color: var(--red);
+  margin-top: 6px;
+  line-height: 1.5;
+}
+.import-preview {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 8px 10px;
+  margin-top: 8px;
+}
+.imp-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  margin-bottom: 3px;
+}
+.imp-key   { color: var(--muted); }
+.imp-val   { color: var(--green); }
+.imp-service { color: var(--accent); }
+.import-preview-list {
+  margin-top: 6px;
+  border-top: 1px solid var(--border);
+  padding-top: 6px;
+}
+.imp-pt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 9px;
+  padding: 2px 0;
+  color: var(--muted);
+}
+.imp-pt-n         { color: var(--border); min-width: 14px; }
+.imp-pt-start     { color: var(--amber); }
+.imp-pt-start-text{ color: var(--amber); }
+.imp-pt-coord     { color: var(--muted); }
+.imp-pt-more      { color: var(--border); font-size: 9px; padding: 2px 0; }
+
+/* Progress */
+.imp-prog-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.import-prog-bar {
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+}
+.import-prog-fill {
+  height: 3px;
+  background: var(--green);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+.imp-prog-item {
+  font-size: 9px;
+  padding: 2px 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.imp-prog-done   { color: var(--green); }
+.imp-prog-active { color: var(--amber); }
+.imp-prog-wait   { color: var(--border); }
+
+/* Spinners */
+.imp-spinner, .imp-spinner-inline {
+  display: inline-block;
+  width: 10px; height: 10px;
+  border: 1.5px solid var(--border);
+  border-top-color: var(--amber);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+.imp-spinner-inline { width: 12px; height: 12px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Action buttons */
+.import-actions {
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+.import-actions.show, .import-actions[style*="flex"] { display: flex; }
+.import-actions-cancel { margin-top: 10px; display: flex; justify-content: flex-end; }
+
+.imp-btn-new {
+  width: 100%; padding: 9px 0;
+  border-radius: 4px;
+  border: 1px solid var(--green);
+  background: rgba(74,222,128,0.08);
+  color: var(--green);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; cursor: pointer;
+  transition: background 0.15s;
+  min-height: 40px;
+}
+.imp-btn-new:hover { background: rgba(74,222,128,0.16); }
+.imp-btn-current {
+  width: 100%; padding: 9px 0;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; cursor: pointer;
+  transition: all 0.15s;
+  min-height: 40px;
+}
+.imp-btn-current:hover { border-color: var(--amber); color: var(--amber); }
+
+/* Day menu divider + import item */
+.day-overflow-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 2px 0;
+}
+.day-overflow-import {
+  color: var(--amber) !important;
+}
+
+/* Mobile: bottom sheet */
+@media (max-width: 600px) {
+  .modal-overlay:has(.modal-import) {
+    align-items: flex-end;
+    justify-content: center;
+  }
+  .modal-import {
+    max-width: 100%;
+    width: 100%;
+    border-radius: 12px 12px 0 0;
+    border-bottom: none;
+    padding: 12px 18px 28px;
+  }
+  .modal-import::before {
+    content: '';
+    display: block;
+    width: 36px; height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 0 auto 14px;
+  }
+  .imp-btn-new, .imp-btn-current { min-height: 44px; font-size: 11px; }
+  .modal-cancel { min-height: 40px; width: 100%; }
+  .import-actions-cancel { justify-content: stretch; }
+  .import-actions-cancel .modal-cancel { width: 100%; }
+}
+

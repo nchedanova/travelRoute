@@ -342,6 +342,8 @@ function renderDaySection(d) {
           <button onclick="confirmDeleteDay(${d});closeDayMenus()" style="color:var(--red)">✕ Удалить день</button>
           <button onclick="confirmReset(${d});closeDayMenus()">⟳ Сбросить факт</button>` : ''}
           <button onclick="fetchDayWeather(${d});closeDayMenus()">🌤 Погода</button>
+          ${isAdmin() ? `<div class="day-overflow-divider"></div>
+          <button class="day-overflow-import" onclick="closeDayMenus();openImportModal(${d})">↓ Импорт из карт</button>` : ''}
         </div>
       </div>
     </div>
