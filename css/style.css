@@ -2487,3 +2487,62 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
   .import-actions-cancel .modal-cancel { width: 100%; }
 }
 
+/* ── EDIT STEP ─────────────────────────────────────────────────────────────── */
+.imp-edit-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.imp-edit-list::-webkit-scrollbar { width: 3px; }
+.imp-edit-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.imp-edit-row {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 8px;
+}
+.imp-edit-name {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 4px 7px;
+  outline: none;
+  transition: border-color .15s;
+}
+.imp-edit-name:focus { border-color: var(--amber); }
+.imp-edit-type {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  padding: 3px 4px;
+  outline: none;
+  cursor: pointer;
+  width: 36px;
+  flex-shrink: 0;
+  text-align: center;
+}
+.imp-edit-type:focus { border-color: var(--amber); }
+.imp-edit-coord {
+  font-size: 8px;
+  color: var(--border);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+@media (max-width: 600px) {
+  .imp-edit-list { max-height: 240px; }
+  .imp-edit-coord { display: none; }
+  .imp-edit-name { font-size: 12px; }
+}
+
