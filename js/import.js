@@ -48,21 +48,36 @@ function parseMapLink(url) {
 }
 
 // ── REVERSE GEOCODING — умный приоритет + пост-обработка ─────────────────────
+// Категории Nominatim, которым мы доверяем как «полезным» объектам
+var _USEFUL_CLASSES = {
+  amenity: ['fuel','restaurant','cafe','fast_food','hotel','motel','hostel',
+            'bar','pub','food_court','ice_cream','parking','toilets',
+            'car_wash','charging_station'],
+  tourism: true,   // любой tourism объект полезен
+  shop:    true,   // любой магазин полезен
+  highway: ['services','rest_area']
+};
+
+function _isUsefulObject(cls, type) {
+  var allowed = _USEFUL_CLASSES[cls];
+  if (!allowed) return false;
+  if (allowed === true) return true;
+  return allowed.indexOf(type) !== -1;
+}
+
 async function _reverseGeocode(lat, lng) {
   try {
-    var r = await fetch('https://nominatim.openstreetmap.org/reverse?lat='+lat+'&lon='+lng+'&format=json&accept-language=ru&addressdetails=1&zoom=18',{headers:{'Accept-Language':'ru'}});
+    var r = await fetch('https://nominatim.openstreetmap.org/reverse?lat='+lat+'&lon='+lng+'&format=json&accept-language=ru&addressdetails=1&zoom=17',{headers:{'Accept-Language':'ru'}});
     var data = await r.json();
     if (!data||!data.address) return null;
-    var a = data.address;
-    // data.name = имя самого найденного объекта (отель, заправка и т.д.)
-    // Это точнее, чем a.amenity, который может быть ближайшим соседом
-    var objName  = data.name || '';
+    var a        = data.address;
     var road     = a.road||a.highway||a.motorway||'';
     var locality = a.city||a.town||a.village||a.suburb||a.municipality||a.county||'';
     var name;
-    if (objName && objName !== locality) {
-      // Есть конкретный объект — показываем его + локацию
-      name = objName + (locality ? ' · '+locality : '');
+
+    // Используем data.name только если объект — полезная категория (не банк, не офис и т.д.)
+    if (data.name && data.name !== locality && _isUsefulObject(data.class, data.type)) {
+      name = data.name + (locality ? ' · '+locality : '');
     } else if (road) {
       name = road + (locality ? ' · '+locality : '');
     } else if (locality) {
