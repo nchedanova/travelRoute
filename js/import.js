@@ -50,18 +50,26 @@ function parseMapLink(url) {
 // ── REVERSE GEOCODING — умный приоритет + пост-обработка ─────────────────────
 async function _reverseGeocode(lat, lng) {
   try {
-    var r = await fetch('https://nominatim.openstreetmap.org/reverse?lat='+lat+'&lon='+lng+'&format=json&accept-language=ru&addressdetails=1',{headers:{'Accept-Language':'ru'}});
+    var r = await fetch('https://nominatim.openstreetmap.org/reverse?lat='+lat+'&lon='+lng+'&format=json&accept-language=ru&addressdetails=1&zoom=18',{headers:{'Accept-Language':'ru'}});
     var data = await r.json();
     if (!data||!data.address) return null;
     var a = data.address;
-    var obj      = a.amenity||a.shop||a.tourism||a.leisure||a.fuel||a.restaurant||a.cafe||a.hotel||a.fast_food||'';
+    // data.name = имя самого найденного объекта (отель, заправка и т.д.)
+    // Это точнее, чем a.amenity, который может быть ближайшим соседом
+    var objName  = data.name || '';
     var road     = a.road||a.highway||a.motorway||'';
     var locality = a.city||a.town||a.village||a.suburb||a.municipality||a.county||'';
     var name;
-    if (obj)           name = obj  + (locality ? ' · '+locality : '');
-    else if (road)     name = road + (locality ? ' · '+locality : '');
-    else if (locality) name = locality;
-    else               name = data.display_name.split(',')[0].trim();
+    if (objName && objName !== locality) {
+      // Есть конкретный объект — показываем его + локацию
+      name = objName + (locality ? ' · '+locality : '');
+    } else if (road) {
+      name = road + (locality ? ' · '+locality : '');
+    } else if (locality) {
+      name = locality;
+    } else {
+      name = data.display_name.split(',')[0].trim();
+    }
     return _cleanGeoName(name) || null;
   } catch(e){}
   return null;
@@ -191,10 +199,10 @@ function _showEditStep(pts, names) {
       html+='<input class="imp-edit-name" data-idx="'+i+'" value="'+_escAttr(name)+'" placeholder="Название старта">';
     } else {
       var guessed=_guessType(name);
-      var opts=Object.entries(TYPE_ICONS).map(function(e){
-        return '<option value="'+e[0]+'"'+(e[0]===guessed?' selected':'')+'>'+e[1]+'</option>';
-      }).join('');
-      html+='<select class="imp-edit-type" data-idx="'+i+'" title="Тип точки">'+opts+'</select>';
+      var typeKeys=Object.keys(TYPE_ICONS);
+      var guessedIdx=typeKeys.indexOf(guessed); if(guessedIdx<0) guessedIdx=typeKeys.length-1;
+      var guessedIcon=TYPE_ICONS[guessed]||'📍';
+      html+='<button type="button" class="imp-type-btn" data-idx="'+i+'" data-type="'+guessed+'" data-tidx="'+guessedIdx+'" onclick="cycleImportType(this)" title="Тип — нажми для смены">'+guessedIcon+'</button>';
       html+='<input class="imp-edit-name" data-idx="'+i+'" value="'+_escAttr(name)+'" placeholder="Название точки">';
     }
     html+='<span class="imp-edit-coord">'+p.lat.toFixed(4)+', '+p.lng.toFixed(4)+'</span>';
@@ -204,15 +212,25 @@ function _showEditStep(pts, names) {
   _showImportStep('edit');
 }
 
+// ── TYPE CYCLE BUTTON ────────────────────────────────────────────────────────
+function cycleImportType(btn) {
+  var typeKeys = Object.keys(TYPE_ICONS);
+  var tidx = (parseInt(btn.dataset.tidx, 10) + 1) % typeKeys.length;
+  var newType = typeKeys[tidx];
+  btn.dataset.tidx = tidx;
+  btn.dataset.type = newType;
+  btn.textContent  = TYPE_ICONS[newType] || '📍';
+}
+
 // ── COMMIT ────────────────────────────────────────────────────────────────────
 function commitImport() {
   var pts=_importPts, mode=_importMode; if(!pts||!mode) return;
   var names=[], types=[];
   pts.forEach(function(p,i){
     var ne=document.querySelector('.imp-edit-name[data-idx="'+i+'"]');
-    var te=document.querySelector('.imp-edit-type[data-idx="'+i+'"]');
+    var te=document.querySelector('.imp-type-btn[data-idx="'+i+'"]');
     names.push((ne?ne.value.trim():'')||(p.lat.toFixed(4)+','+p.lng.toFixed(4)));
-    types.push(te?te.value:'Другое');
+    types.push(te?(te.dataset.type||'Другое'):'Другое');
   });
   var startPt=pts[0], startName=names[0];
   var stopPts=pts.slice(1), stopNames=names.slice(1), stopTypes=types.slice(1);

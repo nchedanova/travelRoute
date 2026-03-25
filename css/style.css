@@ -2519,21 +2519,27 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
   transition: border-color .15s;
 }
 .imp-edit-name:focus { border-color: var(--amber); }
-.imp-edit-type {
+.imp-type-btn {
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 3px;
-  color: var(--text);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 14px;
-  padding: 3px 4px;
-  outline: none;
+  font-size: 16px;
+  line-height: 1;
+  padding: 4px;
   cursor: pointer;
-  width: 36px;
+  width: 32px;
+  height: 32px;
   flex-shrink: 0;
   text-align: center;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color 0.15s, background 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.imp-edit-type:focus { border-color: var(--amber); }
+.imp-type-btn:hover { border-color: var(--amber); background: var(--surface2); }
+.imp-type-btn:active { transform: scale(0.93); }
 .imp-edit-coord {
   font-size: 8px;
   color: var(--border);
