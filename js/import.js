@@ -48,26 +48,25 @@ function parseMapLink(url) {
 }
 
 // ── REVERSE GEOCODING — умный приоритет + пост-обработка ─────────────────────
-// Категории Nominatim, которым мы доверяем как «полезным» объектам
-var _USEFUL_CLASSES = {
-  amenity: ['fuel','restaurant','cafe','fast_food','hotel','motel','hostel',
-            'bar','pub','food_court','ice_cream','parking','toilets',
-            'car_wash','charging_station'],
-  tourism: true,   // любой tourism объект полезен
-  shop:    true,   // любой магазин полезен
-  highway: ['services','rest_area']
-};
+// Классы объектов Nominatim, которые НЕ являются полезными POI
+// (дороги, границы, земельные участки, безымянные здания, банки/офисы)
+var _SKIP_CLASSES = ['highway','boundary','landuse','natural','place','waterway','railway'];
+var _SKIP_AMENITY_TYPES = ['bank','atm','bureau_de_change','post_office','police',
+  'courthouse','prison','embassy','government','public_building','office',
+  'townhall','community_centre','social_facility','place_of_worship'];
 
 function _isUsefulObject(cls, type) {
-  var allowed = _USEFUL_CLASSES[cls];
-  if (!allowed) return false;
-  if (allowed === true) return true;
-  return allowed.indexOf(type) !== -1;
+  // Пропускаем «неинтересные» классы
+  if (_SKIP_CLASSES.indexOf(cls) !== -1) return false;
+  // Amenity — исключаем только явно неинтересные типы
+  if (cls === 'amenity' && _SKIP_AMENITY_TYPES.indexOf(type) !== -1) return false;
+  // Всё остальное (amenity, tourism, shop, leisure, building named, etc.) — полезно
+  return true;
 }
 
 async function _reverseGeocode(lat, lng) {
   try {
-    var r = await fetch('https://nominatim.openstreetmap.org/reverse?lat='+lat+'&lon='+lng+'&format=json&accept-language=ru&addressdetails=1&zoom=17',{headers:{'Accept-Language':'ru'}});
+    var r = await fetch('https://nominatim.openstreetmap.org/reverse?lat='+lat+'&lon='+lng+'&format=json&accept-language=ru&addressdetails=1&zoom=18',{headers:{'Accept-Language':'ru'}});
     var data = await r.json();
     if (!data||!data.address) return null;
     var a        = data.address;
@@ -75,7 +74,7 @@ async function _reverseGeocode(lat, lng) {
     var locality = a.city||a.town||a.village||a.suburb||a.municipality||a.county||'';
     var name;
 
-    // Используем data.name только если объект — полезная категория (не банк, не офис и т.д.)
+    // Используем data.name только если объект — полезная категория (не банк, не дорога)
     if (data.name && data.name !== locality && _isUsefulObject(data.class, data.type)) {
       name = data.name + (locality ? ' · '+locality : '');
     } else if (road) {

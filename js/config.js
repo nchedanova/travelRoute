@@ -5,7 +5,7 @@ const DAY_ORDINALS = ['первый','второй','третий','четвёр
 const TYPE_ICONS = {
   'Заправка': '⛽',
   'Кафе':     '🍜',
-  'Отель':    '🛎️',
+  'Отель':    '🛎',
   'Жильё':    '🏠',
   'Другое':   '📍',
 };
@@ -65,7 +65,7 @@ const DEMO_CHAT = [
   { name: 'Саша', role: 'viewer', text: 'Огонь! А заправки точно Газпромнефть?', ts: Date.now() - 3600000 * 4.5 },
   { name: 'Настя', role: 'admin', text: 'Да, каждые ~400 км, проверила на карте ⛽', ts: Date.now() - 3600000 * 4 },
   { name: DEMO_MY_NAME, role: 'admin', text: 'Выезжаем в 3 утра? Серьёзно? 😅', ts: Date.now() - 3600000 * 3 },
-  { name: 'Настя', role: 'admin', text: 'Зато к вечеру уже в Ростове! 🏨', ts: Date.now() - 3600000 * 2.5, reactions: { '💪': ['s1','s2'], '🔥': ['s3'] } },
+  { name: 'Настя', role: 'admin', text: 'Зато к вечеру уже в Ростове! 🛎', ts: Date.now() - 3600000 * 2.5, reactions: { '💪': ['s1','s2'], '🔥': ['s3'] } },
   { name: 'Саша', role: 'viewer', text: 'Кто берёт термос с кофе? ☕', ts: Date.now() - 3600000 * 2 },
   { name: DEMO_MY_NAME, role: 'admin', text: 'Я возьму! И печеньки 🍪', ts: Date.now() - 3600000 * 1.5, reactions: { '❤️': ['s1','s2','s3'] } },
   { name: 'Настя', role: 'admin', text: 'GPX можно скачать и открыть в Organic Maps — работает без интернета', ts: Date.now() - 3600000 },
