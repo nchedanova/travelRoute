@@ -907,13 +907,16 @@ function editDepartTime(day, el) {
     newEl.onclick    = () => editDepartTime(day, newEl);
     inp.replaceWith(newEl);
 
-    // Calculate delta and cascade
+    // Always save the new departP value
+    DAYS_DATA[day].departP = val;
+    saveData();
+
+    // Cascade time shift to stops only if both old and new times are valid and differ
     const oldMins = timeToMins(current);
     const newMins = timeToMins(val);
     if (oldMins !== null && newMins !== null && oldMins !== newMins) {
       const delta = newMins - oldMins;
       snapshotForUndo('Пересчёт времён · День ' + day);
-      DAYS_DATA[day].departP = val;
       DAYS_DATA[day].stops.forEach(s => {
         if (s.arrP) { s.arrP = shiftTime(s.arrP, delta); }
         if (s.depP) { s.depP = shiftTime(s.depP, delta); }
@@ -921,7 +924,6 @@ function editDepartTime(day, el) {
       renderStops(day);
       redrawDay(day);
       updateProgress();
-      saveData();
       showToast('🕐 Времена пересчитаны (' + (delta > 0 ? '+' : '') + Math.round(delta/60*10)/10 + 'ч)');
     }
   };
@@ -1487,7 +1489,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.3.0';
-var APP_BUILD   = 54;
+var APP_BUILD   = 55;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 
