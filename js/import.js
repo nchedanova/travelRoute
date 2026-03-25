@@ -15,14 +15,34 @@ function parseMapLink(url) {
     }).filter(Boolean);
     if (points.length) return {service:'Яндекс Карты',points:points};
   }
-  var gm = url.match(/maps\.google\.[^/]+\/maps\/dir\/([^?#]+)/);
-  if (!gm) gm = url.match(/google\.[^/]+\/maps\/dir\/([^?@#]+)/);
-  if (gm) {
-    var pts=[]; gm[1].split('/').filter(function(s){return s&&s!=='data';}).forEach(function(seg){
-      var m=seg.match(/^(-?\d+\.?\d*),(-?\d+\.?\d*)$/);
-      if(m) pts.push({lat:parseFloat(m[1]),lng:parseFloat(m[2])});
-    });
-    if (pts.length) return {service:'Google Maps',points:pts};
+  // 2. Google Maps — data= параметр (!1d{lng}!2d{lat}) + path coords + short links
+  if (/google\.com\/maps|maps\.google|maps\.app\.goo\.gl/.test(url)) {
+    var gmPts = [];
+
+    // 2a. data= param: !1d{lng}!2d{lat} — самый точный источник координат
+    var dataM = url.match(/data=([^?#\s]+)/);
+    if (dataM) {
+      var ds = decodeURIComponent(dataM[1]);
+      var re2 = /!1d(-?\d+\.\d+)!2d(-?\d+\.\d+)/g, dm;
+      while ((dm = re2.exec(ds)) !== null)
+        gmPts.push({lat: parseFloat(dm[2]), lng: parseFloat(dm[1])});
+    }
+
+    // 2b. Сегменты пути — только чистые пары координат
+    if (!gmPts.length) {
+      var dirM = url.match(/\/maps\/dir\/([^?#]+)/);
+      if (dirM) {
+        dirM[1].split('/').forEach(function(seg) {
+          var clean = decodeURIComponent(seg).replace(/\+/g,' ').trim();
+          var m = clean.match(/^(-?\d{1,3}\.\d+)[,\s]+(-?\d{1,3}\.\d+)$/);
+          if (m) { var a=parseFloat(m[1]),b=parseFloat(m[2]); if(a>=-90&&a<=90&&b>=-180&&b<=180) gmPts.push({lat:a,lng:b}); }
+        });
+      }
+    }
+
+    if (gmPts.length) return {service:'Google Maps', points:gmPts};
+    // Сокращённая ссылка maps.app.goo.gl — не раскрывается на клиенте
+    if (/maps\.app\.goo\.gl/.test(url)) return {service:'Google Maps', points:[], error:'short'};
   }
   var dg = url.match(/2gis\.[^/]+[^?]*\?([^#]*)/);
   if (dg) {
@@ -146,9 +166,15 @@ function onImportInput() {
     document.getElementById('importActionsCancel').style.display='flex'; return;
   }
   var result=parseMapLink(val);
-  if (!result||!result.points.length) {
+  if (!result || !result.points.length) {
     preview.style.display='none'; actions.style.display='none';
-    if (val.length>20){errEl.textContent='Не удалось распознать ссылку. Поддерживаются Яндекс, Google Maps, 2GIS, OsmAnd.';errEl.style.display='block';}
+    if (result && result.error === 'short') {
+      errEl.textContent='Сокращённые ссылки Google (maps.app.goo.gl) нельзя открыть напрямую. Откройте её в браузере, скопируйте полный URL из адресной строки и вставьте сюда.';
+      errEl.style.display='block';
+    } else if (val.length>20) {
+      errEl.textContent='Не удалось распознать ссылку. Поддерживаются Яндекс, Google Maps, 2GIS, OsmAnd.';
+      errEl.style.display='block';
+    }
     return;
   }
   var pts=result.points, showMax=3, html='';
