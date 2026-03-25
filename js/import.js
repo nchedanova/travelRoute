@@ -97,10 +97,12 @@ function openImportModal(day) {
   _importDay = day || null;
   var modal = document.getElementById('importModal');
   if (!modal) return;
-  // Reset state
+  // Reset state — restore all hidden elements from previous import
   document.getElementById('importUrlInput').value = '';
+  document.getElementById('importFormArea').style.display = 'block';
   document.getElementById('importPreview').style.display = 'none';
   document.getElementById('importActionsMain').style.display = 'none';
+  document.getElementById('importActionsCancel').style.display = 'flex';
   document.getElementById('importProgress').style.display = 'none';
   document.getElementById('importError').style.display = 'none';
   modal.classList.add('show');
@@ -195,6 +197,7 @@ async function doImport(mode) {
   // Hide form, show progress
   document.getElementById('importFormArea').style.display = 'none';
   document.getElementById('importActionsMain').style.display = 'none';
+  document.getElementById('importActionsCancel').style.display = 'none';
   document.getElementById('importProgress').style.display = 'block';
 
   var progressList = document.getElementById('importProgressList');
