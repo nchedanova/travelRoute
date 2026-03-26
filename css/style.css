@@ -2593,3 +2593,87 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
   line-height: 1.5;
 }
 
+/* ── UPDATE TOAST ────────────────────────────────────────────────────────────── */
+.update-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: var(--surface2);
+  border: 1px solid var(--green);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 9999;
+  font-family: 'JetBrains Mono', monospace;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  opacity: 0;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.update-toast.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+.update-toast-text {
+  font-size: 11px;
+  color: var(--text);
+}
+.update-toast-btn {
+  background: rgba(74,222,128,0.12);
+  border: 1px solid var(--green);
+  border-radius: 4px;
+  color: var(--green);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 4px 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+  min-height: 28px;
+}
+.update-toast-btn:hover { background: rgba(74,222,128,0.22); }
+.update-toast-close {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 4px;
+  line-height: 1;
+  transition: color 0.15s;
+}
+.update-toast-close:hover { color: var(--text); }
+
+@media (max-width: 600px) {
+  .update-toast {
+    left: 12px;
+    right: 12px;
+    bottom: 70px;
+    transform: translateY(100px);
+    white-space: normal;
+  }
+  .update-toast.show { transform: translateY(0); }
+}
+
+/* ── CS Update button ────────────────────────────────────────────────────────── */
+.cs-update-btn {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px 0;
+  border-radius: 4px;
+  border: 1px solid var(--green);
+  background: rgba(74,222,128,0.08);
+  color: var(--green);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+  min-height: 36px;
+}
+.cs-update-btn:hover { background: rgba(74,222,128,0.16); }
+

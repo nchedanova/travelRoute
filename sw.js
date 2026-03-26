@@ -1,5 +1,5 @@
 // ── SERVICE WORKER · Дорожный журнал ───────────────────────────────────────────
-const CACHE_STATIC  = 'travel-static-v71';
+const CACHE_STATIC  = 'travel-static-v72';
 const CACHE_TILES   = 'travel-tiles-v2';
 const CACHE_FONTS   = 'travel-fonts-v1';
 
@@ -34,7 +34,7 @@ self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE_STATIC).then(cache => cache.addAll(PRECACHE))
   );
-  self.skipWaiting();
+  // Do NOT call skipWaiting() here — we notify the user first and let them trigger the update
 });
 
 // ── ACTIVATE ──────────────────────────────────────────────────────────────────
@@ -154,6 +154,10 @@ async function staleWhileRevalidate(request, cacheName) {
 
 // ── MESSAGE: prefetch tiles along route ───────────────────────────────────────
 self.addEventListener('message', e => {
+  if (e.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+    return;
+  }
   if (e.data?.type === 'PREFETCH_TILES') {
     prefetchTiles(e.data.tiles, e.data.clientId);
   }

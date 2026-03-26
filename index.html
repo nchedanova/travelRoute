@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=71">
+<link rel="stylesheet" href="css/style.css?v=72">
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
@@ -383,6 +383,7 @@
         </div>
         <div class="cs-ver-hint" id="csVerHint" style="display:none">
           <span id="csVerHintText"></span>
+          <button class="cs-update-btn" id="csUpdateBtn" onclick="applySwUpdate()" style="display:none">↺ Обновить сейчас</button>
         </div>
       </div>
       <div class="modal-actions" style="flex-wrap:wrap;gap:8px;">
@@ -515,28 +516,82 @@
   </div>
 </div>
 
+<div class="update-toast" id="updateToast">
+  <span class="update-toast-text">🆕 Доступно обновление</span>
+  <button class="update-toast-btn" onclick="applySwUpdate()">Обновить</button>
+  <button class="update-toast-close" onclick="dismissUpdateToast()">✕</button>
+</div>
 <div class="toast" id="toast">💾 Сохранено</div>
 
 <!-- Scripts: порядок важен — config и data первыми -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="js/config.js?v=71"></script>
-<script src="js/data.js?v=71"></script>
-<script src="js/storage.js?v=71"></script>
-<script src="js/offline.js?v=71"></script>
-<script src="js/map.js?v=71"></script>
-<script src="js/render.js?v=71"></script>
-<script src="js/app.js?v=71"></script>
-<script src="js/gps.js?v=71"></script>
-<script src="js/chat.js?v=71"></script>
-<script src="js/notes.js?v=71"></script>
-<script src="js/import.js?v=71"></script>
-<script src="js/gpx.js?v=71"></script>
+<script src="js/config.js?v=72"></script>
+<script src="js/data.js?v=72"></script>
+<script src="js/storage.js?v=72"></script>
+<script src="js/offline.js?v=72"></script>
+<script src="js/map.js?v=72"></script>
+<script src="js/render.js?v=72"></script>
+<script src="js/app.js?v=72"></script>
+<script src="js/gps.js?v=72"></script>
+<script src="js/chat.js?v=72"></script>
+<script src="js/notes.js?v=72"></script>
+<script src="js/import.js?v=72"></script>
+<script src="js/gpx.js?v=72"></script>
 <script>
-  // Service Worker registration
+  // Service Worker registration + update detection
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').then(reg => {
       console.log('[SW] Registered:', reg.scope);
+      window._swReg = reg;
+
+      // Check if there's already a waiting worker (page was refreshed after update)
+      if (reg.waiting) _onSwUpdateReady();
+
+      // New update found while page is open
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        if (!newWorker) return;
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            // New SW installed but waiting — notify user
+            _onSwUpdateReady();
+          }
+        });
+      });
     }).catch(err => console.warn('[SW] Registration failed:', err));
+
+    // When SW takes control (after skipWaiting), reload the page
+    var _reloadPending = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (_reloadPending) return;
+      _reloadPending = true;
+      window.location.reload();
+    });
+  }
+
+  function _onSwUpdateReady() {
+    // Show update toast — persists until dismissed or applied
+    var toast = document.getElementById('updateToast');
+    if (toast) toast.classList.add('show');
+  }
+
+  function applySwUpdate() {
+    var reg = window._swReg;
+    if (reg && reg.waiting) {
+      reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+    } else if (navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' });
+    } else {
+      window.location.reload();
+    }
+    // Hide toast
+    var toast = document.getElementById('updateToast');
+    if (toast) toast.classList.remove('show');
+  }
+
+  function dismissUpdateToast() {
+    var toast = document.getElementById('updateToast');
+    if (toast) toast.classList.remove('show');
   }
 
   // Запускаем GPS после инициализации карты
