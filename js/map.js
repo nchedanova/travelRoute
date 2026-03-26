@@ -40,7 +40,7 @@ async function _drainQueue() {
   _queueBusy = true;
   while (_fetchQueue.length > 0) {
     const { from, to, resolve, reject } = _fetchQueue.shift();
-    try { resolve(await _osrmFetch(from, to)); }
+    try { resolve(await _osrmFetch(from, to, item.profile)); }
     catch (e) { reject(e); }
     if (_fetchQueue.length > 0) {
       await new Promise(r => setTimeout(r, OSRM_DELAY_MS));
@@ -49,11 +49,12 @@ async function _drainQueue() {
   _queueBusy = false;
 }
 
-async function _osrmFetch(from, to) {
-  const key = `${from.lat},${from.lng}|${to.lat},${to.lng}`;
+async function _osrmFetch(from, to, profile) {
+  profile = profile || 'driving';
+  const key = `${profile}|${from.lat},${from.lng}|${to.lat},${to.lng}`;
   if (_routeCache[key]) return _routeCache[key];
 
-  const url = `https://router.project-osrm.org/route/v1/driving/` +
+  const url = `https://router.project-osrm.org/route/v1/${profile}/` +
     `${from.lng},${from.lat};${to.lng},${to.lat}` +
     `?overview=full&geometries=geojson`;
 
@@ -80,13 +81,14 @@ async function _osrmFetch(from, to) {
   return null;
 }
 
-function fetchRoadSegment(from, to) {
-  const key = `${from.lat},${from.lng}|${to.lat},${to.lng}`;
+function fetchRoadSegment(from, to, profile) {
+  profile = profile || 'driving';
+  const key = `${profile}|${from.lat},${from.lng}|${to.lat},${to.lng}`;
   // Мгновенный ответ из кэша — без добавления в очередь
   if (_routeCache[key]) return Promise.resolve(_routeCache[key]);
 
   return new Promise((resolve, reject) => {
-    _fetchQueue.push({ from, to, resolve, reject });
+    _fetchQueue.push({ from, to, profile, resolve, reject });
     _drainQueue();
   });
 }
@@ -291,10 +293,13 @@ function drawDay(d) {
 
   for (let i = 0; i < allPoints.length - 1; i++) {
     const from = allPoints[i], to = allPoints[i + 1];
-    // Сразу добавляем прямую линию как placeholder
+    // Сразу добавляем прямую линию как placeholder (стиль зависит от режима)
+    const isWalk = !!data.walkMode;
     const seg = L.polyline(
       [[from.lat, from.lng], [to.lat, to.lng]],
-      { color, weight:3, opacity:0.2, lineCap:'round', lineJoin:'round', dashArray:'6 6' }
+      isWalk
+        ? { color:'#60a5fa', weight:3, opacity:0.25, lineCap:'round', lineJoin:'round', dashArray:'4 8' }
+        : { color, weight:3, opacity:0.2, lineCap:'round', lineJoin:'round', dashArray:'6 6' }
     );
     group.addLayer(seg);
     segmentLayers[d].push({ seg, fromId: from.id || null, toId: to.id });
@@ -302,9 +307,15 @@ function drawDay(d) {
     // Асинхронно заменяем на маршрут по дорогам.
     // Проверяем group.hasLayer(seg): если до ответа вызвали redrawDay()
     // и clearLayers(), seg уже отвязан от карты — обновлять его бессмысленно.
-    fetchRoadSegment(from, to).then(coords => {
+    fetchRoadSegment(from, to, data.walkMode ? 'foot' : 'driving').then(coords => {
       if (!coords || !group.hasLayer(seg)) return;
       seg.setLatLngs(coords);
+      // Apply final style: walking = blue dashed, driving = solid color
+      if (data.walkMode) {
+        seg.setStyle({ color:'#60a5fa', weight:3, opacity:0.75, dashArray:'6 10' });
+      } else {
+        seg.setStyle({ color, weight:4, opacity:0.85, dashArray:null });
+      }
     }).catch(() => { /* оставляем прямую линию */ });
   }
 
