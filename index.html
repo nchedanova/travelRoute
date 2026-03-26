@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=2-5-3">
+<link rel="stylesheet" href="css/style.css?v=2-5-4">
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
@@ -383,7 +383,9 @@
         </div>
         <div class="cs-ver-hint" id="csVerHint" style="display:none">
           <span id="csVerHintText"></span>
-          <button class="cs-update-btn" id="csUpdateBtn" onclick="applySwUpdate()" style="display:none">↺ Обновить сейчас</button>
+        </div>
+        <div style="margin-top:10px">
+          <button class="cs-update-btn" id="csUpdateBtn" onclick="applySwUpdate()">↺ Перезагрузить / применить обновление</button>
         </div>
       </div>
       <div class="modal-actions" style="flex-wrap:wrap;gap:8px;">
@@ -525,18 +527,18 @@
 
 <!-- Scripts: порядок важен — config и data первыми -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="js/config.js?v=2-5-3"></script>
-<script src="js/data.js?v=2-5-3"></script>
-<script src="js/storage.js?v=2-5-3"></script>
-<script src="js/offline.js?v=2-5-3"></script>
-<script src="js/map.js?v=2-5-3"></script>
-<script src="js/render.js?v=2-5-3"></script>
-<script src="js/app.js?v=2-5-3"></script>
-<script src="js/gps.js?v=2-5-3"></script>
-<script src="js/chat.js?v=2-5-3"></script>
-<script src="js/notes.js?v=2-5-3"></script>
-<script src="js/import.js?v=2-5-3"></script>
-<script src="js/gpx.js?v=2-5-3"></script>
+<script src="js/config.js?v=2-5-4"></script>
+<script src="js/data.js?v=2-5-4"></script>
+<script src="js/storage.js?v=2-5-4"></script>
+<script src="js/offline.js?v=2-5-4"></script>
+<script src="js/map.js?v=2-5-4"></script>
+<script src="js/render.js?v=2-5-4"></script>
+<script src="js/app.js?v=2-5-4"></script>
+<script src="js/gps.js?v=2-5-4"></script>
+<script src="js/chat.js?v=2-5-4"></script>
+<script src="js/notes.js?v=2-5-4"></script>
+<script src="js/import.js?v=2-5-4"></script>
+<script src="js/gpx.js?v=2-5-4"></script>
 <script>
   window._swReg         = null;
   window._swUpdateReady = false;
@@ -550,13 +552,14 @@
       reg.update();
       setInterval(function() { reg.update(); }, 60000);
 
-      // updatefound fires when a new SW starts installing
+      // updatefound: new SW installing → when activated, show toast
       reg.addEventListener('updatefound', () => {
         var newWorker = reg.installing;
         if (!newWorker) return;
         newWorker.addEventListener('statechange', () => {
-          // 'activating' means skipWaiting fired and it's about to take over
-          if (newWorker.state === 'activating') {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            // New SW installed and waiting (skipWaiting already called in install)
+            // but not yet controlling — show toast, let user trigger reload
             window._swUpdateReady = true;
             _onSwUpdateReady();
           }
@@ -564,21 +567,19 @@
       });
     }).catch(err => console.warn('[SW] Registration failed:', err));
 
-    // controllerchange = new SW took control → reload to use fresh code
-    var _reloadPending = false;
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (_reloadPending) return;
-      _reloadPending = true;
-      window.location.reload();
-    });
+    // NO auto-reload on controllerchange — that caused infinite loops.
+    // User clicks the toast/button to reload manually.
   }
 
   function _onSwUpdateReady() {
     var toast = document.getElementById('updateToast');
     if (toast) toast.classList.add('show');
+    // Also refresh version badge if cloud settings are open
+    if (document.getElementById('cloudSettingsModal')?.classList.contains('show')) {
+      _checkAppVersion();
+    }
   }
 
-  // applySwUpdate: just reload — new SW already took control via skipWaiting
   function applySwUpdate() {
     var toast = document.getElementById('updateToast');
     if (toast) toast.classList.remove('show');
