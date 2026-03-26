@@ -93,17 +93,23 @@ function fetchRoadSegment(from, to) {
 
 function initMap() {
   map = L.map('map', { center:[51.5, 39.5], zoom:5, zoomControl:true, attributionControl:false });
-  // maxNativeZoom=13 matches what we cache offline.
-  // When offline, Leaflet CSS-stretches z13 tiles for higher zoom — blurry but visible.
-  // When online, we restore maxNativeZoom=19 for full detail.
+  // Offline maxNativeZoom accounts for device pixel ratio:
+  // On 2x DPR mobile, Leaflet internally requests tiles 1 zoom higher,
+  // so we need z14 cached (not just z13) to avoid extreme blurriness.
+  // Formula: 13 + log2(DPR), capped at 14 (we cache up to z14 around stops).
+  function _offlineMaxNativeZoom() {
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    return Math.min(13 + Math.round(Math.log2(dpr)), 14);
+  }
+
   window._tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
-    maxNativeZoom: navigator.onLine ? 19 : 13
+    maxNativeZoom: navigator.onLine ? 19 : _offlineMaxNativeZoom()
   }).addTo(map);
 
   window.addEventListener('offline', function() {
     if (window._tileLayer) {
-      window._tileLayer.options.maxNativeZoom = 13;
+      window._tileLayer.options.maxNativeZoom = _offlineMaxNativeZoom();
       window._tileLayer.redraw();
     }
   });

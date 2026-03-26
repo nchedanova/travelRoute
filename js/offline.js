@@ -140,7 +140,7 @@ function lat2tile(lat, zoom) {
 // Стратегия кэширования тайлов:
 //   z5,z8  — весь маршрут (обзор страны/дня)
 //   z11    — весь маршрут, узкий коридор (основной рабочий зум)
-//   z13    — только вокруг точек остановок (детали на месте)
+//   z13    — весь маршрут (ключевой зум для мобилок, maxNativeZoom=13 оффлайн)
 // z14 вдоль всей линии убран — слишком много тайлов без реальной пользы
 
 function _addTilesWithPadding(urls, tx, ty, zoom, pad) {
@@ -198,9 +198,13 @@ function getTilesAlongRoute(points) {
     _bresenhamLine(lng2tile(pts[i].lng, 12), lat2tile(pts[i].lat, 12),
                    lng2tile(pts[i+1].lng, 12), lat2tile(pts[i+1].lat, 12), urls, 12, 1);
 
-  // z13 — детализация ТОЛЬКО вокруг точек (не вся линия — слишком много)
+  // z13 — весь маршрут (ключевой уровень для мобилок, maxNativeZoom offline = 13)
+  // padding 2 вокруг точек + Bresenham с padding 1 вдоль всей трассы
   for (let i = 0; i < pts.length; i++)
-    _addTilesWithPadding(urls, lng2tile(pts[i].lng, 13), lat2tile(pts[i].lat, 13), 13, 4);
+    _addTilesWithPadding(urls, lng2tile(pts[i].lng, 13), lat2tile(pts[i].lat, 13), 13, 2);
+  for (let i = 0; i < pts.length - 1; i++)
+    _bresenhamLine(lng2tile(pts[i].lng, 13), lat2tile(pts[i].lat, 13),
+                   lng2tile(pts[i+1].lng, 13), lat2tile(pts[i+1].lat, 13), urls, 13, 1);
 
   return [...urls];
 }
