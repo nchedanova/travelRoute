@@ -397,8 +397,13 @@ async function _checkAppVersion() {
 
     var swInfo = await new Promise(function(resolve, reject) {
       var mc = new MessageChannel();
-      var timer = setTimeout(function() { reject(new Error('timeout')); }, 3000);
-      mc.port1.onmessage = function(ev) { clearTimeout(timer); resolve(ev.data); };
+      // Set up listener BEFORE posting message
+      mc.port1.onmessage = function(ev) {
+        clearTimeout(timer);
+        resolve(ev.data);
+      };
+      var timer = setTimeout(function() { reject(new Error('SW timeout')); }, 4000);
+      // Transfer port2 to SW so it can reply on it
       worker.postMessage({ type: 'GET_VERSION' }, [mc.port2]);
     });
 

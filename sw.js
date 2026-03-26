@@ -1,7 +1,7 @@
 // ── SERVICE WORKER · Дорожный журнал ───────────────────────────────────────────
-const CACHE_STATIC  = 'travel-static-v2-5-8';
+const CACHE_STATIC  = 'travel-static-v2-5-9';
 const APP_VERSION   = '2.5.0';
-const APP_BUILD     = 9;
+const APP_BUILD     = 10;
 const CACHE_TILES   = 'travel-tiles-v2';
 const CACHE_FONTS   = 'travel-fonts-v1';
 
@@ -46,11 +46,9 @@ self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
       Promise.all(keys.map(k => {
-        // Delete ANY old static cache (not just unknown names)
-        // This ensures stale JS/CSS from previous builds gets cleared
-        const isOldStatic = k.startsWith('travel-static-') && k !== CACHE_STATIC;
-        const isUnknown   = k !== CACHE_STATIC && k !== CACHE_TILES && k !== CACHE_FONTS;
-        if (isOldStatic || isUnknown) return caches.delete(k);
+        // Delete all old static caches + any unknown caches
+        const keep = [CACHE_STATIC, CACHE_TILES, CACHE_FONTS];
+        if (!keep.includes(k)) return caches.delete(k);
       }))
     )
   );
@@ -167,9 +165,10 @@ self.addEventListener('message', e => {
     return;
   }
   if (e.data?.type === 'GET_VERSION') {
-    // Reply directly to the requesting client with SW build info
-    const source = e.source || e.ports?.[0];
-    if (source) source.postMessage({ type: 'SW_VERSION', build: APP_BUILD, version: APP_VERSION });
+    // Must reply on e.ports[0] — that's the MessageChannel port client is listening on
+    if (e.ports && e.ports[0]) {
+      e.ports[0].postMessage({ type: 'SW_VERSION', build: APP_BUILD, version: APP_VERSION });
+    }
     return;
   }
   if (e.data?.type === 'PREFETCH_TILES') {
