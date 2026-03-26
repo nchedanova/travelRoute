@@ -1,0 +1,497 @@
+// ── TIME UTILS ────────────────────────────────────────────────────────────────
+function timeDelta(planned, actual) {
+  if (!planned || !actual || planned.length < 4 || actual.length < 4) return null;
+  const [ph, pm] = planned.split(':').map(Number);
+  const [ah, am] = actual.split(':').map(Number);
+  if (isNaN(ph) || isNaN(pm) || isNaN(ah) || isNaN(am)) return null;
+  return (ah * 60 + am) - (ph * 60 + pm);
+}
+
+function fmtDelta(d) {
+  if (d === null) return null;
+  const abs  = Math.abs(d);
+  const sign = d >= 0 ? '+' : '−';
+  const h    = Math.floor(abs / 60), m = abs % 60;
+  return h > 0 ? `${sign}${h}ч ${m}м` : `${sign}${m}м`;
+}
+
+// ── TIME MASK ─────────────────────────────────────────────────────────────────
+function applyMask(el) {
+  const oldVal = el.value;
+  // Firefox can return null for selectionStart — fall back to end of string
+  const pos    = (el.selectionStart != null) ? el.selectionStart : oldVal.length;
+  const digitsBeforeCursor = oldVal.slice(0, pos).replace(/[^0-9]/g, '').length;
+  let digits    = oldVal.replace(/[^0-9]/g, '').slice(0, 4);
+  let formatted = digits.length >= 3 ? digits.slice(0, 2) + ':' + digits.slice(2) : digits;
+  el.value = formatted;
+  el.classList.toggle('empty', !formatted);
+  let digitCount = 0, newPos = formatted.length;
+  if (digitsBeforeCursor > 0) {
+    for (let i = 0; i < formatted.length; i++) {
+      if (/[0-9]/.test(formatted[i])) digitCount++;
+      if (digitCount === digitsBeforeCursor) { newPos = i + 1; break; }
+    }
+  }
+  // Synchronous call works in both Chrome and Firefox
+  try { el.setSelectionRange(newPos, newPos); } catch(e) {}
+  if (formatted.length === 5) updateProgress();
+}
+
+function padTime(el) {
+  const val = el.value.trim();
+  if (!val) { saveData(); return; }
+  const digits = val.replace(/[^0-9]/g, '');
+  let padded = val;
+  if (digits.length === 3) padded = '0' + digits[0] + ':' + digits.slice(1);
+  if (/^\d:\d\d$/.test(val)) padded = '0' + val;
+  el.value = padded;
+  el.classList.toggle('empty', !padded);
+  saveData();
+}
+
+// ── PROGRESS + DELTAS ─────────────────────────────────────────────────────────
+function updateProgress() {
+  dayKeys().forEach(day => {
+    const stops = DAYS_DATA[day].stops;
+    let filled = 0, lastDelta = null;
+    stops.forEach(s => {
+      if (s.arrA && s.arrA.length >= 4) filled++;
+      const dArr = timeDelta(s.arrP, s.arrA);
+      if (dArr !== null) lastDelta = dArr;
+      const dDep = timeDelta(s.depP, s.depA);
+      if (dDep !== null) lastDelta = dDep;
+    });
+    const pct   = Math.round((filled / (stops.length || 1)) * 100);
+    const fill  = document.getElementById('d' + day + '-fill');
+    const pctEl = document.getElementById('d' + day + '-pct');
+    if (fill)  fill.style.width  = pct + '%';
+    if (pctEl) pctEl.textContent = pct + '%';
+
+    const dEl = document.getElementById('d' + day + '-delta-val');
+    if (dEl) {
+      if (lastDelta === null) {
+        dEl.textContent = '—';
+        dEl.style.color = '';
+      } else {
+        dEl.textContent = lastDelta === 0 ? '±0м' : fmtDelta(lastDelta);
+        dEl.style.color = lastDelta > 0 ? 'var(--red)' : lastDelta < 0 ? 'var(--green)' : 'var(--muted)';
+      }
+    }
+
+    stops.forEach(s => {
+      const aEl  = document.getElementById('arr-' + s.id);
+      const dEl2 = document.getElementById('delta-arr-' + s.id);
+      if (aEl) {
+        const val   = aEl.value;
+        const delta = timeDelta(s.arrP, val);
+        aEl.classList.remove('empty', 'ontime', 'late');
+        if (!val) aEl.classList.add('empty');
+        else if (delta !== null) aEl.classList.add(delta <= 0 ? 'ontime' : 'late');
+        if (dEl2) {
+          if (delta !== null) {
+            dEl2.textContent = fmtDelta(delta);
+            dEl2.className   = 'delta-badge ' + (delta <= 0 ? 'ontime' : 'late');
+          } else {
+            dEl2.textContent = '→';
+            dEl2.className   = 'delta-badge hidden';
+          }
+        }
+      }
+
+      const depEl = document.getElementById('dep-' + s.id);
+      const dEl3  = document.getElementById('delta-dep-' + s.id);
+      if (depEl) {
+        const val   = depEl.value;
+        const delta = timeDelta(s.depP, val);
+        depEl.classList.remove('empty', 'ontime', 'late');
+        if (!val) depEl.classList.add('empty');
+        else if (delta !== null) depEl.classList.add(delta <= 0 ? 'ontime' : 'late');
+        if (dEl3) {
+          if (delta !== null) {
+            dEl3.textContent = fmtDelta(delta);
+            dEl3.className   = 'delta-badge ' + (delta <= 0 ? 'ontime' : 'late');
+          } else {
+            dEl3.textContent = '→';
+            dEl3.className   = 'delta-badge hidden';
+          }
+        }
+      }
+    });
+  });
+  refreshSegments();
+  // Update travel time + km for each day
+  dayKeys().forEach(d => updateTravelStats(d));
+}
+
+// ── TRAVEL STATS (В ПУТИ) ─────────────────────────────────────────────────────
+function haversineKm(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function updateTravelStats(d) {
+  const data = DAYS_DATA[d];
+  if (!data) return;
+
+  // ── Time: departP → arrP of last stop ────────────────
+  const timeEl = document.getElementById('d' + d + '-travel-time');
+  const kmEl   = document.getElementById('d' + d + '-travel-km');
+  if (!timeEl || !kmEl) return;
+
+  const depMins = (function() {
+    const t = data.departP;
+    if (!t || t.length < 5) return null;
+    const [h, m] = t.split(':').map(Number);
+    return isNaN(h) ? null : h * 60 + m;
+  })();
+
+  const lastStop = data.stops[data.stops.length - 1];
+  const arrMins = (function() {
+    const t = lastStop?.arrP;
+    if (!t || t.length < 5) return null;
+    const [h, m] = t.split(':').map(Number);
+    return isNaN(h) ? null : h * 60 + m;
+  })();
+
+  if (depMins !== null && arrMins !== null) {
+    let diff = arrMins - depMins;
+    if (diff < 0) diff += 1440; // crosses midnight
+    const h = Math.floor(diff / 60), m = diff % 60;
+    timeEl.textContent = h > 0 ? (m > 0 ? h + 'ч ' + m + 'м' : h + 'ч') : m + 'м';
+  } else {
+    timeEl.textContent = '—';
+  }
+
+  // ── Distance: sum of haversine segments ──────────────
+  const pts = [
+    { lat: data.start.lat, lng: data.start.lng },
+    ...data.stops.map(s => ({ lat: s.lat, lng: s.lng }))
+  ];
+  let km = 0;
+  for (let i = 1; i < pts.length; i++) {
+    if (pts[i-1].lat && pts[i].lat) km += haversineKm(pts[i-1].lat, pts[i-1].lng, pts[i].lat, pts[i].lng);
+  }
+  const kmStr = km > 0 ? '~' + Math.round(km) + ' км' : '';
+  kmEl.textContent = kmStr ? 'В ПУТИ · ' + kmStr : 'В ПУТИ';
+}
+
+// ── STOP CARD ─────────────────────────────────────────────────────────────────
+function makeStopCard(s, day) {
+  const hasDepart = s.depP !== undefined && s.depP !== '';
+  const depBlock  = hasDepart ? `
+    <div class="time-block">
+      <div class="time-block-label">Отправление</div>
+      <div class="time-inputs">
+        <div class="time-input-wrap">
+          <div class="time-mini-label">план</div>
+          <div class="planned-time" id="planned-dep-${s.id}">${s.depP}</div>
+        </div>
+        <div class="delta-wrap">
+          <span class="delta-badge hidden" id="delta-dep-${s.id}">→</span>
+        </div>
+        <div class="time-input-wrap">
+          <div class="time-mini-label">факт</div>
+          <input class="time-in ${s.depA ? '' : 'empty'}" id="dep-${s.id}"
+            type="text" maxlength="5" value="${s.depA || ''}" placeholder="${s.depP || '--:--'}"
+            autocomplete="off"
+            ${isAdmin() ? `oninput="applyMask(this)" onblur="padTime(this)"` : `readonly style="pointer-events:none;border-style:solid;"`}>
+        </div>
+      </div>
+    </div>` : `<div></div>`;
+
+  const div = document.createElement('div');
+  div.className  = 'stop-card';
+  div.id         = 'card-' + s.id;
+  div.draggable  = true;
+  div.dataset.id  = s.id;
+  div.dataset.day = day;
+
+  div.addEventListener('click', e => {
+    if (e.target.closest('input,button,.drag-handle,.stop-dropdown')) return;
+    highlightStop(s.id, day);
+  });
+
+  div.innerHTML = `
+    ${isAdmin() ? `<div class="drag-handle" title="Перетащить">⠿</div>` : ''}
+    ${isAdmin() ? `<button class="dots-btn" id="dots-${s.id}" onclick="toggleStopMenu('${s.id}', ${day}); event.stopPropagation();">···</button>` : ''}
+    <div class="stop-dropdown" id="dd-${s.id}">
+      ${isAdmin() ? `
+      <button class="stop-dropdown-item" onclick="closeStopMenus(); editStop('${s.id}', ${day});"><span class="di-icon">✎</span> Редактировать</button>
+      <button class="stop-dropdown-item" onclick="closeStopMenus(); editStopTime('${s.id}', ${day});"><span class="di-icon">⏱</span> Изменить время</button>
+      <button class="stop-dropdown-item" onclick="closeStopMenus(); toggleStopNote('${s.id}');"><span class="di-icon">📝</span> Заметка</button>
+      <div class="stop-dropdown-divider"></div>
+      <button class="stop-dropdown-item danger" onclick="closeStopMenus(); deleteStop(${day}, '${s.id}');"><span class="di-icon">×</span> Удалить точку</button>` : ''}
+    </div>
+    <div class="stop-main" id="stop-main-${s.id}">
+      <div class="stop-num">${s.num}</div>
+      <div class="stop-info">
+        <div class="stop-name">
+          <span class="stop-icon" id="stop-icon-disp-${s.id}">${s.icon}</span>
+          <span class="stop-name-text" id="stop-name-disp-${s.id}">${s.name}</span>
+          <span class="stop-type" id="stop-type-disp-${s.id}">${s.type}</span>
+          <span class="weather-badge" id="wb-${s.id}" style="display:none" onclick="event.stopPropagation();toggleWeatherStrip('${s.id}')"></span>
+        </div>
+      </div>
+    </div>
+    <div class="time-grid" id="stop-timegrid-${s.id}">
+      <div class="time-block">
+        <div class="time-block-label">Прибытие</div>
+        <div class="time-inputs">
+          <div class="time-input-wrap">
+            <div class="time-mini-label">план</div>
+            <div class="planned-time" id="planned-arr-${s.id}">${s.arrP || '—'}</div>
+          </div>
+          <div class="delta-wrap">
+            <span class="delta-badge hidden" id="delta-arr-${s.id}">→</span>
+          </div>
+          <div class="time-input-wrap">
+            <div class="time-mini-label">факт</div>
+            <input class="time-in ${s.arrA ? '' : 'empty'}" id="arr-${s.id}"
+              type="text" maxlength="5" value="${s.arrA || ''}" placeholder="${s.arrP || '--:--'}"
+              autocomplete="off"
+              ${isAdmin() ? `oninput="applyMask(this)" onblur="padTime(this)"` : `readonly style="pointer-events:none;border-style:solid;"`}>
+          </div>
+        </div>
+      </div>
+      ${depBlock}
+    </div>
+    <div class="weather-strip" id="ws-${s.id}" style="display:none" onclick="event.stopPropagation();toggleWeatherStrip('${s.id}')"></div>
+    <div class="stop-edit-form" id="edit-form-${s.id}" style="display:none;"></div>
+    ${isAdmin() ? `
+    <div class="stop-note-wrap" id="stop-note-wrap-${s.id}" style="display:${(s.note || (s.noteImages && s.noteImages.length)) ? 'block' : 'none'}"
+      ontouchstart="event.stopPropagation()" ontouchmove="event.stopPropagation()" onmousedown="event.stopPropagation()">
+      <div class="stop-note-edit" id="stop-note-edit-${s.id}" style="display:${(s.note || (s.noteImages && s.noteImages.length)) ? 'none' : 'flex'}">
+        <div class="stop-note-bubble">
+          <textarea class="stop-note-input" id="stop-note-${s.id}"
+            placeholder="Заметка к точке…"
+            style="touch-action:auto"
+            oninput="autoResizeNote(this)"
+            onfocus="var c=this.closest('.stop-card');if(c)c.draggable=false"
+            ontouchstart="event.stopPropagation()" ontouchmove="event.stopPropagation()"
+            onmousedown="event.stopPropagation()">${s.note || ''}</textarea>
+          <div class="note-images-inline" id="stop-note-edit-images-${s.id}">${s.noteImages && s.noteImages.length ? s.noteImages.map((url,i)=>`<div class="note-img-thumb-wrap"><img src="${typeof _escN==='function'?_escN(url):url}" class="note-img-thumb" onclick="event.stopPropagation();openChatPhoto(this)" alt=""><button class="pending-thumb-remove" onclick="event.stopPropagation();removePendingStopImage('${s.id}',${i})">×</button></div>`).join('') : ''}</div>
+        </div>
+        <div class="stop-note-btns">
+          <button class="stop-note-photo-btn" onmousedown="event.preventDefault()" onclick="triggerStopNotePhoto('${s.id}',${day})" title="Добавить фото">📷</button>
+          <button class="stop-note-save-btn" onmousedown="event.preventDefault()" onclick="commitStopNote('${s.id}',${day})" title="Сохранить">✓</button>
+        </div>
+      </div>
+      <div class="stop-note-display" id="stop-note-preview-${s.id}" style="display:${(s.note || (s.noteImages && s.noteImages.length)) ? 'block' : 'none'};cursor:pointer"
+        onclick="openStopNoteEdit('${s.id}')"
+        onmousedown="event.stopPropagation()" ontouchstart="event.stopPropagation()">
+        <div id="stop-note-text-${s.id}">${typeof _linkifyN==='function'?_linkifyN(s.note||'').replace(/\n/g,'<br>'):''}</div>
+        <div class="note-images-inline" id="stop-note-images-${s.id}">${s.noteImages && s.noteImages.length ? s.noteImages.map((url)=>`<div class="note-img-thumb-wrap"><img src="${typeof _escN==='function'?_escN(url):url}" class="note-img-thumb" onclick="event.stopPropagation();openChatPhoto(this)" alt=""></div>`).join('') : ''}</div>
+      </div>
+    </div>` : ''}`;
+
+  if (typeof isAdmin === 'function' && isAdmin()) {
+    div.addEventListener('dragstart', onDragStart);
+    div.addEventListener('dragover',  onDragOver);
+    div.addEventListener('dragleave', onDragLeave);
+    div.addEventListener('drop',      onDrop);
+    div.addEventListener('dragend',   onDragEnd);
+  } else {
+    div.draggable = false;
+  }
+  return div;
+}
+
+function renderStops(day) {
+  const container = document.getElementById('d' + day + '-stops');
+  container.innerHTML = '';
+  DAYS_DATA[day].stops.forEach((s, i) => { s.num = i + 1; });
+  DAYS_DATA[day].stops.forEach(s => container.appendChild(makeStopCard(s, day)));
+  const cntEl = document.getElementById('d' + day + '-stop-count');
+  if (cntEl) cntEl.textContent = DAYS_DATA[day].stops.length;
+  if (typeof _reapplyDayWeather === 'function') _reapplyDayWeather(day);
+}
+
+// ── DAY SECTION ───────────────────────────────────────────────────────────────
+function renderDaySection(d) {
+  const data    = DAYS_DATA[d];
+  const ordinal = DAY_ORDINALS[d - 1] || `${d}-й`;
+  const sec     = document.createElement('div');
+  sec.className  = 'day-section' + (d === currentDay ? ' visible' : '');
+  sec.dataset.day = d;
+  sec.id          = 'day' + d;
+
+  sec.innerHTML = `
+    <div class="day-header" style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;">
+      <div style="flex:1;min-width:0">
+        <div class="day-label" style="color:${data.color};">
+          <span class="day-date-wrap" ${isAdmin() ? `onclick="editDayDate(${d}, this)" title="Нажмите для изменения даты"` : ''}>
+            <span class="day-date-text">${data.dateISO || 'Дата'}</span>
+            ${isAdmin() ? `<span class="day-date-edit-icon">✎</span>` : ''}
+          </span>
+          ${data.date ? ` · <span class="day-desc-wrap" ${isAdmin() ? `onclick="editDesc(${d}, this)" title="Нажмите для изменения описания"` : ''}>
+            <span class="day-desc-text">${data.date}</span>
+            ${isAdmin() ? `<span class="day-date-edit-icon">✎</span>` : ''}
+          </span>` : (isAdmin() ? ` · <span class="day-desc-wrap" onclick="editDesc(${d}, this)" title="Добавить описание"><span class="day-desc-text" style="color:var(--muted);font-style:italic">описание</span><span class="day-date-edit-icon">✎</span></span>` : '')}
+        </div>
+        <div class="day-route" id="d${d}-route"></div>
+      </div>
+      <button class="nav-day-btn" onclick="openShareDay(${d})" title="Открыть маршрут в навигаторе">🗺 НАВИГАТОР</button>
+      <div class="day-overflow-wrap" style="position:relative">
+        <button class="nav-day-btn" onclick="toggleDayMenu(${d})" title="Ещё">···</button>
+        <div class="day-overflow-menu" id="dayMenu${d}">
+          ${isAdmin() ? `
+          <button onclick="reverseDay(${d});closeDayMenus()">↩ Обратный маршрут</button>
+          <button onclick="confirmDeleteDay(${d});closeDayMenus()" style="color:var(--red)">✕ Удалить день</button>
+          <button onclick="confirmReset(${d});closeDayMenus()">⟳ Сбросить факт</button>` : ''}
+          <button onclick="fetchDayWeather(${d});closeDayMenus()">🌤 Погода</button>
+          ${isAdmin() ? `<div class="day-overflow-divider"></div>
+          <button class="day-overflow-import" onclick="closeDayMenus();openImportModal(${d})">↓ Импорт из карт</button>` : ''}
+        </div>
+      </div>
+    </div>
+    <div class="depart-row">
+      <div class="depart-icon">🚗</div>
+      <div class="depart-label" style="${isAdmin() ? 'cursor:pointer' : ''}"
+           ${isAdmin() ? `onclick="openEditStart(${d})" title="Изменить точку старта"` : ''}>
+        <span id="d${d}-start-name">${data.start.icon} ${data.start.name}</span>
+        ${isAdmin() ? `<span style="font-size:9px;color:var(--border)">✎</span>` : ''}
+      </div>
+      <span class="weather-badge" id="wb-d${d}-start" style="display:none" onclick="event.stopPropagation();toggleWeatherStrip('d${d}-start')"></span>
+      <div class="depart-times">
+        <div class="time-pair">
+          <div class="time-label">план</div>
+          <div class="${isAdmin() ? 'time-val time-val-editable' : 'time-val'}" id="d${d}-departP-display"
+               ${isAdmin() ? `onclick="editDepartTime(${d}, this)" title="Нажмите для изменения времени выезда"` : ''}>${data.departP || '—'}</div>
+        </div>
+        <div class="time-sep">→</div>
+        <div class="time-pair">
+          <div class="time-label">факт</div>
+          <input class="time-in ${data.departA ? '' : 'empty'}" id="d${d}-depart"
+            type="text" maxlength="5" value="${data.departA || ''}" placeholder="--:--"
+            autocomplete="off"
+            ${isAdmin() ? `oninput="applyMask(this)" onblur="padTime(this)"` : `readonly style="pointer-events:none;border-style:solid;"`}>
+        </div>
+      </div>
+    </div>
+    <div class="weather-strip" id="ws-d${d}-start" style="display:none" onclick="toggleWeatherStrip('d${d}-start')"></div>
+    <div class="day-progress">
+      <div class="progress-label"><span>Прогресс</span><span id="d${d}-pct">0%</span></div>
+      <div class="progress-bar"><div class="progress-fill" id="d${d}-fill"></div></div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-box"><div class="stat-val" id="d${d}-stop-count">${data.stops.length}</div><div class="stat-key">ОСТАНОВОК</div></div>
+      <div class="stat-box"><div class="stat-val" id="d${d}-travel-time" style="font-size:13px;">—</div><div class="stat-key" id="d${d}-travel-km" style="letter-spacing:0.06em;">В ПУТИ</div></div>
+      <div class="stat-box"><div class="stat-val" id="d${d}-delta-val">—</div><div class="stat-key">ОТКЛОНЕНИЕ</div></div>
+    </div>
+    <div id="d${d}-stops"></div>
+    ${isAdmin() ? `
+    <div style="display:flex;gap:8px;padding:8px 12px 4px;">
+      <button class="add-stop-btn" style="flex:1;" onclick="openAddStop(${d})">＋ ДОБАВИТЬ ТОЧКУ</button>
+      <button class="add-stop-btn" id="mapAddBtn" style="flex:0 0 auto;"
+        onclick="toggleMapAddMode(${d})" title="Кликни на карте чтобы добавить точку">📍 НА КАРТЕ</button>
+    </div>` : ''}
+  `;
+  return sec;
+}
+
+function renderAllDays() {
+  const container = document.getElementById('daySections');
+  container.innerHTML = '';
+  dayKeys().forEach(d => {
+    container.appendChild(renderDaySection(d));
+    renderStops(d);
+    updateDayRoute(d);
+    updateTravelStats(d);
+  });
+}
+
+function updateDayRoute(d) {
+  const el = document.getElementById('d' + d + '-route');
+  if (!el) return;
+  const data = DAYS_DATA[d];
+  const last = data.stops[data.stops.length - 1];
+  el.textContent = data.start.name + (last ? ' → ' + last.name : '');
+}
+
+// ── TABS ──────────────────────────────────────────────────────────────────────
+const _MONTHS_SHORT = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+const _MONTHS_FULL  = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+
+function fmtDateShort(s) {
+  if (!s) return '?';
+  var d, m;
+  if (s.indexOf('-') > -1) { var p = s.split('-'); d = parseInt(p[2]); m = parseInt(p[1]); }
+  else if (s.indexOf('.') > -1) { var p = s.split('.'); d = parseInt(p[0]); m = parseInt(p[1]); }
+  else return s;
+  if (isNaN(d) || isNaN(m)) return s;
+  return d + ' ' + (_MONTHS_SHORT[m - 1] || '');
+}
+function fmtDateFull(s) {
+  if (!s) return '';
+  var d, m;
+  if (s.indexOf('-') > -1) { var p = s.split('-'); d = parseInt(p[2]); m = parseInt(p[1]); }
+  else if (s.indexOf('.') > -1) { var p = s.split('.'); d = parseInt(p[0]); m = parseInt(p[1]); }
+  else return s;
+  if (isNaN(d) || isNaN(m)) return s;
+  return d + ' ' + (_MONTHS_FULL[m - 1] || '');
+}
+function parseDateDMY(s) {
+  if (!s) return null;
+  var p = s.split('.'); if (p.length < 3) return null;
+  return new Date(parseInt(p[2]), parseInt(p[1]) - 1, parseInt(p[0]));
+}
+function fmtDateDMY(d) {
+  var dd = String(d.getDate()).padStart(2, '0');
+  var mm = String(d.getMonth() + 1).padStart(2, '0');
+  return dd + '.' + mm + '.' + d.getFullYear();
+}
+
+function renderTabs() {
+  const tabsEl = document.getElementById('dayTabs');
+  tabsEl.innerHTML = '';
+  dayKeys().forEach(d => {
+    const data = DAYS_DATA[d];
+    const btn  = document.createElement('button');
+    btn.className  = 'day-tab' + (d === currentDay ? ' active' : '');
+    btn.dataset.day = d;
+    btn.textContent = data.dateISO ? fmtDateShort(data.dateISO) : ('День ' + d);
+    btn.onclick = () => switchDay(d);
+    if (d === currentDay) {
+      btn.style.backgroundColor = data.color;
+      btn.style.borderColor     = data.color;
+    }
+    // Drag-and-drop for day tabs
+    if (typeof isAdmin === 'function' && isAdmin()) {
+      btn.draggable = true;
+      btn.addEventListener('dragstart', function(e) {
+        e.dataTransfer.setData('text/plain', String(d));
+        btn.classList.add('tab-dragging');
+        _tabDragSource = d;
+      });
+      btn.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        btn.classList.add('tab-drag-over');
+      });
+      btn.addEventListener('dragleave', function() {
+        btn.classList.remove('tab-drag-over');
+      });
+      btn.addEventListener('drop', function(e) {
+        e.preventDefault();
+        btn.classList.remove('tab-drag-over');
+        var from = _tabDragSource;
+        var to   = d;
+        if (from && from !== to) swapDays(from, to);
+      });
+      btn.addEventListener('dragend', function() {
+        btn.classList.remove('tab-dragging');
+        document.querySelectorAll('.day-tab').forEach(t => t.classList.remove('tab-drag-over'));
+      });
+    }
+    tabsEl.appendChild(btn);
+  });
+  if (typeof isAdmin === 'function' && isAdmin()) {
+    const addBtn = document.createElement('button');
+    addBtn.className  = 'day-tab-add';
+    addBtn.textContent = '＋ день';
+    addBtn.onclick    = addNewDay;
+    tabsEl.appendChild(addBtn);
+  }
+}
