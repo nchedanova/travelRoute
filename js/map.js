@@ -4,7 +4,7 @@ const layers        = {};
 const segmentLayers = {};
 
 // ── OSRM ROUTING ──────────────────────────────────────────────────────────────
-const OSRM_CACHE_KEY = 'travel_route_cache';
+const OSRM_CACHE_KEY = 'travel_route_cache_v2'; // v2: routing.openstreetmap.de for foot
 const OSRM_DELAY_MS  = 650; // задержка между запросами (публичный OSRM ~600ms)
 
 // Кэш маршрутов: ключ = "lat1,lng1|lat2,lng2" → массив [lat,lng]

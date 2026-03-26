@@ -1,5 +1,7 @@
 // ── SERVICE WORKER · Дорожный журнал ───────────────────────────────────────────
-const CACHE_STATIC  = 'travel-static-v2-5-7';
+const CACHE_STATIC  = 'travel-static-v2-5-8';
+const APP_VERSION   = '2.5.0';
+const APP_BUILD     = 9;
 const CACHE_TILES   = 'travel-tiles-v2';
 const CACHE_FONTS   = 'travel-fonts-v1';
 
@@ -162,6 +164,12 @@ async function staleWhileRevalidate(request, cacheName) {
 self.addEventListener('message', e => {
   if (e.data?.type === 'SKIP_WAITING') {
     self.skipWaiting();
+    return;
+  }
+  if (e.data?.type === 'GET_VERSION') {
+    // Reply directly to the requesting client with SW build info
+    const source = e.source || e.ports?.[0];
+    if (source) source.postMessage({ type: 'SW_VERSION', build: APP_BUILD, version: APP_VERSION });
     return;
   }
   if (e.data?.type === 'PREFETCH_TILES') {

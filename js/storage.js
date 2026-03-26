@@ -388,18 +388,22 @@ async function _checkAppVersion() {
   block.className = 'cs-ver-block';
 
   try {
-    // Fetch sw.js fresh from network (bypass SW cache) to get server version
-    // cache:'reload' forces network fetch bypassing both HTTP cache AND Service Worker cache
-    var resp = await fetch('./sw.js?_=' + Date.now(), { cache: 'reload' });
-    if (!resp.ok) throw new Error('fetch failed');
-    var text = await resp.text();
+    var localBuild = typeof APP_BUILD !== 'undefined' ? APP_BUILD : null;
 
-    // Extract build and version from sw.js content — parse APP_BUILD directly
-    var buildMatch = text.match(/APP_BUILD\s*=\s*(\d+)/);
-    var verMatch   = text.match(/APP_VERSION\s*=\s*['"]([^'"]+)/);
-    var serverBuild = buildMatch ? parseInt(buildMatch[1], 10) : null;
-    var serverVer   = verMatch ? verMatch[1] : null;
-    var localBuild  = typeof APP_BUILD !== 'undefined' ? APP_BUILD : null;
+    // Ask the active SW for its version via MessageChannel — bypasses all caches
+    var reg = await navigator.serviceWorker.ready;
+    var worker = reg.active;
+    if (!worker) throw new Error('no active SW');
+
+    var swInfo = await new Promise(function(resolve, reject) {
+      var mc = new MessageChannel();
+      var timer = setTimeout(function() { reject(new Error('timeout')); }, 3000);
+      mc.port1.onmessage = function(ev) { clearTimeout(timer); resolve(ev.data); };
+      worker.postMessage({ type: 'GET_VERSION' }, [mc.port2]);
+    });
+
+    var serverBuild = swInfo.build;
+    var serverVer   = swInfo.version;
 
     if (!serverBuild) {
       badge.className  = 'cs-ver-badge spin';
@@ -417,16 +421,10 @@ async function _checkAppVersion() {
       badge.textContent = '↑ доступна ' + newVerStr;
       block.classList.add('ver-old');
       hint.style.display = 'block';
-
-      // Different hint for PWA vs browser
-      var isPWA = window.matchMedia('(display-mode: standalone)').matches ||
-                  window.navigator.standalone === true;
-      // Hint text only — button is always shown below
-      if (isPWA) {
-        hintTxt.textContent = 'PWA: если доступна новая версия, нажми кнопку ниже.';
-      } else {
-        hintTxt.textContent = 'Нажми кнопку ниже — страница перезагрузится с новой версией.';
-      }
+      var isPWA = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+      hintTxt.textContent = isPWA
+        ? 'PWA: нажми кнопку ниже или закрой/открой приложение.'
+        : 'Нажми кнопку ниже — страница перезагрузится с новой версией.';
     }
   } catch(e) {
     badge.className  = 'cs-ver-badge spin';
