@@ -2552,3 +2552,44 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
   .imp-edit-name { font-size: 12px; }
 }
 
+/* ── Cloud Settings — Version Block ─────────────────────────────────────────── */
+.cs-ver-block {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+.cs-ver-block.ver-ok   { border-color: rgba(74,222,128,.3); }
+.cs-ver-block.ver-old  { border-color: rgba(248,113,113,.3); }
+
+.cs-ver-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+  margin-bottom: 4px;
+}
+.cs-ver-row:last-child { margin-bottom: 0; }
+.cs-ver-key  { color: var(--muted); }
+.cs-ver-val  { color: var(--text); font-size: 11px; font-weight: 500; }
+
+.cs-ver-badge {
+  font-size: 9px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-weight: 500;
+}
+.cs-ver-badge.ok   { background: rgba(74,222,128,.12);  color: var(--green); }
+.cs-ver-badge.old  { background: rgba(248,113,113,.12); color: var(--red); }
+.cs-ver-badge.spin { background: rgba(245,166,35,.12);  color: var(--amber); }
+
+.cs-ver-hint {
+  margin-top: 7px;
+  padding-top: 7px;
+  border-top: 1px solid var(--border);
+  font-size: 9px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+

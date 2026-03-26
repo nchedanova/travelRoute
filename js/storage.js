@@ -366,6 +366,71 @@ function openCloudSettings() {
 
   document.getElementById('cs-status').textContent  = '';
   document.getElementById('cloudSettingsModal').classList.add('show');
+
+  _checkAppVersion();
+}
+
+// ── VERSION CHECK ─────────────────────────────────────────────────────────────
+async function _checkAppVersion() {
+  var curEl   = document.getElementById('csVerCurrent');
+  var badge   = document.getElementById('csVerBadge');
+  var hint    = document.getElementById('csVerHint');
+  var hintTxt = document.getElementById('csVerHintText');
+  var block   = document.getElementById('csVerBlock');
+
+  var ver = (typeof APP_VERSION !== 'undefined' ? 'v' + APP_VERSION : '') +
+            (typeof APP_BUILD   !== 'undefined' ? ' build ' + APP_BUILD : '');
+  curEl.textContent = ver || '—';
+
+  badge.className  = 'cs-ver-badge spin';
+  badge.textContent = '⟳ проверяю…';
+  hint.style.display = 'none';
+  block.className = 'cs-ver-block';
+
+  try {
+    // Fetch sw.js fresh from network (bypass SW cache) to get server version
+    var resp = await fetch('./sw.js?_=' + Date.now(), { cache: 'no-store' });
+    if (!resp.ok) throw new Error('fetch failed');
+    var text = await resp.text();
+
+    // Extract build number from sw.js: const CACHE_STATIC = 'travel-static-vN'
+    var m = text.match(/travel-static-v(\d+)/);
+    var serverBuild = m ? parseInt(m[1], 10) : null;
+    var localBuild  = typeof APP_BUILD !== 'undefined' ? APP_BUILD : null;
+
+    if (!serverBuild) {
+      badge.className  = 'cs-ver-badge spin';
+      badge.textContent = '? не удалось проверить';
+      return;
+    }
+
+    if (localBuild === serverBuild) {
+      // Up to date
+      badge.className  = 'cs-ver-badge ok';
+      badge.textContent = '✓ актуальная';
+      block.classList.add('ver-ok');
+    } else {
+      // Outdated
+      badge.className  = 'cs-ver-badge old';
+      var serverVer = text.match(/APP_VERSION\s*=\s*['"]([^'"]+)/);
+      var newVerStr = serverVer ? 'v' + serverVer[1] + ' build ' + serverBuild : 'build ' + serverBuild;
+      badge.textContent = '↑ доступна ' + newVerStr;
+      block.classList.add('ver-old');
+      hint.style.display = 'block';
+
+      // Different hint for PWA vs browser
+      var isPWA = window.matchMedia('(display-mode: standalone)').matches ||
+                  window.navigator.standalone === true;
+      if (isPWA) {
+        hintTxt.textContent = 'PWA: закрой приложение полностью и открой заново. Если не помогло — удали и установи заново с браузера.';
+      } else {
+        hintTxt.textContent = 'Закрой и снова открой вкладку, или нажми Ctrl+Shift+R (Cmd+Shift+R на Mac).';
+      }
+    }
+  } catch(e) {
+    badge.className  = 'cs-ver-badge spin';
+    badge.textContent = navigator.onLine ? '? ошибка проверки' : '— офлайн';
+  }
 }
 
 function closeCloudSettings() {
