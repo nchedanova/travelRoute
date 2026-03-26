@@ -324,12 +324,8 @@ function drawDay(d) {
     fetchRoadSegment(from, to, data.walkMode ? 'foot' : 'driving').then(coords => {
       if (!coords || !group.hasLayer(seg)) return;
       seg.setLatLngs(coords);
-      // Apply final style: walking = blue dashed, driving = solid color
-      if (data.walkMode) {
-        seg.setStyle({ color:'#60a5fa', weight:3, opacity:0.75, dashArray:'6 10' });
-      } else {
-        seg.setStyle({ color, weight:4, opacity:0.85, dashArray:null });
-      }
+      // Let refreshSegments apply the correct style (completed vs pending, walk vs drive)
+      refreshSegments();
     }).catch(() => { /* оставляем прямую линию */ });
   }
 
@@ -406,10 +402,22 @@ function refreshSegments() {
         }
       }
 
+      const dayData = DAYS_DATA[d];
+      const isWalk  = !!(dayData && dayData.walkMode);
       if (fromDone && toArrFilled && toDepFilled) {
-        seg.setStyle({ opacity:0.9, weight:4, dashArray:null });
+        // Completed segment
+        if (isWalk) {
+          seg.setStyle({ color:'#60a5fa', opacity:0.9, weight:3, dashArray:'5 8' });
+        } else {
+          seg.setStyle({ color: dayData ? dayData.color : undefined, opacity:0.9, weight:4, dashArray:null });
+        }
       } else {
-        seg.setStyle({ opacity:0.5, weight:3, dashArray:'6 6' });
+        // Pending segment
+        if (isWalk) {
+          seg.setStyle({ color:'#60a5fa', opacity:0.45, weight:3, dashArray:'4 10' });
+        } else {
+          seg.setStyle({ color: dayData ? dayData.color : undefined, opacity:0.35, weight:3, dashArray:'6 6' });
+        }
       }
     });
   });

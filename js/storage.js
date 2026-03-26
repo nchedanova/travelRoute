@@ -394,9 +394,11 @@ async function _checkAppVersion() {
     if (!resp.ok) throw new Error('fetch failed');
     var text = await resp.text();
 
-    // Extract build number from sw.js: const CACHE_STATIC = 'travel-static-vN'
-    var m = text.match(/travel-static-v(\d+)/);
-    var serverBuild = m ? parseInt(m[1], 10) : null;
+    // Extract build and version from sw.js content — parse APP_BUILD directly
+    var buildMatch = text.match(/APP_BUILD\s*=\s*(\d+)/);
+    var verMatch   = text.match(/APP_VERSION\s*=\s*['"]([^'"]+)/);
+    var serverBuild = buildMatch ? parseInt(buildMatch[1], 10) : null;
+    var serverVer   = verMatch ? verMatch[1] : null;
     var localBuild  = typeof APP_BUILD !== 'undefined' ? APP_BUILD : null;
 
     if (!serverBuild) {
@@ -406,15 +408,12 @@ async function _checkAppVersion() {
     }
 
     if (localBuild === serverBuild) {
-      // Up to date
       badge.className  = 'cs-ver-badge ok';
       badge.textContent = '✓ актуальная';
       block.classList.add('ver-ok');
     } else {
-      // Outdated
       badge.className  = 'cs-ver-badge old';
-      var serverVer = text.match(/APP_VERSION\s*=\s*['"]([^'"]+)/);
-      var newVerStr = serverVer ? 'v' + serverVer[1] + ' build ' + serverBuild : 'build ' + serverBuild;
+      var newVerStr = serverVer ? 'v' + serverVer + ' build ' + serverBuild : 'build ' + serverBuild;
       badge.textContent = '↑ доступна ' + newVerStr;
       block.classList.add('ver-old');
       hint.style.display = 'block';
