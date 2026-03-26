@@ -1,5 +1,5 @@
 // ── SERVICE WORKER · Дорожный журнал ───────────────────────────────────────────
-const CACHE_STATIC  = 'travel-static-v64';
+const CACHE_STATIC  = 'travel-static-v65';
 const CACHE_TILES   = 'travel-tiles-v2';
 const CACHE_FONTS   = 'travel-fonts-v1';
 
@@ -100,24 +100,54 @@ function normalizeTileUrl(url) {
   return url.replace(/^https:\/\/[abc]\.tile\.openstreetmap\.org\//, 'https://tile.openstreetmap.org/');
 }
 
-async function tileStrategy(request) {
-  const cache      = await caches.open(CACHE_TILES);
-  const canonical  = normalizeTileUrl(request.url);
-  const cacheKey   = canonical !== request.url ? new Request(canonical) : request;
+// Minimum zoom level we realistically cache along the route
+const TILE_FALLBACK_MIN_ZOOM = 5;
 
-  // Look up by canonical URL
+// Parse zoom/x/y from a canonical tile URL
+function parseTileCoords(url) {
+  const m = url.match(/\/(\d+)\/(\d+)\/(\d+)\.png$/);
+  return m ? { z: +m[1], x: +m[2], y: +m[3] } : null;
+}
+
+// Build canonical tile URL from coords
+function tileUrl(z, x, y) {
+  return `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
+}
+
+async function tileStrategy(request) {
+  const cache     = await caches.open(CACHE_TILES);
+  const canonical = normalizeTileUrl(request.url);
+  const cacheKey  = canonical !== request.url ? new Request(canonical) : request;
+
+  // 1. Exact cache hit (canonical URL)
   const cached = await cache.match(cacheKey);
   if (cached) return cached;
 
+  // 2. Try network (we are online)
   try {
     const response = await fetch(request);
     if (response.ok) {
-      // Always store under canonical URL so prefetch and live requests share the same key
+      // Store under canonical URL so prefetch + live requests share the same key
       cache.put(cacheKey, response.clone());
     }
     return response;
   } catch {
-    // Offline + not cached → transparent 1px PNG
+    // 3. Offline — try lower-zoom fallback tiles (overzoom)
+    // Walk down from requested zoom to TILE_FALLBACK_MIN_ZOOM looking for any cached tile
+    const coords = parseTileCoords(canonical);
+    if (coords) {
+      for (let z = coords.z - 1; z >= TILE_FALLBACK_MIN_ZOOM; z--) {
+        const diff = coords.z - z;
+        const scale = Math.pow(2, diff);
+        const fx = Math.floor(coords.x / scale);
+        const fy = Math.floor(coords.y / scale);
+        const fallbackReq = new Request(tileUrl(z, fx, fy));
+        const fallback = await cache.match(fallbackReq);
+        if (fallback) return fallback;
+      }
+    }
+
+    // 4. Nothing found — transparent 1×1 px PNG
     return new Response(
       Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPj/HwADBwIAMCbHYQAAAABJRU5ErkJggg=='), c => c.charCodeAt(0)),
       { headers: { 'Content-Type': 'image/png' } }
