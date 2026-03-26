@@ -93,7 +93,26 @@ function fetchRoadSegment(from, to) {
 
 function initMap() {
   map = L.map('map', { center:[51.5, 39.5], zoom:5, zoomControl:true, attributionControl:false });
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19 }).addTo(map);
+  // maxNativeZoom=13 matches what we cache offline.
+  // When offline, Leaflet CSS-stretches z13 tiles for higher zoom — blurry but visible.
+  // When online, we restore maxNativeZoom=19 for full detail.
+  window._tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    maxNativeZoom: navigator.onLine ? 19 : 13
+  }).addTo(map);
+
+  window.addEventListener('offline', function() {
+    if (window._tileLayer) {
+      window._tileLayer.options.maxNativeZoom = 13;
+      window._tileLayer.redraw();
+    }
+  });
+  window.addEventListener('online', function() {
+    if (window._tileLayer) {
+      window._tileLayer.options.maxNativeZoom = 19;
+      window._tileLayer.redraw();
+    }
+  });
   map.zoomControl.setPosition('topright');
 
   // тап/клик по карте — закрываем пилл или добавляем точку
