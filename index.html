@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=2-5-4">
+<link rel="stylesheet" href="css/style.css?v=2-5-5">
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
@@ -518,27 +518,22 @@
   </div>
 </div>
 
-<div class="update-toast" id="updateToast">
-  <span class="update-toast-text">🆕 Доступно обновление</span>
-  <button class="update-toast-btn" onclick="applySwUpdate()">Обновить</button>
-  <button class="update-toast-close" onclick="dismissUpdateToast()">✕</button>
-</div>
 <div class="toast" id="toast">💾 Сохранено</div>
 
 <!-- Scripts: порядок важен — config и data первыми -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="js/config.js?v=2-5-4"></script>
-<script src="js/data.js?v=2-5-4"></script>
-<script src="js/storage.js?v=2-5-4"></script>
-<script src="js/offline.js?v=2-5-4"></script>
-<script src="js/map.js?v=2-5-4"></script>
-<script src="js/render.js?v=2-5-4"></script>
-<script src="js/app.js?v=2-5-4"></script>
-<script src="js/gps.js?v=2-5-4"></script>
-<script src="js/chat.js?v=2-5-4"></script>
-<script src="js/notes.js?v=2-5-4"></script>
-<script src="js/import.js?v=2-5-4"></script>
-<script src="js/gpx.js?v=2-5-4"></script>
+<script src="js/config.js?v=2-5-5"></script>
+<script src="js/data.js?v=2-5-5"></script>
+<script src="js/storage.js?v=2-5-5"></script>
+<script src="js/offline.js?v=2-5-5"></script>
+<script src="js/map.js?v=2-5-5"></script>
+<script src="js/render.js?v=2-5-5"></script>
+<script src="js/app.js?v=2-5-5"></script>
+<script src="js/gps.js?v=2-5-5"></script>
+<script src="js/chat.js?v=2-5-5"></script>
+<script src="js/notes.js?v=2-5-5"></script>
+<script src="js/import.js?v=2-5-5"></script>
+<script src="js/gpx.js?v=2-5-5"></script>
 <script>
   window._swReg         = null;
   window._swUpdateReady = false;
@@ -572,23 +567,15 @@
   }
 
   function _onSwUpdateReady() {
-    var toast = document.getElementById('updateToast');
-    if (toast) toast.classList.add('show');
-    // Also refresh version badge if cloud settings are open
+    window._swUpdateReady = true;
+    // Refresh version badge if cloud settings are open
     if (document.getElementById('cloudSettingsModal')?.classList.contains('show')) {
       _checkAppVersion();
     }
   }
 
   function applySwUpdate() {
-    var toast = document.getElementById('updateToast');
-    if (toast) toast.classList.remove('show');
     window.location.reload();
-  }
-
-  function dismissUpdateToast() {
-    var toast = document.getElementById('updateToast');
-    if (toast) toast.classList.remove('show');
   }
 
   // Запускаем GPS после инициализации карты

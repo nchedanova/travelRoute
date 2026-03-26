@@ -59,9 +59,18 @@ async function _osrmFetch(from, to, profile) {
   const key = `${profile}|${from.lat},${from.lng}|${to.lat},${to.lng}`;
   if (_routeCache[key]) return _routeCache[key];
 
-  const url = `https://router.project-osrm.org/route/v1/${profile}/` +
-    `${from.lng},${from.lat};${to.lng},${to.lat}` +
-    `?overview=full&geometries=geojson`;
+  // router.project-osrm.org only supports driving profile.
+  // For foot routing we use routing.openstreetmap.de which supports all profiles.
+  let url;
+  if (profile === 'foot') {
+    url = `https://routing.openstreetmap.de/routed-foot/route/v1/foot/` +
+      `${from.lng},${from.lat};${to.lng},${to.lat}` +
+      `?overview=full&geometries=geojson`;
+  } else {
+    url = `https://router.project-osrm.org/route/v1/driving/` +
+      `${from.lng},${from.lat};${to.lng},${to.lat}` +
+      `?overview=full&geometries=geojson`;
+  }
 
   // До 3 попыток при ошибке / rate-limit
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -381,7 +390,9 @@ function refreshSegments() {
 
       let fromDone = false;
       if (!fromId) {
-        fromDone = true;
+        // First segment: start → first stop. Done only if departA is filled.
+        const departEl = document.getElementById('d' + d + '-depart');
+        fromDone = !!(departEl && departEl.value && departEl.value.length >= 4);
       } else {
         const fromStop    = DAYS_DATA[d]?.stops.find(s => s.id === fromId);
         const fromArrEl   = document.getElementById('arr-' + fromId);

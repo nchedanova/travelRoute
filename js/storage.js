@@ -389,7 +389,8 @@ async function _checkAppVersion() {
 
   try {
     // Fetch sw.js fresh from network (bypass SW cache) to get server version
-    var resp = await fetch('./sw.js?_=' + Date.now(), { cache: 'no-store' });
+    // cache:'reload' forces network fetch bypassing both HTTP cache AND Service Worker cache
+    var resp = await fetch('./sw.js?_=' + Date.now(), { cache: 'reload' });
     if (!resp.ok) throw new Error('fetch failed');
     var text = await resp.text();
 
