@@ -1,5 +1,5 @@
 // ── SERVICE WORKER · Дорожный журнал ───────────────────────────────────────────
-const CACHE_STATIC  = 'travel-static-v67';
+const CACHE_STATIC  = 'travel-static-v68';
 const CACHE_TILES   = 'travel-tiles-v2';
 const CACHE_FONTS   = 'travel-fonts-v1';
 
@@ -19,6 +19,7 @@ const PRECACHE = [
   './js/notes.js',
   './js/offline.js',
   './js/gpx.js',
+  './js/import.js',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
@@ -138,9 +139,11 @@ async function cacheFirst(request, cacheName) {
 }
 
 // Stale-while-revalidate: return cached immediately, update in background
+// Uses ignoreSearch:true so ?v=67 matches cached ./js/app.js
 async function staleWhileRevalidate(request, cacheName) {
   const cache = await caches.open(cacheName);
-  const cached = await cache.match(request);
+  // ignoreSearch lets versioned ?v=N URLs hit unversioned precache entries
+  const cached = await cache.match(request, { ignoreSearch: true });
   const fetchPromise = fetch(request).then(response => {
     if (response.ok) cache.put(request, response.clone());
     return response;
