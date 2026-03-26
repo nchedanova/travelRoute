@@ -191,9 +191,16 @@ function getTilesAlongRoute(points) {
     _bresenhamLine(lng2tile(pts[i].lng, 11), lat2tile(pts[i].lat, 11),
                    lng2tile(pts[i+1].lng, 11), lat2tile(pts[i+1].lat, 11), urls, 11, 1);
 
+  // z12 — средний план, весь маршрут (заполняет дыру между z11 и z13)
+  for (let i = 0; i < pts.length; i++)
+    _addTilesWithPadding(urls, lng2tile(pts[i].lng, 12), lat2tile(pts[i].lat, 12), 12, 2);
+  for (let i = 0; i < pts.length - 1; i++)
+    _bresenhamLine(lng2tile(pts[i].lng, 12), lat2tile(pts[i].lat, 12),
+                   lng2tile(pts[i+1].lng, 12), lat2tile(pts[i+1].lat, 12), urls, 12, 1);
+
   // z13 — детализация ТОЛЬКО вокруг точек (не вся линия — слишком много)
   for (let i = 0; i < pts.length; i++)
-    _addTilesWithPadding(urls, lng2tile(pts[i].lng, 13), lat2tile(pts[i].lat, 13), 13, 3);
+    _addTilesWithPadding(urls, lng2tile(pts[i].lng, 13), lat2tile(pts[i].lat, 13), 13, 4);
 
   return [...urls];
 }

@@ -1,6 +1,6 @@
 // ── SERVICE WORKER · Дорожный журнал ───────────────────────────────────────────
-const CACHE_STATIC  = 'travel-static-v63';
-const CACHE_TILES   = 'travel-tiles-v1';
+const CACHE_STATIC  = 'travel-static-v64';
+const CACHE_TILES   = 'travel-tiles-v2';
 const CACHE_FONTS   = 'travel-fonts-v1';
 
 // Static assets to precache on install
@@ -94,13 +94,27 @@ self.addEventListener('fetch', e => {
 // ── STRATEGIES ────────────────────────────────────────────────────────────────
 
 // Tiles: cache-first, store forever (until cache is cleared)
+// Normalize a/b/c.tile.openstreetmap.org → tile.openstreetmap.org
+// Leaflet uses random subdomains for load balancing; we cache under canonical URL
+function normalizeTileUrl(url) {
+  return url.replace(/^https:\/\/[abc]\.tile\.openstreetmap\.org\//, 'https://tile.openstreetmap.org/');
+}
+
 async function tileStrategy(request) {
-  const cache = await caches.open(CACHE_TILES);
-  const cached = await cache.match(request);
+  const cache      = await caches.open(CACHE_TILES);
+  const canonical  = normalizeTileUrl(request.url);
+  const cacheKey   = canonical !== request.url ? new Request(canonical) : request;
+
+  // Look up by canonical URL
+  const cached = await cache.match(cacheKey);
   if (cached) return cached;
+
   try {
     const response = await fetch(request);
-    if (response.ok) cache.put(request, response.clone());
+    if (response.ok) {
+      // Always store under canonical URL so prefetch and live requests share the same key
+      cache.put(cacheKey, response.clone());
+    }
     return response;
   } catch {
     // Offline + not cached → transparent 1px PNG
