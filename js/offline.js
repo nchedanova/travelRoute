@@ -137,43 +137,64 @@ function lat2tile(lat, zoom) {
   return Math.floor((1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * Math.pow(2, zoom));
 }
 
-function getTilesAlongRoute(stops, zooms, paddingTiles) {
-  if (!stops.length) return [];
-  paddingTiles = paddingTiles || 2;
+// Стратегия кэширования тайлов:
+//   z5,z8  — весь маршрут (обзор страны/дня)
+//   z11    — весь маршрут, узкий коридор (основной рабочий зум)
+//   z13    — только вокруг точек остановок (детали на месте)
+// z14 вдоль всей линии убран — слишком много тайлов без реальной пользы
+
+function _addTilesWithPadding(urls, tx, ty, zoom, pad) {
+  for (let dx = -pad; dx <= pad; dx++) {
+    for (let dy = -pad; dy <= pad; dy++) {
+      urls.add(`https://tile.openstreetmap.org/${zoom}/${tx + dx}/${ty + dy}.png`);
+    }
+  }
+}
+
+function _bresenhamLine(ax, ay, bx, by, urls, zoom, pad) {
+  let dx = Math.abs(bx - ax), dy = Math.abs(by - ay);
+  let sx = ax < bx ? 1 : -1, sy = ay < by ? 1 : -1;
+  let err = dx - dy, cx = ax, cy = ay;
+  while (true) {
+    _addTilesWithPadding(urls, cx, cy, zoom, pad);
+    if (cx === bx && cy === by) break;
+    const e2 = 2 * err;
+    if (e2 > -dy) { err -= dy; cx += sx; }
+    if (e2 <  dx) { err += dx; cy += sy; }
+  }
+}
+
+function getTilesAlongRoute(points) {
+  if (!points.length) return [];
+  const pts = points.filter(s => s.lat && s.lng);
+  if (!pts.length) return [];
   const urls = new Set();
-  const points = stops.filter(s => s.lat && s.lng);
 
-  function addWithPadding(tx, ty, zoom, pad) {
-    for (let dx = -pad; dx <= pad; dx++) {
-      for (let dy = -pad; dy <= pad; dy++) {
-        urls.add(`https://tile.openstreetmap.org/${zoom}/${tx + dx}/${ty + dy}.png`);
-      }
-    }
-  }
+  // z5 — обзор всей страны, маршрут виден целиком
+  for (let i = 0; i < pts.length; i++)
+    _addTilesWithPadding(urls, lng2tile(pts[i].lng, 5), lat2tile(pts[i].lat, 5), 5, 1);
+  for (let i = 0; i < pts.length - 1; i++)
+    _bresenhamLine(lng2tile(pts[i].lng, 5), lat2tile(pts[i].lat, 5),
+                   lng2tile(pts[i+1].lng, 5), lat2tile(pts[i+1].lat, 5), urls, 5, 1);
 
-  for (const zoom of zooms) {
-    // Padding around each stop point
-    for (let i = 0; i < points.length; i++) {
-      addWithPadding(lng2tile(points[i].lng, zoom), lat2tile(points[i].lat, zoom), zoom, paddingTiles);
-    }
+  // z8 — обзор дня (вся Россия → регион)
+  for (let i = 0; i < pts.length; i++)
+    _addTilesWithPadding(urls, lng2tile(pts[i].lng, 8), lat2tile(pts[i].lat, 8), 8, 2);
+  for (let i = 0; i < pts.length - 1; i++)
+    _bresenhamLine(lng2tile(pts[i].lng, 8), lat2tile(pts[i].lat, 8),
+                   lng2tile(pts[i+1].lng, 8), lat2tile(pts[i+1].lat, 8), urls, 8, 1);
 
-    // Walk along line between consecutive points (Bresenham) with padding
-    for (let i = 0; i < points.length - 1; i++) {
-      const ax = lng2tile(points[i].lng, zoom),     ay = lat2tile(points[i].lat, zoom);
-      const bx = lng2tile(points[i + 1].lng, zoom), by = lat2tile(points[i + 1].lat, zoom);
-      let dx = Math.abs(bx - ax), dy = Math.abs(by - ay);
-      let sx = ax < bx ? 1 : -1, sy = ay < by ? 1 : -1;
-      let err = dx - dy;
-      let cx = ax, cy = ay;
-      while (true) {
-        addWithPadding(cx, cy, zoom, 1);
-        if (cx === bx && cy === by) break;
-        const e2 = 2 * err;
-        if (e2 > -dy) { err -= dy; cx += sx; }
-        if (e2 <  dx) { err += dx; cy += sy; }
-      }
-    }
-  }
+  // z11 — основной рабочий зум (виден маршрут + окрестности), весь коридор
+  for (let i = 0; i < pts.length; i++)
+    _addTilesWithPadding(urls, lng2tile(pts[i].lng, 11), lat2tile(pts[i].lat, 11), 11, 3);
+  for (let i = 0; i < pts.length - 1; i++)
+    _bresenhamLine(lng2tile(pts[i].lng, 11), lat2tile(pts[i].lat, 11),
+                   lng2tile(pts[i+1].lng, 11), lat2tile(pts[i+1].lat, 11), urls, 11, 1);
+
+  // z13 — детализация ТОЛЬКО вокруг точек (не вся линия — слишком много)
+  for (let i = 0; i < pts.length; i++)
+    _addTilesWithPadding(urls, lng2tile(pts[i].lng, 13), lat2tile(pts[i].lat, 13), 13, 3);
+
   return [...urls];
 }
 
@@ -197,8 +218,11 @@ async function prefetchRouteTiles(dayNum) {
   if (day.start?.lat) allPoints.push(day.start);
   day.stops.forEach(s => { if (s.lat && s.lng) allPoints.push(s); });
 
-  const tiles = getTilesAlongRoute(allPoints, [8, 10, 12, 14], 2);
-  console.log(`[tiles] Prefetching ${tiles.length} tiles for day ${dayNum}`);
+  const tiles = getTilesAlongRoute(allPoints);
+  // Debug breakdown by zoom
+  const byZoom = {};
+  tiles.forEach(u => { const z = u.split('/')[3]; byZoom[z] = (byZoom[z]||0)+1; });
+  console.log(`[tiles] Day ${dayNum}: ${tiles.length} total`, byZoom);
   showToast && showToast(`📥 Загрузка карты: ${tiles.length} тайлов…`);
 
   sw.postMessage({ type: 'PREFETCH_TILES', tiles });
