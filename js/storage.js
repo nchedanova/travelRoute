@@ -421,19 +421,18 @@ async function _checkAppVersion() {
       // Different hint for PWA vs browser
       var isPWA = window.matchMedia('(display-mode: standalone)').matches ||
                   window.navigator.standalone === true;
-      // Show "Update now" button if SW is waiting
+      // Show "Update now" button if a waiting SW is available (_swUpdateReady set by registration)
       var updateBtn = document.getElementById('csUpdateBtn');
-      var swReg = window._swReg;
       if (updateBtn) {
-        if (swReg && swReg.waiting) {
+        if (window._swUpdateReady || (window._swReg && window._swReg.waiting)) {
           updateBtn.style.display = 'block';
-          hintTxt.textContent = '';
+          hintTxt.textContent = 'Нажми кнопку — страница перезагрузится с новой версией.';
         } else {
           updateBtn.style.display = 'none';
           if (isPWA) {
-            hintTxt.textContent = 'PWA: закрой приложение полностью и открой заново.';
+            hintTxt.textContent = 'PWA: оставь приложение открытым — обновление загрузится в фоне и появится кнопка.';
           } else {
-            hintTxt.textContent = 'Нажми Ctrl+Shift+R (Cmd+Shift+R на Mac) или подожди — обновление применится автоматически.';
+            hintTxt.textContent = 'Обновление загружается в фоне — скоро появится кнопка или тост внизу экрана.';
           }
         }
       }

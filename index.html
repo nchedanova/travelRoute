@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=2-5-0">
+<link rel="stylesheet" href="css/style.css?v=2-5-1">
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
@@ -525,42 +525,53 @@
 
 <!-- Scripts: порядок важен — config и data первыми -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="js/config.js?v=2-5-0"></script>
-<script src="js/data.js?v=2-5-0"></script>
-<script src="js/storage.js?v=2-5-0"></script>
-<script src="js/offline.js?v=2-5-0"></script>
-<script src="js/map.js?v=2-5-0"></script>
-<script src="js/render.js?v=2-5-0"></script>
-<script src="js/app.js?v=2-5-0"></script>
-<script src="js/gps.js?v=2-5-0"></script>
-<script src="js/chat.js?v=2-5-0"></script>
-<script src="js/notes.js?v=2-5-0"></script>
-<script src="js/import.js?v=2-5-0"></script>
-<script src="js/gpx.js?v=2-5-0"></script>
+<script src="js/config.js?v=2-5-1"></script>
+<script src="js/data.js?v=2-5-1"></script>
+<script src="js/storage.js?v=2-5-1"></script>
+<script src="js/offline.js?v=2-5-1"></script>
+<script src="js/map.js?v=2-5-1"></script>
+<script src="js/render.js?v=2-5-1"></script>
+<script src="js/app.js?v=2-5-1"></script>
+<script src="js/gps.js?v=2-5-1"></script>
+<script src="js/chat.js?v=2-5-1"></script>
+<script src="js/notes.js?v=2-5-1"></script>
+<script src="js/import.js?v=2-5-1"></script>
+<script src="js/gpx.js?v=2-5-1"></script>
 <script>
-  // Service Worker registration + update detection
+  // Global: stores the waiting SW so applySwUpdate() can reach it anytime
+  window._swReg         = null;
+  window._swWaiting     = null;  // the actual waiting ServiceWorker object
+  window._swUpdateReady = false; // flag: update is available
+
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').then(reg => {
       console.log('[SW] Registered:', reg.scope);
       window._swReg = reg;
 
-      // Check if there's already a waiting worker (page was refreshed after update)
-      if (reg.waiting) _onSwUpdateReady();
+      // Already a waiting worker on page load (e.g. second visit after update downloaded)
+      if (reg.waiting) {
+        window._swWaiting = reg.waiting;
+        _onSwUpdateReady();
+      }
 
-      // New update found while page is open
+      // Poll for updates immediately + check every 60s (for long-open tabs/PWA)
+      reg.update();
+      setInterval(function() { reg.update(); }, 60000);
+
+      // New update downloaded in background
       reg.addEventListener('updatefound', () => {
-        const newWorker = reg.installing;
+        var newWorker = reg.installing;
         if (!newWorker) return;
         newWorker.addEventListener('statechange', () => {
           if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            // New SW installed but waiting — notify user
+            window._swWaiting = newWorker;
             _onSwUpdateReady();
           }
         });
       });
     }).catch(err => console.warn('[SW] Registration failed:', err));
 
-    // When SW takes control (after skipWaiting), reload the page
+    // When SW takes control (after skipWaiting) → reload to use new code
     var _reloadPending = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       if (_reloadPending) return;
@@ -570,21 +581,20 @@
   }
 
   function _onSwUpdateReady() {
-    // Show update toast — persists until dismissed or applied
+    window._swUpdateReady = true;
     var toast = document.getElementById('updateToast');
     if (toast) toast.classList.add('show');
   }
 
   function applySwUpdate() {
-    var reg = window._swReg;
-    if (reg && reg.waiting) {
-      reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-    } else if (navigator.serviceWorker.controller) {
-      navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' });
+    var worker = window._swWaiting ||
+                 (window._swReg && window._swReg.waiting) ||
+                 navigator.serviceWorker.controller;
+    if (worker) {
+      worker.postMessage({ type: 'SKIP_WAITING' });
     } else {
       window.location.reload();
     }
-    // Hide toast
     var toast = document.getElementById('updateToast');
     if (toast) toast.classList.remove('show');
   }
