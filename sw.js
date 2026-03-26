@@ -1,5 +1,5 @@
 // ── SERVICE WORKER · Дорожный журнал ───────────────────────────────────────────
-const CACHE_STATIC  = 'travel-static-v2-5-5';
+const CACHE_STATIC  = 'travel-static-v2-5-6';
 const CACHE_TILES   = 'travel-tiles-v2';
 const CACHE_FONTS   = 'travel-fonts-v1';
 
@@ -44,7 +44,11 @@ self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
       Promise.all(keys.map(k => {
-        if (k !== CACHE_STATIC && k !== CACHE_TILES && k !== CACHE_FONTS) return caches.delete(k);
+        // Delete ANY old static cache (not just unknown names)
+        // This ensures stale JS/CSS from previous builds gets cleared
+        const isOldStatic = k.startsWith('travel-static-') && k !== CACHE_STATIC;
+        const isUnknown   = k !== CACHE_STATIC && k !== CACHE_TILES && k !== CACHE_FONTS;
+        if (isOldStatic || isUnknown) return caches.delete(k);
       }))
     )
   );
