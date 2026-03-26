@@ -343,12 +343,20 @@ function renderDaySection(d) {
           <button onclick="confirmReset(${d});closeDayMenus()">⟳ Сбросить факт</button>` : ''}
           <button onclick="fetchDayWeather(${d});closeDayMenus()">🌤 Погода</button>
           ${isAdmin() ? `<div class="day-overflow-divider"></div>
+          <div class="day-mode-row" id="dayModeRow${d}">
+            <span class="day-mode-label">Режим</span>
+            <div class="day-mode-pills">
+              <button class="day-mode-pill ${!data.walkMode ? 'active-auto' : 'inactive'}" onclick="setDayMode(${d},'auto')">🚗 авто</button>
+              <button class="day-mode-pill ${data.walkMode ? 'active-walk' : 'inactive'}" onclick="setDayMode(${d},'walk')">🚶 пешком</button>
+            </div>
+          </div>
+          <div class="day-overflow-divider"></div>
           <button class="day-overflow-import" onclick="closeDayMenus();openImportModal(${d})">↓ Импорт из карт</button>` : ''}
         </div>
       </div>
     </div>
     <div class="depart-row">
-      <div class="depart-icon">🚗</div>
+      <div class="depart-icon" id="d${d}-depart-icon">${data.walkMode ? '🚶' : '🚗'}</div>
       <div class="depart-label" style="${isAdmin() ? 'cursor:pointer' : ''}"
            ${isAdmin() ? `onclick="openEditStart(${d})" title="Изменить точку старта"` : ''}>
         <span id="d${d}-start-name">${data.start.icon} ${data.start.name}</span>

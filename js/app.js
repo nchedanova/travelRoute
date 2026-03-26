@@ -687,6 +687,35 @@ function reverseDay(d) {
 }
 
 // ── ADD / DELETE DAY ──────────────────────────────────────────────────────────
+// ── DAY TRANSPORT MODE ───────────────────────────────────────────────────────
+function setDayMode(day, mode) {
+  var data = DAYS_DATA[day];
+  if (!data) return;
+
+  data.walkMode = (mode === 'walk');
+
+  // Update depart icon in sidebar
+  var departIcon = document.getElementById('d' + day + '-depart-icon');
+  if (departIcon) departIcon.textContent = data.walkMode ? '🚶' : '🚗';
+
+  // Update start marker emoji on map (if start has lat/lng)
+  // Redraw resets the marker — just redraw the day
+  redrawDay(day);
+
+  // Update mode pill UI
+  var row = document.getElementById('dayModeRow' + day);
+  if (row) {
+    row.querySelectorAll('.day-mode-pill').forEach(function(btn) {
+      btn.className = 'day-mode-pill inactive';
+    });
+    var activeBtn = row.querySelector(data.walkMode ? '.day-mode-pill:last-child' : '.day-mode-pill:first-child');
+    if (activeBtn) activeBtn.className = 'day-mode-pill ' + (data.walkMode ? 'active-walk' : 'active-auto');
+  }
+
+  saveData();
+  showToast(data.walkMode ? '🚶 Режим: пешком' : '🚗 Режим: авто');
+}
+
 function addNewDay() {
   const keys     = dayKeys();
   const newD     = Math.max(...keys) + 1;
@@ -1488,24 +1517,33 @@ document.addEventListener('click', e => {
 });
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
-var APP_VERSION = '2.4.0';
-var APP_BUILD   = 72;
+var APP_VERSION = '2.5.0';
+var APP_BUILD   = 1;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 
 var APP_CHANGELOG = [
+  { ver: '2.5.0', date: '26.03.2026', items: [
+    '🚶 Пеший режим дня — переключатель авто/пешком в меню ···',
+    '🗺 На карте иконка маркера меняется: 🚗 авто или 🚶 пешком',
+    '🆕 Автобаннер обновления — больше не нужно вручную обновлять страницу',
+    '↺ Кнопка «Обновить сейчас» в настройках облака',
+    '📍 Версия приложения видна в настройках облака',
+    '🗺 Офлайн-карта: исправлены белые квадраты на мобилках и в PWA'
+  ]},
   { ver: '2.4.0', date: '25.03.2026', items: [
     '↓ Импорт маршрута из Яндекс Карт, Google Maps, 2GIS, OsmAnd',
-    'Вставь ссылку на маршрут — точки добавятся автоматически',
-    'Reverse geocoding: координаты превращаются в читаемые названия',
+    'Вставь ссылку — точки и названия добавятся автоматически',
+    'Редактирование имён и типов точек перед добавлением',
     'Фикс: время старта пустого дня теперь сохраняется'
   ]},
   { ver: '2.3.0', date: '23.03.2026', items: [
-    '\uD83C\uDF24 Погода на каждой точке маршрута (Open-Meteo)',
-    '\u2601\uFE0F Погода синхронизируется через Firebase — один нажал, все видят',
-    '\uD83D\uDDFA\uFE0F Оптимизация скачивания карты — в 3-5\u00D7 меньше тайлов',
-    '\uD83D\uDDD1 Кнопка «Удалить кэш карты» в навигаторе',
-    '\uD83D\uDC41 Читатель: скрыты ненужные кнопки (скачать карту, координаты, отмена)'
+    '🌤 Погода на каждой точке маршрута (Open-Meteo)',
+    '☁️ Погода синхронизируется через Firebase — один нажал, все видят',
+    '🔑 Авторизация через Google — одно имя на всех устройствах',
+    '🗺️ Оптимизация скачивания карты — в 3-5× меньше тайлов',
+    '🗑 Кнопка «Удалить кэш карты» в навигаторе',
+    '👁 Читатель: скрыты ненужные кнопки'
   ]},
   { ver: '2.2.0', date: '22.03.2026', items: [
     '📷 Мультивыбор фото (до 10 в одном сообщении)',

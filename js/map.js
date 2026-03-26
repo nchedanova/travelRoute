@@ -277,8 +277,9 @@ function drawDay(d) {
   const group = layers[d];
   if (!group) return;
 
-  // Стартовый маркер
-  const startM = L.marker([data.start.lat, data.start.lng], { icon: makeStartIcon(data.start.icon, color) });
+  // Стартовый маркер — иконка зависит от режима дня (авто/пешком)
+  const startEmoji = data.walkMode ? '🚶' : (data.start.icon || '🚗');
+  const startM = L.marker([data.start.lat, data.start.lng], { icon: makeStartIcon(startEmoji, color) });
   group.addLayer(startM);
 
   // Сегменты маршрута по дорогам (OSRM)
