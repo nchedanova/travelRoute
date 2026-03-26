@@ -1,5 +1,5 @@
 // ── SERVICE WORKER · Дорожный журнал ───────────────────────────────────────────
-const CACHE_STATIC  = 'travel-static-v2-5-2';
+const CACHE_STATIC  = 'travel-static-v2-5-3';
 const CACHE_TILES   = 'travel-tiles-v2';
 const CACHE_FONTS   = 'travel-fonts-v1';
 
@@ -34,7 +34,9 @@ self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE_STATIC).then(cache => cache.addAll(PRECACHE))
   );
-  // Do NOT call skipWaiting() here — we notify the user first and let them trigger the update
+  // skipWaiting immediately so the new SW activates without waiting for all tabs to close.
+  // The client JS detects 'controllerchange' and reloads the page to apply new code.
+  self.skipWaiting();
 });
 
 // ── ACTIVATE ──────────────────────────────────────────────────────────────────
