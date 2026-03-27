@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=2-5-10">
+<link rel="stylesheet" href="css/style.css?v=2-5-11">
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
@@ -522,18 +522,18 @@
 
 <!-- Scripts: порядок важен — config и data первыми -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="js/config.js?v=2-5-10"></script>
-<script src="js/data.js?v=2-5-10"></script>
-<script src="js/storage.js?v=2-5-10"></script>
-<script src="js/offline.js?v=2-5-10"></script>
-<script src="js/map.js?v=2-5-10"></script>
-<script src="js/render.js?v=2-5-10"></script>
-<script src="js/app.js?v=2-5-10"></script>
-<script src="js/gps.js?v=2-5-10"></script>
-<script src="js/chat.js?v=2-5-10"></script>
-<script src="js/notes.js?v=2-5-10"></script>
-<script src="js/import.js?v=2-5-10"></script>
-<script src="js/gpx.js?v=2-5-10"></script>
+<script src="js/config.js?v=2-5-11"></script>
+<script src="js/data.js?v=2-5-11"></script>
+<script src="js/storage.js?v=2-5-11"></script>
+<script src="js/offline.js?v=2-5-11"></script>
+<script src="js/map.js?v=2-5-11"></script>
+<script src="js/render.js?v=2-5-11"></script>
+<script src="js/app.js?v=2-5-11"></script>
+<script src="js/gps.js?v=2-5-11"></script>
+<script src="js/chat.js?v=2-5-11"></script>
+<script src="js/notes.js?v=2-5-11"></script>
+<script src="js/import.js?v=2-5-11"></script>
+<script src="js/gpx.js?v=2-5-11"></script>
 <script>
   window._swReg         = null;
   window._swReg = null;
@@ -542,26 +542,38 @@
     navigator.serviceWorker.register('./sw.js').then(reg => {
       console.log('[SW] Registered:', reg.scope);
       window._swReg = reg;
-      // Check for updates every 60s — important for long-running PWA sessions
       setInterval(function() { reg.update(); }, 60000);
     }).catch(err => console.warn('[SW] Registration failed:', err));
+
+    // Auto-reload when a new SW takes control.
+    // sessionStorage flag prevents infinite reload loops:
+    // after one reload we mark it done, clear on next successful load.
+    var _reloadKey = 'sw_reload_in_progress';
+    if (sessionStorage.getItem(_reloadKey)) {
+      // We just reloaded because of a SW update — clear the flag
+      sessionStorage.removeItem(_reloadKey);
+      console.log('[SW] Reloaded after update, flag cleared.');
+    }
+
+    navigator.serviceWorker.addEventListener('controllerchange', function() {
+      // A new SW just took control. Reload once to use its fresh cached files.
+      if (sessionStorage.getItem(_reloadKey)) return; // already reloading
+      console.log('[SW] New controller detected, reloading...');
+      sessionStorage.setItem(_reloadKey, '1');
+      window.location.reload();
+    });
   }
 
-  // applySwUpdate: tell waiting SW to skip waiting, then reload once it controls the page.
-  // If there's no waiting SW, just reload — picks up whatever is cached.
+  // applySwUpdate: force the waiting SW (if any) to activate, then auto-reload fires.
+  // If no waiting SW, just reload — new cached files will be served.
   function applySwUpdate() {
     if (!('serviceWorker' in navigator)) { window.location.reload(); return; }
     navigator.serviceWorker.ready.then(function(reg) {
-      // If a new SW is waiting, activate it first then reload
       if (reg.waiting) {
-        // Listen for controllerchange ONCE then reload
-        navigator.serviceWorker.addEventListener('controllerchange', function onCC() {
-          navigator.serviceWorker.removeEventListener('controllerchange', onCC);
-          window.location.reload();
-        });
+        // Tell waiting SW to skip waiting → controllerchange fires → auto-reload above
         reg.waiting.postMessage({ type: 'SKIP_WAITING' });
       } else {
-        // No waiting SW — just reload to pick up any cached updates
+        // New SW already active — just reload to use fresh cache
         window.location.reload();
       }
     });
