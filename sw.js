@@ -1,7 +1,7 @@
 // ── SERVICE WORKER · Дорожный журнал ───────────────────────────────────────────
-const CACHE_STATIC  = 'travel-static-v2-5-12';
+const CACHE_STATIC  = 'travel-static-v2-5-13';
 const APP_VERSION   = '2.5.0';
-const APP_BUILD     = 13;
+const APP_BUILD     = 14;
 const CACHE_TILES   = 'travel-tiles-v2';
 const CACHE_FONTS   = 'travel-fonts-v1';
 
@@ -34,10 +34,16 @@ const PRECACHE = [
 // ── INSTALL ───────────────────────────────────────────────────────────────────
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(CACHE_STATIC).then(cache => cache.addAll(PRECACHE))
+    caches.open(CACHE_STATIC).then(cache => {
+      // Use cache:'reload' to bypass any intermediate caches (including old SW).
+      // This ensures the new SW always fetches fresh files from the network.
+      return Promise.all(PRECACHE.map(url => {
+        return fetch(new Request(url, { cache: 'reload' }))
+          .then(resp => { if (resp.ok) return cache.put(url, resp.clone()); })
+          .catch(() => {}); // non-critical if one file fails
+      }));
+    })
   );
-  // skipWaiting immediately so the new SW activates without waiting for all tabs to close.
-  // The client JS detects 'controllerchange' and reloads the page to apply new code.
   self.skipWaiting();
 });
 
