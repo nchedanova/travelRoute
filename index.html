@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=2-5-9">
+<link rel="stylesheet" href="css/style.css?v=2-5-10">
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
@@ -522,60 +522,49 @@
 
 <!-- Scripts: порядок важен — config и data первыми -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="js/config.js?v=2-5-9"></script>
-<script src="js/data.js?v=2-5-9"></script>
-<script src="js/storage.js?v=2-5-9"></script>
-<script src="js/offline.js?v=2-5-9"></script>
-<script src="js/map.js?v=2-5-9"></script>
-<script src="js/render.js?v=2-5-9"></script>
-<script src="js/app.js?v=2-5-9"></script>
-<script src="js/gps.js?v=2-5-9"></script>
-<script src="js/chat.js?v=2-5-9"></script>
-<script src="js/notes.js?v=2-5-9"></script>
-<script src="js/import.js?v=2-5-9"></script>
-<script src="js/gpx.js?v=2-5-9"></script>
+<script src="js/config.js?v=2-5-10"></script>
+<script src="js/data.js?v=2-5-10"></script>
+<script src="js/storage.js?v=2-5-10"></script>
+<script src="js/offline.js?v=2-5-10"></script>
+<script src="js/map.js?v=2-5-10"></script>
+<script src="js/render.js?v=2-5-10"></script>
+<script src="js/app.js?v=2-5-10"></script>
+<script src="js/gps.js?v=2-5-10"></script>
+<script src="js/chat.js?v=2-5-10"></script>
+<script src="js/notes.js?v=2-5-10"></script>
+<script src="js/import.js?v=2-5-10"></script>
+<script src="js/gpx.js?v=2-5-10"></script>
 <script>
   window._swReg         = null;
-  window._swUpdateReady = false;
+  window._swReg = null;
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').then(reg => {
       console.log('[SW] Registered:', reg.scope);
       window._swReg = reg;
-
-      // Poll for updates: immediately + every 60s (critical for PWA)
-      reg.update();
+      // Check for updates every 60s — important for long-running PWA sessions
       setInterval(function() { reg.update(); }, 60000);
-
-      // updatefound: new SW installing → when activated, show toast
-      reg.addEventListener('updatefound', () => {
-        var newWorker = reg.installing;
-        if (!newWorker) return;
-        newWorker.addEventListener('statechange', () => {
-          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            // New SW installed and waiting (skipWaiting already called in install)
-            // but not yet controlling — show toast, let user trigger reload
-            window._swUpdateReady = true;
-            _onSwUpdateReady();
-          }
-        });
-      });
     }).catch(err => console.warn('[SW] Registration failed:', err));
-
-    // NO auto-reload on controllerchange — that caused infinite loops.
-    // User clicks the toast/button to reload manually.
   }
 
-  function _onSwUpdateReady() {
-    window._swUpdateReady = true;
-    // Refresh version badge if cloud settings are open
-    if (document.getElementById('cloudSettingsModal')?.classList.contains('show')) {
-      _checkAppVersion();
-    }
-  }
-
+  // applySwUpdate: tell waiting SW to skip waiting, then reload once it controls the page.
+  // If there's no waiting SW, just reload — picks up whatever is cached.
   function applySwUpdate() {
-    window.location.reload();
+    if (!('serviceWorker' in navigator)) { window.location.reload(); return; }
+    navigator.serviceWorker.ready.then(function(reg) {
+      // If a new SW is waiting, activate it first then reload
+      if (reg.waiting) {
+        // Listen for controllerchange ONCE then reload
+        navigator.serviceWorker.addEventListener('controllerchange', function onCC() {
+          navigator.serviceWorker.removeEventListener('controllerchange', onCC);
+          window.location.reload();
+        });
+        reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+      } else {
+        // No waiting SW — just reload to pick up any cached updates
+        window.location.reload();
+      }
+    });
   }
 
   // Запускаем GPS после инициализации карты
