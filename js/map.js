@@ -424,9 +424,9 @@ function refreshSegments() {
       } else {
         // Pending segment
         if (isWalk) {
-          seg.setStyle({ color:'#4ade80', opacity:0.3, weight:5, dashArray:'8 5' });
+          seg.setStyle({ color:'#4ade80', opacity:0.5, weight:5, dashArray:'8 5' });
         } else {
-          seg.setStyle({ color: dayData ? dayData.color : undefined, opacity:0.6, weight:5, dashArray:'10 5' });
+          seg.setStyle({ color: dayData ? dayData.color : undefined, opacity:0.6, weight:5, dashArray:'10' });
           if (segOutline) segOutline.setStyle({ opacity:0.1, weight:9 });
         }
       }
