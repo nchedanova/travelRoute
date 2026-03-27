@@ -2641,7 +2641,7 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
   border: none;
   cursor: pointer;
   font-family: 'JetBrains Mono', monospace;
-  transition: all 0.15s;
+  transition: opacity 0.15s, background 0.15s;
   white-space: nowrap;
   line-height: 1.4;
   min-height: 26px;
@@ -2656,8 +2656,10 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
   background: var(--amber);
   color: #111;
 }
+.day-mode-pill.active-auto:hover { opacity: 0.85; }
 .day-mode-pill.active-walk {
   background: var(--accent);
   color: #111;
 }
+.day-mode-pill.active-walk:hover { opacity: 0.85; }
 

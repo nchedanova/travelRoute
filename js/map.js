@@ -309,14 +309,23 @@ function drawDay(d) {
     const from = allPoints[i], to = allPoints[i + 1];
     // Сразу добавляем прямую линию как placeholder (стиль зависит от режима)
     const isWalk = !!data.walkMode;
+    // Auto: white outline layer underneath for contrast (вариант А)
+    let segOutline = null;
+    if (!isWalk) {
+      segOutline = L.polyline(
+        [[from.lat, from.lng], [to.lat, to.lng]],
+        { color:'#ffffff', weight:9, opacity:0.12, lineCap:'round', lineJoin:'round' }
+      );
+      group.addLayer(segOutline);
+    }
     const seg = L.polyline(
       [[from.lat, from.lng], [to.lat, to.lng]],
       isWalk
-        ? { color:'#60a5fa', weight:3, opacity:0.25, lineCap:'round', lineJoin:'round', dashArray:'4 8' }
-        : { color, weight:3, opacity:0.2, lineCap:'round', lineJoin:'round', dashArray:'6 6' }
+        ? { color:'#4ade80', weight:5, opacity:0.3, lineCap:'round', lineJoin:'round', dashArray:'8 5' }
+        : { color, weight:5, opacity:0.6, lineCap:'round', lineJoin:'round', dashArray:'10 5' }
     );
     group.addLayer(seg);
-    segmentLayers[d].push({ seg, fromId: from.id || null, toId: to.id });
+    segmentLayers[d].push({ seg, segOutline: segOutline || null, fromId: from.id || null, toId: to.id });
 
     // Асинхронно заменяем на маршрут по дорогам.
     // Проверяем group.hasLayer(seg): если до ответа вызвали redrawDay()
@@ -324,7 +333,7 @@ function drawDay(d) {
     fetchRoadSegment(from, to, data.walkMode ? 'foot' : 'driving').then(coords => {
       if (!coords || !group.hasLayer(seg)) return;
       seg.setLatLngs(coords);
-      // Let refreshSegments apply the correct style (completed vs pending, walk vs drive)
+      if (segOutline && group.hasLayer(segOutline)) segOutline.setLatLngs(coords);
       refreshSegments();
     }).catch(() => { /* оставляем прямую линию */ });
   }
@@ -375,7 +384,7 @@ function switchMapDay(d) {
 function refreshSegments() {
   dayKeys().forEach(d => {
     if (!segmentLayers[d]) return;
-    segmentLayers[d].forEach(({ seg, fromId, toId }) => {
+    segmentLayers[d].forEach(({ seg, segOutline, fromId, toId }) => {
       const toArrEl     = document.getElementById('arr-' + toId);
       const toArrFilled = !!(toArrEl && toArrEl.value && toArrEl.value.length >= 4);
       const toStop      = DAYS_DATA[d]?.stops.find(s => s.id === toId);
@@ -407,16 +416,18 @@ function refreshSegments() {
       if (fromDone && toArrFilled && toDepFilled) {
         // Completed segment
         if (isWalk) {
-          seg.setStyle({ color:'#60a5fa', opacity:0.9, weight:3, dashArray:'5 8' });
+          seg.setStyle({ color:'#4ade80', opacity:0.85, weight:5, dashArray:'8 5' });
         } else {
-          seg.setStyle({ color: dayData ? dayData.color : undefined, opacity:0.9, weight:4, dashArray:null });
+          seg.setStyle({ color: dayData ? dayData.color : undefined, opacity:0.9, weight:5, dashArray:null });
+          if (segOutline) segOutline.setStyle({ opacity:0.15, weight:9 });
         }
       } else {
         // Pending segment
         if (isWalk) {
-          seg.setStyle({ color:'#60a5fa', opacity:0.45, weight:3, dashArray:'4 10' });
+          seg.setStyle({ color:'#4ade80', opacity:0.3, weight:5, dashArray:'8 5' });
         } else {
-          seg.setStyle({ color: dayData ? dayData.color : undefined, opacity:0.35, weight:3, dashArray:'6 6' });
+          seg.setStyle({ color: dayData ? dayData.color : undefined, opacity:0.6, weight:5, dashArray:'10 5' });
+          if (segOutline) segOutline.setStyle({ opacity:0.1, weight:9 });
         }
       }
     });

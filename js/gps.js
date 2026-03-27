@@ -231,7 +231,7 @@ function _makeCarIcon(isRemote) {
   const html = `
     <div style="position:relative;width:44px;height:44px;">
       <div class="gps-ring" style="--gps-color:${ringColor};position:absolute;inset:0;border-radius:50%;background:${ringColor};opacity:0.25;"></div>
-      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:24px;line-height:1;">🚗</div>
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:24px;line-height:1;">${(typeof currentDay!=="undefined"&&DAYS_DATA[currentDay]?.walkMode)?"🚶":"🚗"}</div>
     </div>`;
   return L.divIcon({
     html, className: '', iconSize: [44, 44], iconAnchor: [22, 22]
@@ -292,7 +292,8 @@ function toggleDrivingMode() {
   const btn = document.getElementById('drivingBtn');
   if (btn) {
     btn.classList.toggle('active', _drivingMode);
-    btn.innerHTML = _drivingMode ? '🛑 Стоп' : '🚗 Еду';
+    const _isWalk = typeof currentDay!=='undefined'&&DAYS_DATA[currentDay]?.walkMode;
+    btn.innerHTML = _drivingMode ? '🛑 Стоп' : (_isWalk ? '🚶 Иду' : '🚗 Еду');
   }
   document.body.classList.toggle('driving-active', _drivingMode);
 

@@ -21,6 +21,11 @@ function switchDay(d) {
   });
   switchMapDay(d);
   listenWeather(d);
+  // Update Еду/Иду button label based on day mode
+  var _btn = document.getElementById('drivingBtn');
+  if (_btn && !_btn.classList.contains('active')) {
+    _btn.innerHTML = DAYS_DATA[d]?.walkMode ? '🚶 Иду' : '🚗 Еду';
+  }
   if (prev !== d) _navPush();
 }
 
@@ -712,6 +717,11 @@ function setDayMode(day, mode) {
     if (activeBtn) activeBtn.className = 'day-mode-pill ' + (data.walkMode ? 'active-walk' : 'active-auto');
   }
 
+  // Refresh Еду/Иду button
+  var _btn = document.getElementById('drivingBtn');
+  if (_btn && !_btn.classList.contains('active')) {
+    _btn.innerHTML = data.walkMode ? '🚶 Иду' : '🚗 Еду';
+  }
   saveData();
   showToast(data.walkMode ? '🚶 Режим: пешком' : '🚗 Режим: авто');
 }
@@ -1518,18 +1528,21 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.5.0';
-var APP_BUILD   = 14;
+var APP_BUILD   = 15;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 
 var APP_CHANGELOG = [
-  { ver: '2.5.0', date: '26.03.2026', items: [
+  { ver: '2.5.0', date: '27.03.2026', items: [
     '🚶 Пеший режим дня — переключатель авто/пешком в меню ···',
     '🗺 На карте иконка маркера меняется: 🚗 авто или 🚶 пешком',
     '🆕 Автобаннер обновления — больше не нужно вручную обновлять страницу',
     '↺ Кнопка «Обновить сейчас» в настройках облака',
     '📍 Версия приложения видна в настройках облака',
-    '🗺 Офлайн-карта: исправлены белые квадраты на мобилках и в PWA'
+    '🗺 Офлайн-карта: исправлены белые квадраты на мобилках и в PWA',
+    '🚶 GPS-маркер и кнопка «Иду/Еду» учитывают режим дня',
+    '🛣 Маршрут: зелёная линия для пешего, белая обводка для авто',
+    '✅ Фикс ховера на переключателе режима дня'
   ]},
   { ver: '2.4.0', date: '25.03.2026', items: [
     '↓ Импорт маршрута из Яндекс Карт, Google Maps, 2GIS, OsmAnd',
