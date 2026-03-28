@@ -176,6 +176,31 @@ function _haversineKm(lat1, lng1, lat2, lng2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+// Bearing (degrees) between two points
+function _bearing(lat1, lng1, lat2, lng2) {
+  var dLng = (lng2 - lng1) * Math.PI / 180;
+  var y = Math.sin(dLng) * Math.cos(lat2 * Math.PI / 180);
+  var x = Math.cos(lat1 * Math.PI / 180) * Math.sin(lat2 * Math.PI / 180) -
+          Math.sin(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.cos(dLng);
+  return Math.atan2(y, x) * 180 / Math.PI;
+}
+
+// Find turn points along OSRM road coords where angle > threshold
+// step = how many points apart to compare (smooths GPS noise)
+function _findTurnPoints(road, threshold, step) {
+  if (!road || road.length < step * 2 + 1) return [];
+  var turns = [];
+  for (var i = step; i < road.length - step; i += step) {
+    var a = road[i - step], b = road[i], c = road[i + step];
+    var b1 = _bearing(a.lat, a.lng, b.lat, b.lng);
+    var b2 = _bearing(b.lat, b.lng, c.lat, c.lng);
+    var diff = Math.abs(b2 - b1) % 360;
+    if (diff > 180) diff = 360 - diff;
+    if (diff > threshold) turns.push(b);
+  }
+  return turns;
+}
+
 function getTilesAlongRoute(points, isWalk, routeCoords) {
   if (!points.length) return [];
   const pts = points.filter(s => s.lat && s.lng);
@@ -218,7 +243,7 @@ function getTilesAlongRoute(points, isWalk, routeCoords) {
     // ── Auto mode ──
 
     if (totalKm >= 550) {
-      // Long route (>550 km): z6-z14 route, z16-z17 points
+      // Long route (>550 km): z6-z14 full route, z15 only at turns/junctions, z16-z17 points
       _addRouteZoom(6, 1, 1);
       _addRouteZoom(7, 1, 1);
       _addRouteZoom(8, 2, 1);
@@ -228,6 +253,15 @@ function getTilesAlongRoute(points, isWalk, routeCoords) {
       _addRouteZoom(12, 2, 1);
       _addRouteZoom(13, 2, 1);
       _addRouteZoom(14, 2, 1);
+
+      // z15 — only around stop points + detected turns (>25°)
+      for (let i = 0; i < pts.length; i++)
+        _addTilesWithPadding(urls, lng2tile(pts[i].lng, 15), lat2tile(pts[i].lat, 15), 15, 2);
+      var turns = _findTurnPoints(road, 25, 5);
+      for (let i = 0; i < turns.length; i++)
+        _addTilesWithPadding(urls, lng2tile(turns[i].lng, 15), lat2tile(turns[i].lat, 15), 15, 2);
+      console.log('[tiles] z15 turns detected:', turns.length);
+
     } else {
       // Short route (<550 km): z8-z15 route, z16-z17 points
       _addRouteZoom(8, 2, 1);
