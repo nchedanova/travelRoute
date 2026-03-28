@@ -120,11 +120,11 @@ function initMap() {
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
   // Offline: cap zoom to highest fully-cached level.
-  // Walk mode caches z17, auto mode caches z16.
+  // Walk caches z18, auto caches z17 around stops.
   function _getOfflineMaxZoom() {
     var d = typeof currentDay !== 'undefined' ? currentDay : null;
-    if (d !== null && typeof DAYS_DATA !== 'undefined' && DAYS_DATA[d] && DAYS_DATA[d].walkMode) return 17;
-    return 16;
+    if (d !== null && typeof DAYS_DATA !== 'undefined' && DAYS_DATA[d] && DAYS_DATA[d].walkMode) return 18;
+    return 17;
   }
   window.addEventListener('offline', function() {
     var maxZ = _getOfflineMaxZoom();
