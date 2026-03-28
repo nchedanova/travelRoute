@@ -40,6 +40,14 @@ function _persistCache() {
 const _fetchQueue = [];
 let   _queueBusy  = false;
 
+function _flushQueue() {
+  // Reject all pending requests so new redraw doesn't wait behind stale fetches
+  while (_fetchQueue.length > 0) {
+    const item = _fetchQueue.shift();
+    item.reject(new Error('flushed'));
+  }
+}
+
 async function _drainQueue() {
   if (_queueBusy) return;
   _queueBusy = true;
@@ -114,7 +122,7 @@ function initMap() {
   // Offline: cap zoom to our highest fully-cached level (z13).
   // This prevents white tiles at z14+ and makes offline limitations clear to the user.
   // Zooming out is handled automatically; if already deeper we snap back to z13.
-  var OFFLINE_MAX_ZOOM = 15;
+  var OFFLINE_MAX_ZOOM = 16;
   window.addEventListener('offline', function() {
     map.setMaxZoom(OFFLINE_MAX_ZOOM);
     if (map.getZoom() > OFFLINE_MAX_ZOOM) map.setZoom(OFFLINE_MAX_ZOOM);
@@ -123,6 +131,9 @@ function initMap() {
     map.setMaxZoom(19);
   });
   map.zoomControl.setPosition('topright');
+
+  // Zoom-adaptive segment style: refresh on zoom change
+  map.on('zoomend', function() { refreshSegments(); });
 
   // тап/клик по карте — закрываем пилл или добавляем точку
   // Firefox: marker click bubbles to map even after stopPropagation on divIcon,
@@ -314,15 +325,15 @@ function drawDay(d) {
     if (!isWalk) {
       segOutline = L.polyline(
         [[from.lat, from.lng], [to.lat, to.lng]],
-        { color:'#ffffff', weight:9, opacity:0.12, lineCap:'round', lineJoin:'round' }
+        { color:'#ffffff', weight:5, opacity:0.08, lineCap:'round', lineJoin:'round' }
       );
       group.addLayer(segOutline);
     }
     const seg = L.polyline(
       [[from.lat, from.lng], [to.lat, to.lng]],
       isWalk
-        ? { color:'#4ade80', weight:5, opacity:0.3, lineCap:'round', lineJoin:'round', dashArray:'8 5' }
-        : { color, weight:5, opacity:0.6, lineCap:'round', lineJoin:'round', dashArray:'10 5' }
+        ? { color:'#4ade80', weight:3, opacity:0.3, lineCap:'round', lineJoin:'round', dashArray:'8 5' }
+        : { color, weight:3, opacity:0.55, lineCap:'round', lineJoin:'round', dashArray:'6 4' }
     );
     group.addLayer(seg);
     segmentLayers[d].push({ seg, segOutline: segOutline || null, fromId: from.id || null, toId: to.id });
@@ -355,6 +366,7 @@ function drawDay(d) {
 }
 
 function redrawDay(d) {
+  _flushQueue();  // cancel stale OSRM fetches so new profile applies instantly
   if (!layers[d]) {
     layers[d]        = L.layerGroup();
     segmentLayers[d] = [];
@@ -382,6 +394,9 @@ function switchMapDay(d) {
 
 // ── SEGMENT HIGHLIGHT (заполненные = яркие) ───────────────────────────────────
 function refreshSegments() {
+  var z = map ? map.getZoom() : 10;
+  var close = z >= 13;  // street-level
+
   dayKeys().forEach(d => {
     if (!segmentLayers[d]) return;
     segmentLayers[d].forEach(({ seg, segOutline, fromId, toId }) => {
@@ -395,7 +410,6 @@ function refreshSegments() {
 
       let fromDone = false;
       if (!fromId) {
-        // First segment: start → first stop. Done only if departA is filled.
         const departEl = document.getElementById('d' + d + '-depart');
         fromDone = !!(departEl && departEl.value && departEl.value.length >= 4);
       } else {
@@ -416,18 +430,20 @@ function refreshSegments() {
       if (fromDone && toArrFilled && toDepFilled) {
         // Completed segment
         if (isWalk) {
-          seg.setStyle({ color:'#4ade80', opacity:0.85, weight:5, dashArray:'8 5' });
+          seg.setStyle({ color:'#4ade80', opacity:0.85, weight: close ? 5 : 3, dashArray:'8 5' });
         } else {
-          seg.setStyle({ color: dayData ? dayData.color : undefined, opacity:0.9, weight:5, dashArray:null });
-          if (segOutline) segOutline.setStyle({ opacity:0.15, weight:9 });
+          seg.setStyle({ color: dayData ? dayData.color : undefined, opacity:0.85, weight: close ? 4 : 3, dashArray:null });
+          if (segOutline) segOutline.setStyle({ opacity:0.1, weight: close ? 7 : 5 });
         }
       } else {
         // Pending segment
         if (isWalk) {
-          seg.setStyle({ color:'#4ade80', opacity:0.5, weight:5, dashArray:'8 5' });
+          seg.setStyle({ color:'#4ade80', opacity:0.5, weight: close ? 5 : 3, dashArray:'8 5' });
         } else {
-          seg.setStyle({ color: dayData ? dayData.color : undefined, opacity:0.6, weight:5, dashArray:'10' });
-          if (segOutline) segOutline.setStyle({ opacity:0.1, weight:9 });
+          var w = close ? 5 : 3;
+          var dash = close ? '10 6' : '6 4';
+          seg.setStyle({ color: dayData ? dayData.color : undefined, opacity:0.55, weight: w, dashArray: dash });
+          if (segOutline) segOutline.setStyle({ opacity:0.08, weight: close ? 8 : 5 });
         }
       }
     });

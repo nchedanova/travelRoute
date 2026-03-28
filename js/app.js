@@ -34,7 +34,15 @@ function highlightStop(id, d) {
   const card = document.getElementById('card-' + id);
   if (card) { card.classList.add('selected'); card.scrollIntoView({ behavior:'smooth', block:'nearest' }); }
   const stop = DAYS_DATA[d]?.stops.find(s => s.id === id);
-  if (stop) map.setView([stop.lat, stop.lng], 11, { animate:true });
+  if (!stop) return;
+  const isWalk = !!(DAYS_DATA[d] && DAYS_DATA[d].walkMode);
+  const targetZoom = isWalk ? 16 : 11;
+  const currentZoom = map.getZoom();
+  if (currentZoom >= targetZoom) {
+    map.panTo([stop.lat, stop.lng], { animate: true });
+  } else {
+    map.setView([stop.lat, stop.lng], targetZoom, { animate: true });
+  }
 }
 
 function toggleSidebar() {
@@ -383,6 +391,8 @@ function doAddStop() {
   updateProgress();
   saveData();
   showToast('✅ Точка добавлена');
+  // Auto-fetch weather for the new stop
+  fetchStopWeather(day, id);
 }
 
 // ── EDIT START POINT ──────────────────────────────────────────────────────────
@@ -644,7 +654,7 @@ function reverseDay(d) {
   for (var i = accomStops.length - 1; i >= 0; i--) {
     var s = accomStops[i];
     newStops.push({
-      id: '', num: 0, icon: s.icon || '🛎', type: s.type,
+      id: '', num: 0, icon: s.icon || '🛎️', type: s.type,
       name: s.name, lat: s.lat, lng: s.lng,
       arrP: '', depP: '', arrA: '', depA: ''
     });
@@ -902,6 +912,8 @@ function saveStopTime(id, day) {
   updateProgress();
   saveData();
   showToast('✅ Время обновлено');
+  // Re-fetch weather for this stop with updated plan time
+  fetchStopWeather(day, id);
 }
 
 // ── TIME ARITHMETIC ───────────────────────────────────────────────────────────
@@ -1404,6 +1416,54 @@ function _reapplyDayWeather(day) {
   });
 }
 
+// Fetch weather for a single stop (after adding stop or changing plan time)
+async function fetchStopWeather(day, stopId) {
+  var data = DAYS_DATA[day];
+  if (!data) return;
+  var s = data.stops.find(function(x) { return x.id === stopId; });
+  if (!s || !s.lat || !s.lng) return;
+  var dateISO = data.dateISO || '';
+  var time = s.arrP || '12:00';
+  try {
+    var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + s.lat +
+      '&longitude=' + s.lng +
+      '&hourly=temperature_2m,weather_code,wind_speed_10m,precipitation,is_day' +
+      '&timezone=auto&forecast_days=2';
+    var resp = await fetch(url);
+    var json = await resp.json();
+    if (!json || !json.hourly) return;
+    var parts = time.split(':');
+    var targetMin = (parseInt(parts[0]) || 12) * 60 + (parseInt(parts[1]) || 0);
+    var bestIdx = 0, bestDiff = 99999;
+    json.hourly.time.forEach(function(t, j) {
+      var h = parseInt(t.substring(11, 13)) || 0;
+      var diff = Math.abs(h * 60 - targetMin);
+      if (diff < bestDiff) { bestDiff = diff; bestIdx = j; }
+    });
+    var temp = Math.round(json.hourly.temperature_2m[bestIdx]);
+    var code = json.hourly.weather_code[bestIdx] || 0;
+    var windKmh = json.hourly.wind_speed_10m[bestIdx] || 0;
+    var wind = Math.round(windKmh * 10 / 36);
+    var precip = json.hourly.precipitation[bestIdx] || 0;
+    var isDay = json.hourly.is_day[bestIdx];
+    var emoji = _wmoIcon(code, isDay);
+    var timeStr = json.hourly.time[bestIdx].substring(11, 16);
+    var tempStr = (temp > 0 ? '+' : '') + temp + '\u00B0';
+    var precipStr = precip > 0 ? (precip.toFixed(1) + ' мм') : 'без осадков';
+    var desc = _wmoDesc(code);
+    var w = { tempStr: tempStr, emoji: emoji, wind: wind,
+              precipStr: precipStr, desc: desc, timeStr: timeStr };
+    _weatherCache[stopId] = w;
+    _renderWeather(stopId);
+    var db = _getWeatherDb();
+    if (db) {
+      db.ref('weather/' + day + '/points/' + stopId).set(w);
+    }
+  } catch(e) {
+    console.error('[weather] single stop', e);
+  }
+}
+
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
 initMap();
@@ -1528,7 +1588,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.5.0';
-var APP_BUILD   = 15;
+var APP_BUILD   = 17;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 

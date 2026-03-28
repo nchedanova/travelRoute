@@ -165,11 +165,27 @@ function _bresenhamLine(ax, ay, bx, by, urls, zoom, pad) {
   }
 }
 
-function getTilesAlongRoute(points) {
+// Haversine distance in km (for route length estimation)
+function _haversineKm(lat1, lng1, lat2, lng2) {
+  var R = 6371;
+  var dLat = (lat2 - lat1) * Math.PI / 180;
+  var dLng = (lng2 - lng1) * Math.PI / 180;
+  var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng/2) * Math.sin(dLng/2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function getTilesAlongRoute(points, isWalk) {
   if (!points.length) return [];
   const pts = points.filter(s => s.lat && s.lng);
   if (!pts.length) return [];
   const urls = new Set();
+
+  // Estimate total route distance
+  var totalKm = 0;
+  for (var k = 0; k < pts.length - 1; k++)
+    totalKm += _haversineKm(pts[k].lat, pts[k].lng, pts[k+1].lat, pts[k+1].lng);
 
   // z5 — обзор всей страны, маршрут виден целиком
   for (let i = 0; i < pts.length; i++)
@@ -213,9 +229,46 @@ function getTilesAlongRoute(points) {
     _bresenhamLine(lng2tile(pts[i].lng, 14), lat2tile(pts[i].lat, 14),
                    lng2tile(pts[i+1].lng, 14), lat2tile(pts[i+1].lat, 14), urls, 14, 1);
 
-  // z15 — только вокруг точек остановок (полная детализация на месте)
-  for (let i = 0; i < pts.length; i++)
-    _addTilesWithPadding(urls, lng2tile(pts[i].lng, 15), lat2tile(pts[i].lat, 15), 15, 3);
+  if (isWalk) {
+    // ── Walk mode: high zoom for street-level detail ──
+
+    // z15 — весь пеший маршрут (точки + линия, pad 2/1)
+    for (let i = 0; i < pts.length; i++)
+      _addTilesWithPadding(urls, lng2tile(pts[i].lng, 15), lat2tile(pts[i].lat, 15), 15, 2);
+    for (let i = 0; i < pts.length - 1; i++)
+      _bresenhamLine(lng2tile(pts[i].lng, 15), lat2tile(pts[i].lat, 15),
+                     lng2tile(pts[i+1].lng, 15), lat2tile(pts[i+1].lat, 15), urls, 15, 1);
+
+    // z16 — весь пеший маршрут (pad 1) — улицы и дома
+    for (let i = 0; i < pts.length; i++)
+      _addTilesWithPadding(urls, lng2tile(pts[i].lng, 16), lat2tile(pts[i].lat, 16), 16, 1);
+    for (let i = 0; i < pts.length - 1; i++)
+      _bresenhamLine(lng2tile(pts[i].lng, 16), lat2tile(pts[i].lat, 16),
+                     lng2tile(pts[i+1].lng, 16), lat2tile(pts[i+1].lat, 16), urls, 16, 1);
+
+    // z17 — только вокруг точек (pad 2) — максимальная детализация на месте
+    for (let i = 0; i < pts.length; i++)
+      _addTilesWithPadding(urls, lng2tile(pts[i].lng, 17), lat2tile(pts[i].lat, 17), 17, 2);
+
+  } else {
+    // ── Auto mode ──
+
+    // z15 — вдоль маршрута только для коротких дней (< 550 км), иначе только точки
+    if (totalKm < 550) {
+      for (let i = 0; i < pts.length; i++)
+        _addTilesWithPadding(urls, lng2tile(pts[i].lng, 15), lat2tile(pts[i].lat, 15), 15, 2);
+      for (let i = 0; i < pts.length - 1; i++)
+        _bresenhamLine(lng2tile(pts[i].lng, 15), lat2tile(pts[i].lat, 15),
+                       lng2tile(pts[i+1].lng, 15), lat2tile(pts[i+1].lat, 15), urls, 15, 1);
+    } else {
+      for (let i = 0; i < pts.length; i++)
+        _addTilesWithPadding(urls, lng2tile(pts[i].lng, 15), lat2tile(pts[i].lat, 15), 15, 3);
+    }
+
+    // z16 — всегда вокруг точек остановок (навигация на месте)
+    for (let i = 0; i < pts.length; i++)
+      _addTilesWithPadding(urls, lng2tile(pts[i].lng, 16), lat2tile(pts[i].lat, 16), 16, 3);
+  }
 
   return [...urls];
 }
@@ -240,7 +293,7 @@ async function prefetchRouteTiles(dayNum) {
   if (day.start?.lat) allPoints.push(day.start);
   day.stops.forEach(s => { if (s.lat && s.lng) allPoints.push(s); });
 
-  const tiles = getTilesAlongRoute(allPoints);
+  const tiles = getTilesAlongRoute(allPoints, !!day.walkMode);
   // Debug breakdown by zoom
   const byZoom = {};
   tiles.forEach(u => { const z = u.split('/')[3]; byZoom[z] = (byZoom[z]||0)+1; });

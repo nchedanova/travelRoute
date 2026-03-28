@@ -2655,11 +2655,11 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 .day-mode-pill.active-auto {
   background: var(--amber);
   color: #111;
+  cursor: default;
 }
-.day-mode-pill.active-auto:hover { opacity: 0.85; }
 .day-mode-pill.active-walk {
   background: var(--accent);
   color: #111;
+  cursor: default;
 }
-.day-mode-pill.active-walk:hover { opacity: 0.85; }
 
