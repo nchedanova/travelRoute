@@ -176,37 +176,46 @@ function _haversineKm(lat1, lng1, lat2, lng2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-function getTilesAlongRoute(points, isWalk) {
+function getTilesAlongRoute(points, isWalk, routeCoords) {
   if (!points.length) return [];
   const pts = points.filter(s => s.lat && s.lng);
   if (!pts.length) return [];
   const urls = new Set();
+
+  // Dense road coords from OSRM cache (if available)
+  // These trace the actual road — no bresenham needed, just tile padding around each point
+  const road = (routeCoords && routeCoords.length > 1) ? routeCoords : null;
 
   // Estimate total route distance
   var totalKm = 0;
   for (var k = 0; k < pts.length - 1; k++)
     totalKm += _haversineKm(pts[k].lat, pts[k].lng, pts[k+1].lat, pts[k+1].lng);
 
-  if (isWalk) {
-    // ── Walk mode: z13-z18 along entire route ──
-    for (let wz = 13; wz <= 18; wz++) {
-      for (let i = 0; i < pts.length; i++)
-        _addTilesWithPadding(urls, lng2tile(pts[i].lng, wz), lat2tile(pts[i].lat, wz), wz, 2);
-      for (let i = 0; i < pts.length - 1; i++)
-        _bresenhamLine(lng2tile(pts[i].lng, wz), lat2tile(pts[i].lat, wz),
-                       lng2tile(pts[i+1].lng, wz), lat2tile(pts[i+1].lat, wz), urls, wz, 1);
-    }
+  // Helper: add tiles along road (OSRM coords) or fallback to bresenham between stops
+  function _addRouteZoom(z, padPts, padLine) {
+    // Always add tiles around stop points with padPts
+    for (let i = 0; i < pts.length; i++)
+      _addTilesWithPadding(urls, lng2tile(pts[i].lng, z), lat2tile(pts[i].lat, z), z, padPts);
 
-  } else {
-    // ── Auto mode ──
-    // Helper to add route tiles (points + bresenham line) for a given zoom
-    function _addRouteZoom(z, padPts, padLine) {
-      for (let i = 0; i < pts.length; i++)
-        _addTilesWithPadding(urls, lng2tile(pts[i].lng, z), lat2tile(pts[i].lat, z), z, padPts);
+    if (road) {
+      // Dense road coords: just add pad around each point (no bresenham — already dense)
+      for (let i = 0; i < road.length; i++)
+        _addTilesWithPadding(urls, lng2tile(road[i].lng, z), lat2tile(road[i].lat, z), z, padLine);
+    } else {
+      // Fallback: straight bresenham between stop points
       for (let i = 0; i < pts.length - 1; i++)
         _bresenhamLine(lng2tile(pts[i].lng, z), lat2tile(pts[i].lat, z),
                        lng2tile(pts[i+1].lng, z), lat2tile(pts[i+1].lat, z), urls, z, padLine);
     }
+  }
+
+  if (isWalk) {
+    // ── Walk mode: z13-z18 along entire route ──
+    for (let wz = 13; wz <= 18; wz++)
+      _addRouteZoom(wz, 2, 1);
+
+  } else {
+    // ── Auto mode ──
 
     if (totalKm >= 550) {
       // Long route (>550 km): z6-z14 route, z16-z17 points
@@ -261,7 +270,10 @@ async function prefetchRouteTiles(dayNum) {
   if (day.start?.lat) allPoints.push(day.start);
   day.stops.forEach(s => { if (s.lat && s.lng) allPoints.push(s); });
 
-  const tiles = getTilesAlongRoute(allPoints, !!day.walkMode);
+  // Get dense road coordinates from OSRM cache (traces actual road, not straight lines)
+  const routeCoords = (typeof getDayRouteCoords === 'function') ? getDayRouteCoords(dayNum) : [];
+
+  const tiles = getTilesAlongRoute(allPoints, !!day.walkMode, routeCoords);
   // Debug breakdown by zoom
   const byZoom = {};
   tiles.forEach(u => { const z = u.split('/')[3]; byZoom[z] = (byZoom[z]||0)+1; });

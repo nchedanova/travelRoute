@@ -396,6 +396,32 @@ function switchMapDay(d) {
 }
 
 // ── SEGMENT HIGHLIGHT (заполненные = яркие) ───────────────────────────────────
+// Return dense road coordinates for a day from OSRM cache
+// Falls back to straight lines for segments not yet cached
+function getDayRouteCoords(dayNum) {
+  var data = DAYS_DATA[dayNum];
+  if (!data) return [];
+  var profile = data.walkMode ? 'foot' : 'driving';
+  var allPts = [{ lat: data.start.lat, lng: data.start.lng }];
+  data.stops.forEach(function(s) { if (s.lat && s.lng) allPts.push({ lat: s.lat, lng: s.lng }); });
+
+  var result = [];
+  for (var i = 0; i < allPts.length - 1; i++) {
+    var from = allPts[i], to = allPts[i + 1];
+    var key = profile + '|' + from.lat + ',' + from.lng + '|' + to.lat + ',' + to.lng;
+    var cached = _routeCache[key];
+    if (cached && cached.length > 0) {
+      // OSRM coords are [lat, lng] arrays — convert to {lat, lng}
+      cached.forEach(function(c) { result.push({ lat: c[0], lng: c[1] }); });
+    } else {
+      // Fallback: straight line
+      result.push(from);
+      result.push(to);
+    }
+  }
+  return result;
+}
+
 function refreshSegments() {
   var z = map ? map.getZoom() : 10;
   var close = z >= 13;  // street-level
