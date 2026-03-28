@@ -119,13 +119,17 @@ function initMap() {
   map = L.map('map', { center:[51.5, 39.5], zoom:5, zoomControl:true, attributionControl:false });
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
-  // Offline: cap zoom to our highest fully-cached level (z13).
-  // This prevents white tiles at z14+ and makes offline limitations clear to the user.
-  // Zooming out is handled automatically; if already deeper we snap back to z13.
-  var OFFLINE_MAX_ZOOM = 16;
+  // Offline: cap zoom to highest fully-cached level.
+  // Walk mode caches z17, auto mode caches z16.
+  function _getOfflineMaxZoom() {
+    var d = typeof currentDay !== 'undefined' ? currentDay : null;
+    if (d !== null && typeof DAYS_DATA !== 'undefined' && DAYS_DATA[d] && DAYS_DATA[d].walkMode) return 17;
+    return 16;
+  }
   window.addEventListener('offline', function() {
-    map.setMaxZoom(OFFLINE_MAX_ZOOM);
-    if (map.getZoom() > OFFLINE_MAX_ZOOM) map.setZoom(OFFLINE_MAX_ZOOM);
+    var maxZ = _getOfflineMaxZoom();
+    map.setMaxZoom(maxZ);
+    if (map.getZoom() > maxZ) map.setZoom(maxZ);
   });
   window.addEventListener('online', function() {
     map.setMaxZoom(19);
