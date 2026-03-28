@@ -875,13 +875,13 @@ function editStopTime(id, day) {
       <div class="edit-field">
         <div class="edit-label">Приб. план</div>
         <input class="edit-input edit-input-time" id="et-arrP-${id}" value="${s.arrP}" maxlength="5"
-          oninput="applyMask(this)" onblur="padTime(this)" placeholder="--:--">
+          inputmode="numeric" oninput="applyMask(this)" onblur="padTime(this)" placeholder="--:--">
       </div>
       ${s.depP !== undefined && s.depP !== '' ? `
       <div class="edit-field">
         <div class="edit-label">Отпр. план</div>
         <input class="edit-input edit-input-time" id="et-depP-${id}" value="${s.depP}" maxlength="5"
-          oninput="applyMask(this)" onblur="padTime(this)" placeholder="--:--">
+          inputmode="numeric" oninput="applyMask(this)" onblur="padTime(this)" placeholder="--:--">
       </div>` : ''}
     </div>
     <div style="font-size:9px;color:var(--muted);margin-bottom:8px;">Фактическое время остаётся без изменений</div>
@@ -943,6 +943,7 @@ function editDepartTime(day, el) {
   inp.className   = 'time-val-edit';
   inp.value       = current;
   inp.maxLength   = 5;
+  inp.inputMode   = 'numeric';
   inp.placeholder = '--:--';
   el.replaceWith(inp);
   inp.focus(); inp.select();
@@ -1479,10 +1480,12 @@ renderAllDays();
 updateProgress();
 loadState().then(() => startPolling());
 
-// Fix 4: scroll active time input into view when mobile keyboard opens
+// Fix 4: scroll active time input into view when mobile/tablet keyboard opens
 document.addEventListener('focusin', e => {
-  if (!e.target.matches('input.time-in, input#new-stop-arrP, input#new-stop-depP')) return;
-  if (window.innerWidth > 700) return;
+  if (!e.target.matches('input.time-in, input#new-stop-arrP, input#new-stop-depP, input.edit-input-time')) return;
+  // Detect touch device (covers tablets too) instead of width check
+  var isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  if (!isTouch) return;
   const sidebar = document.getElementById('sidebar');
   // wait for keyboard animation (~300ms)
   setTimeout(() => {
@@ -1593,7 +1596,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.5.0';
-var APP_BUILD   = 23;
+var APP_BUILD   = 24;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 
