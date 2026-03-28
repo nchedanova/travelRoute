@@ -142,7 +142,7 @@ header {
 
 .day-header {
   padding:14px 18px 10px; border-bottom:1px solid var(--border);
-  position:sticky; top:0; background:var(--surface); z-index:10;
+  position:sticky; top:0; background:var(--surface); z-index:250;
 }
 .day-label {
   font-family:'Unbounded',sans-serif;
