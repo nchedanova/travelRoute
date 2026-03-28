@@ -550,13 +550,13 @@ input.day-date-input {
   min-width:180px; padding:4px 0; box-shadow:0 4px 16px rgba(0,0,0,0.5);
 }
 .day-overflow-menu.show { display:block; }
-.day-overflow-menu button {
+.day-overflow-menu button:not(.day-mode-pill) {
   display:block; width:100%; text-align:left; padding:8px 14px;
   background:none; border:none; color:var(--text);
   font-family:'JetBrains Mono',monospace; font-size:11px;
   cursor:pointer; transition:background 0.1s;
 }
-.day-overflow-menu button:hover { background:var(--surface); }
+.day-overflow-menu button:not(.day-mode-pill):hover { background:var(--surface); }
 .delete-day-btn {
   background:transparent; border:1px solid var(--border);
   border-radius:3px; color:var(--muted);
