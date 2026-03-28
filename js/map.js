@@ -120,12 +120,8 @@ function initMap() {
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
   // Offline: cap zoom to highest fully-cached level.
-  // Walk caches z18, auto caches z17 around stops.
-  function _getOfflineMaxZoom() {
-    var d = typeof currentDay !== 'undefined' ? currentDay : null;
-    if (d !== null && typeof DAYS_DATA !== 'undefined' && DAYS_DATA[d] && DAYS_DATA[d].walkMode) return 18;
-    return 17;
-  }
+  // Both walk and auto now cache z18 (walk: route, auto: around stops).
+  function _getOfflineMaxZoom() { return 18; }
   window.addEventListener('offline', function() {
     var maxZ = _getOfflineMaxZoom();
     map.setMaxZoom(maxZ);

@@ -240,10 +240,10 @@ function getTilesAlongRoute(points, isWalk, routeCoords) {
       _addRouteZoom(wz, 2, 1);
 
   } else {
-    // ── Auto mode ──
+    // ── Auto mode: three tiers by distance ──
 
     if (totalKm >= 550) {
-      // Long route (>550 km): z6-z14 full route, z15 only at turns/junctions, z16-z17 points
+      // Long route (>550 km): z6-z14 route, z15 turns only
       _addRouteZoom(6, 1, 1);
       _addRouteZoom(7, 1, 1);
       _addRouteZoom(8, 2, 1);
@@ -262,8 +262,26 @@ function getTilesAlongRoute(points, isWalk, routeCoords) {
         _addTilesWithPadding(urls, lng2tile(turns[i].lng, 15), lat2tile(turns[i].lat, 15), 15, 2);
       console.log('[tiles] z15 turns detected:', turns.length);
 
+    } else if (totalKm >= 400) {
+      // Medium route (400-550 km): z8-z14 route, z15 turns only
+      _addRouteZoom(8, 2, 1);
+      _addRouteZoom(9, 2, 1);
+      _addRouteZoom(10, 2, 1);
+      _addRouteZoom(11, 3, 1);
+      _addRouteZoom(12, 2, 1);
+      _addRouteZoom(13, 2, 1);
+      _addRouteZoom(14, 2, 1);
+
+      // z15 — only around stop points + detected turns (>25°)
+      for (let i = 0; i < pts.length; i++)
+        _addTilesWithPadding(urls, lng2tile(pts[i].lng, 15), lat2tile(pts[i].lat, 15), 15, 2);
+      var turns = _findTurnPoints(road, 25, 5);
+      for (let i = 0; i < turns.length; i++)
+        _addTilesWithPadding(urls, lng2tile(turns[i].lng, 15), lat2tile(turns[i].lat, 15), 15, 2);
+      console.log('[tiles] z15 turns detected:', turns.length);
+
     } else {
-      // Short route (<550 km): z8-z15 route, z16-z17 points
+      // Short route (<400 km): z8-z15 full route
       _addRouteZoom(8, 2, 1);
       _addRouteZoom(9, 2, 1);
       _addRouteZoom(10, 2, 1);
@@ -274,11 +292,13 @@ function getTilesAlongRoute(points, isWalk, routeCoords) {
       _addRouteZoom(15, 2, 1);
     }
 
-    // z16, z17 — вокруг точек остановок (навигация на месте)
+    // z16, z17, z18 — вокруг точек остановок (навигация на месте)
     for (let i = 0; i < pts.length; i++)
       _addTilesWithPadding(urls, lng2tile(pts[i].lng, 16), lat2tile(pts[i].lat, 16), 16, 3);
     for (let i = 0; i < pts.length; i++)
       _addTilesWithPadding(urls, lng2tile(pts[i].lng, 17), lat2tile(pts[i].lat, 17), 17, 2);
+    for (let i = 0; i < pts.length; i++)
+      _addTilesWithPadding(urls, lng2tile(pts[i].lng, 18), lat2tile(pts[i].lat, 18), 18, 2);
   }
 
   return [...urls];
