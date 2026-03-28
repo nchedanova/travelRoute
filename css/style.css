@@ -556,7 +556,9 @@ input.day-date-input {
   font-family:'JetBrains Mono',monospace; font-size:11px;
   cursor:pointer; transition:background 0.1s;
 }
-.day-overflow-menu button:not(.day-mode-pill):hover { background:var(--surface); }
+@media (hover: hover) {
+  .day-overflow-menu button:not(.day-mode-pill):hover { background:var(--surface); }
+}
 .delete-day-btn {
   background:transparent; border:1px solid var(--border);
   border-radius:3px; color:var(--muted);
@@ -2651,7 +2653,9 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
   background: transparent;
   color: var(--muted);
 }
-.day-mode-pill.inactive:hover { color: var(--text); }
+@media (hover: hover) {
+  .day-mode-pill.inactive:hover { color: var(--text); }
+}
 .day-mode-pill.active-auto {
   background: var(--amber);
   color: #111;
