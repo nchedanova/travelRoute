@@ -484,7 +484,7 @@ body.viewer-mode #undoBtn { display:none !important; }
   background:var(--surface2); border-radius:6px;
   color:var(--muted); font-family:'JetBrains Mono',monospace;
   font-size:11px; letter-spacing:0.06em; cursor:pointer;
-  transition:all 0.2s; text-align:center;
+  transition:background 0.15s, color 0.15s; text-align:center;
 }
 .add-stop-btn:hover { background:var(--surface); color:var(--text); }
 

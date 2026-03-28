@@ -1,7 +1,7 @@
 // ── SERVICE WORKER · Дорожный журнал ───────────────────────────────────────────
-const CACHE_STATIC  = 'travel-static-v2-5-15';
+const CACHE_STATIC  = 'travel-static-v2-5-16';
 const APP_VERSION   = '2.5.0';
-const APP_BUILD     = 17;
+const APP_BUILD     = 18;
 const CACHE_TILES   = 'travel-tiles-v2';
 const CACHE_FONTS   = 'travel-fonts-v1';
 
@@ -93,7 +93,11 @@ self.addEventListener('fetch', e => {
       url.hostname.includes('securetoken.googleapis.com') ||
       url.hostname.includes('api.github.com') ||
       url.hostname.includes('gist.githubusercontent.com') ||
-      url.hostname.includes('firebasestorage.googleapis.com')) {
+      url.hostname.includes('firebasestorage.googleapis.com') ||
+      url.hostname.includes('open-meteo.com') ||
+      url.hostname.includes('nominatim.openstreetmap.org') ||
+      url.hostname.includes('routing.openstreetmap.de') ||
+      url.hostname.includes('router.project-osrm.org')) {
     return; // default browser fetch
   }
 
