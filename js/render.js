@@ -391,7 +391,7 @@ function renderDaySection(d) {
     </div>
     <div id="d${d}-stops"></div>
     ${isAdmin() ? `
-    <div style="display:flex;gap:8px;padding:8px 12px 4px;">
+    <div style="display:flex;gap:8px;padding:8px 16px 4px;">
       <button class="add-stop-btn" style="flex:1;" onclick="openAddStop(${d})">＋ ДОБАВИТЬ ТОЧКУ</button>
       <button class="add-stop-btn" id="mapAddBtn" style="flex:0 0 auto;padding-left:14px;padding-right:14px;"
         onclick="toggleMapAddMode(${d})" title="Кликни на карте чтобы добавить точку">📍 НА КАРТЕ</button>

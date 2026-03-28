@@ -145,7 +145,7 @@ function initMap() {
       window._mapAddMode = false;
       document.getElementById('map').style.cursor = '';
       const mapAddBtn = document.getElementById('mapAddBtn');
-      if (mapAddBtn) { mapAddBtn.classList.remove('active'); mapAddBtn.textContent = '📍 На карте'; }
+      if (mapAddBtn) { mapAddBtn.classList.remove('active'); mapAddBtn.textContent = '📍 НА КАРТЕ'; }
       openAddStop(currentDay, e.latlng.lat, e.latlng.lng);
       return;
     }
