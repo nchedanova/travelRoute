@@ -299,6 +299,7 @@ async function prefetchRouteTiles(dayNum) {
   tiles.forEach(u => { const z = u.split('/')[3]; byZoom[z] = (byZoom[z]||0)+1; });
   console.log(`[tiles] Day ${dayNum}: ${tiles.length} total`, byZoom);
   showToast && showToast(`📥 Загрузка карты: ${tiles.length} тайлов…`);
+  window._tilePrefetching = true;
 
   sw.postMessage({ type: 'PREFETCH_TILES', tiles });
 }
@@ -314,6 +315,7 @@ if (navigator.serviceWorker) {
       if (pct % 25 === 0) showToast && showToast(msg);
     }
     if (e.data?.type === 'PREFETCH_DONE') {
+      window._tilePrefetching = false;
       setSyncStatus && setSyncStatus('✅ Карта загружена', 'var(--green)');
       showToast && showToast(`✅ Карта сохранена! (${e.data.done} тайлов)`);
       setTimeout(() => setSyncStatus && setSyncStatus('☁ ок', 'var(--muted)'), 5000);

@@ -8,6 +8,8 @@ function cloudEnabled() {
 function setSyncStatus(text, color) {
   const el = document.getElementById('syncStatus');
   if (!el) return;
+  // During tile prefetch, only prefetch messages (📥/✅ Карта) can update status
+  if (window._tilePrefetching && !text.includes('📥') && !text.includes('Карта загружена')) return;
   el.textContent = text;
   el.style.color = color || 'var(--muted)';
 }
