@@ -709,6 +709,9 @@ function setDayMode(day, mode) {
 
   data.walkMode = (mode === 'walk');
 
+  // Flush stale OSRM requests so new profile (foot/driving) applies instantly
+  if (typeof _flushQueue === 'function') _flushQueue();
+
   // Update depart icon in sidebar
   var departIcon = document.getElementById('d' + day + '-depart-icon');
   if (departIcon) departIcon.textContent = data.walkMode ? '🚶' : '🚗';
@@ -1590,7 +1593,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.5.0';
-var APP_BUILD   = 22;
+var APP_BUILD   = 23;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 

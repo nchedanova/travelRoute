@@ -366,7 +366,6 @@ function drawDay(d) {
 }
 
 function redrawDay(d) {
-  _flushQueue();  // cancel stale OSRM fetches so new profile applies instantly
   if (!layers[d]) {
     layers[d]        = L.layerGroup();
     segmentLayers[d] = [];
