@@ -1,7 +1,7 @@
 // ── SERVICE WORKER · Дорожный журнал ───────────────────────────────────────────
 const CACHE_STATIC  = 'travel-static-v2-6-0';
 const APP_VERSION   = '2.6.0';
-const APP_BUILD     = 38;
+const APP_BUILD     = 39;
 const CACHE_TILES   = 'travel-tiles-v2';
 const CACHE_FONTS   = 'travel-fonts-v1';
 
