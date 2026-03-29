@@ -277,10 +277,7 @@ function commitImport() {
 
   if (mode==='new') {
     var keys=dayKeys(), newD=Math.max.apply(null,keys)+1, colIdx=keys.length%DAY_COLORS.length;
-    var newDateISO='', lastDay=DAYS_DATA[keys[keys.length-1]];
-    if(lastDay&&lastDay.dateISO&&typeof parseDateDMY==='function'){
-      var dt=parseDateDMY(lastDay.dateISO); if(dt){dt.setDate(dt.getDate()+1);newDateISO=fmtDateDMY(dt);}
-    }
+    var newDateISO='';
     var stops=stopPts.map(function(p,i){
       var t=stopTypes[i];
       return {id:'d'+newD+'s'+(i+1),num:i+1,icon:TYPE_ICONS[t]||'📍',type:t,name:stopNames[i],lat:p.lat,lng:p.lng,arrP:'',depP:'',arrA:'',depA:''};
