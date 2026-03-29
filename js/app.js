@@ -744,17 +744,9 @@ function addNewDay() {
   const newD     = Math.max(...keys) + 1;
   const colorIdx = keys.length % DAY_COLORS.length;
 
-  // Compute next date from last day
-  var lastDay = DAYS_DATA[keys[keys.length - 1]];
-  var newDateISO = '';
-  if (lastDay && lastDay.dateISO && typeof parseDateDMY === 'function') {
-    var dt = parseDateDMY(lastDay.dateISO);
-    if (dt) { dt.setDate(dt.getDate() + 1); newDateISO = fmtDateDMY(dt); }
-  }
-
   DAYS_DATA[newD] = {
     color: DAY_COLORS[colorIdx],
-    dateISO: newDateISO,
+    dateISO: '',
     date: '',
     departP: '', departA: '',
     start: { lat:0, lng:0, name:'Старт', icon:'🚗' },
@@ -965,6 +957,8 @@ function editDepartTime(day, el) {
     // Always save the new departP value
     DAYS_DATA[day].departP = val;
     saveData();
+    // Re-fetch weather for start point with updated time
+    fetchStartWeather(day);
 
     // Cascade time shift to stops only if both old and new times are valid and differ
     const oldMins = timeToMins(current);
@@ -1470,6 +1464,52 @@ async function fetchStopWeather(day, stopId) {
   }
 }
 
+// Fetch weather for start point (after changing departP time)
+async function fetchStartWeather(day) {
+  var data = DAYS_DATA[day];
+  if (!data || !data.start || !data.start.lat || !data.start.lng) return;
+  var startId = 'd' + day + '-start';
+  var time = data.departP || '08:00';
+  try {
+    var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + data.start.lat +
+      '&longitude=' + data.start.lng +
+      '&hourly=temperature_2m,weather_code,wind_speed_10m,precipitation,is_day' +
+      '&timezone=auto&forecast_days=2';
+    var resp = await fetch(url);
+    var json = await resp.json();
+    if (!json || !json.hourly) return;
+    var parts = time.split(':');
+    var targetMin = (parseInt(parts[0]) || 8) * 60 + (parseInt(parts[1]) || 0);
+    var bestIdx = 0, bestDiff = 99999;
+    json.hourly.time.forEach(function(t, j) {
+      var h = parseInt(t.substring(11, 13)) || 0;
+      var diff = Math.abs(h * 60 - targetMin);
+      if (diff < bestDiff) { bestDiff = diff; bestIdx = j; }
+    });
+    var temp = Math.round(json.hourly.temperature_2m[bestIdx]);
+    var code = json.hourly.weather_code[bestIdx] || 0;
+    var windKmh = json.hourly.wind_speed_10m[bestIdx] || 0;
+    var wind = Math.round(windKmh * 10 / 36);
+    var precip = json.hourly.precipitation[bestIdx] || 0;
+    var isDay = json.hourly.is_day[bestIdx];
+    var emoji = _wmoIcon(code, isDay);
+    var timeStr = json.hourly.time[bestIdx].substring(11, 16);
+    var tempStr = (temp > 0 ? '+' : '') + temp + '\u00B0';
+    var precipStr = precip > 0 ? (precip.toFixed(1) + ' мм') : 'без осадков';
+    var desc = _wmoDesc(code);
+    var w = { tempStr: tempStr, emoji: emoji, wind: wind,
+              precipStr: precipStr, desc: desc, timeStr: timeStr };
+    _weatherCache[startId] = w;
+    _renderWeather(startId);
+    var db = _getWeatherDb();
+    if (db) {
+      db.ref('weather/' + day + '/points/' + startId).set(w);
+    }
+  } catch(e) {
+    console.error('[weather] start point', e);
+  }
+}
+
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
 initMap();
@@ -1596,7 +1636,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.5.0';
-var APP_BUILD   = 33;
+var APP_BUILD   = 34;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 
