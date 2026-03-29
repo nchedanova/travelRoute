@@ -940,7 +940,11 @@ function editDepartTime(day, el) {
   el.replaceWith(inp);
   inp.focus(); inp.select();
 
+  let _committed = false;
   const commit = () => {
+    if (_committed) return;
+    _committed = true;
+
     let val = inp.value.trim();
     const digits = val.replace(/\D/g, '');
     if (digits.length === 4) val = digits.slice(0, 2) + ':' + digits.slice(2);
@@ -956,9 +960,6 @@ function editDepartTime(day, el) {
 
     // Always save the new departP value
     DAYS_DATA[day].departP = val;
-    saveData();
-    // Re-fetch weather for start point with updated time
-    fetchStartWeather(day);
 
     // Cascade time shift to stops only if both old and new times are valid and differ
     const oldMins = timeToMins(current);
@@ -974,9 +975,11 @@ function editDepartTime(day, el) {
       redrawDay(day);
       updateProgress();
       showToast('🕐 Времена пересчитаны (' + (delta > 0 ? '+' : '') + Math.round(delta/60*10)/10 + 'ч)');
-      // Re-fetch weather for all stops with shifted times
-      fetchDayWeather(day);
     }
+
+    saveData();
+    // Re-fetch weather after all times are finalized (delayed to not interfere with DOM)
+    setTimeout(function() { fetchDayWeather(day); }, 300);
   };
 
   inp.addEventListener('blur', commit);
@@ -1638,7 +1641,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.5.0';
-var APP_BUILD   = 35;
+var APP_BUILD   = 36;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 
