@@ -240,56 +240,54 @@ function getTilesAlongRoute(points, isWalk, routeCoords) {
       _addRouteZoom(wz, 2, 1);
 
   } else {
-    // ── Auto mode: three tiers by distance ──
+    // ── Auto mode: five tiers by distance ──
+    var turns;
 
     if (totalKm >= 550) {
-      // Long route (>550 km): z6-z14 route, z15 turns only
-      _addRouteZoom(6, 1, 1);
-      _addRouteZoom(7, 1, 1);
-      _addRouteZoom(8, 2, 1);
-      _addRouteZoom(9, 2, 1);
-      _addRouteZoom(10, 2, 1);
-      _addRouteZoom(11, 3, 1);
-      _addRouteZoom(12, 2, 1);
-      _addRouteZoom(13, 2, 1);
-      _addRouteZoom(14, 2, 1);
+      // >550 km: z6-z14 route, z15 turns+stops, z16-z18 stops
+      for (let z = 6; z <= 14; z++)
+        _addRouteZoom(z, z === 11 ? 3 : (z <= 7 ? 1 : 2), 1);
 
-      // z15 — only around stop points + detected turns (>25°)
+      turns = _findTurnPoints(road, 25, 5);
       for (let i = 0; i < pts.length; i++)
         _addTilesWithPadding(urls, lng2tile(pts[i].lng, 15), lat2tile(pts[i].lat, 15), 15, 2);
-      var turns = _findTurnPoints(road, 25, 5);
       for (let i = 0; i < turns.length; i++)
         _addTilesWithPadding(urls, lng2tile(turns[i].lng, 15), lat2tile(turns[i].lat, 15), 15, 2);
-      console.log('[tiles] z15 turns detected:', turns.length);
+      console.log('[tiles] >550km z15 turns:', turns.length);
 
     } else if (totalKm >= 400) {
-      // Medium route (400-550 km): z8-z14 route, z15 turns only
-      _addRouteZoom(8, 2, 1);
-      _addRouteZoom(9, 2, 1);
-      _addRouteZoom(10, 2, 1);
-      _addRouteZoom(11, 3, 1);
-      _addRouteZoom(12, 2, 1);
-      _addRouteZoom(13, 2, 1);
-      _addRouteZoom(14, 2, 1);
+      // 400-550 km: z8-z14 route, z15 turns+stops, z16-z18 stops
+      for (let z = 8; z <= 14; z++)
+        _addRouteZoom(z, z === 11 ? 3 : 2, 1);
 
-      // z15 — only around stop points + detected turns (>25°)
+      turns = _findTurnPoints(road, 25, 5);
       for (let i = 0; i < pts.length; i++)
         _addTilesWithPadding(urls, lng2tile(pts[i].lng, 15), lat2tile(pts[i].lat, 15), 15, 2);
-      var turns = _findTurnPoints(road, 25, 5);
       for (let i = 0; i < turns.length; i++)
         _addTilesWithPadding(urls, lng2tile(turns[i].lng, 15), lat2tile(turns[i].lat, 15), 15, 2);
-      console.log('[tiles] z15 turns detected:', turns.length);
+      console.log('[tiles] 400-550km z15 turns:', turns.length);
+
+    } else if (totalKm >= 160) {
+      // 160-400 km: z8-z15 full route, z16-z18 stops
+      for (let z = 8; z <= 15; z++)
+        _addRouteZoom(z, z === 11 ? 3 : 2, 1);
+
+    } else if (totalKm >= 60) {
+      // 60-160 km: z9-z15 route, z16 turns+stops, z16-z18 stops
+      for (let z = 9; z <= 15; z++)
+        _addRouteZoom(z, z === 11 ? 3 : 2, 1);
+
+      turns = _findTurnPoints(road, 25, 5);
+      for (let i = 0; i < pts.length; i++)
+        _addTilesWithPadding(urls, lng2tile(pts[i].lng, 16), lat2tile(pts[i].lat, 16), 16, 2);
+      for (let i = 0; i < turns.length; i++)
+        _addTilesWithPadding(urls, lng2tile(turns[i].lng, 16), lat2tile(turns[i].lat, 16), 16, 2);
+      console.log('[tiles] 60-160km z16 turns:', turns.length);
 
     } else {
-      // Short route (<400 km): z8-z15 full route
-      _addRouteZoom(8, 2, 1);
-      _addRouteZoom(9, 2, 1);
-      _addRouteZoom(10, 2, 1);
-      _addRouteZoom(11, 3, 1);
-      _addRouteZoom(12, 2, 1);
-      _addRouteZoom(13, 2, 1);
-      _addRouteZoom(14, 2, 1);
-      _addRouteZoom(15, 2, 1);
+      // <60 km: z10-z16 full route, z17-z18 stops
+      for (let z = 10; z <= 16; z++)
+        _addRouteZoom(z, 2, 1);
     }
 
     // z16, z17, z18 — вокруг точек остановок (навигация на месте)
