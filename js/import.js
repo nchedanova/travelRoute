@@ -299,7 +299,7 @@ function commitImport() {
     var ec=DAYS_DATA[day].stops.length;
     stopPts.forEach(function(p,i){
       var t=stopTypes[i];
-      DAYS_DATA[day].stops.push({id:'d'+day+'s'+Date.now()+i,num:ec+i+1,icon:TYPE_ICONS[t]||'📍',type:t,name:stopNames[i],lat:p.lat,lng:p.lng,arrP:'',depP:'',arrA:'',depA:''});
+      DAYS_DATA[day].stops.push({id:'d'+day+'s'+(ec+i+1)+'_'+Date.now(),num:ec+i+1,icon:TYPE_ICONS[t]||'📍',type:t,name:stopNames[i],lat:p.lat,lng:p.lng,arrP:'',depP:'',arrA:'',depA:''});
     });
     renderStops(day); updateDayRoute(day); redrawDay(day); switchDay(day);
   }

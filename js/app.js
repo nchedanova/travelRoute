@@ -475,8 +475,10 @@ function doEditStart() {
   if (!name) { document.getElementById('edit-start-name').focus(); return; }
   const manLat = parseFloat(document.getElementById('edit-start-lat').value);
   const manLng = parseFloat(document.getElementById('edit-start-lng').value);
-  const lat    = editStartLat || (isNaN(manLat) ? null : manLat);
-  const lng    = editStartLng || (isNaN(manLng) ? null : manLng);
+  // Ручной ввод имеет приоритет над Nominatim-переменной (та может быть устаревшей
+  // если пользователь выбрал результат, а потом исправил координаты руками)
+  const lat = (!isNaN(manLat) ? manLat : null) || editStartLat;
+  const lng = (!isNaN(manLng) ? manLng : null) || editStartLng;
   if (!lat || !lng) { alert('Укажите координаты'); return; }
   const icon = document.getElementById('edit-start-icon').value.trim() || '🚗';
   const day  = editStartDay;
@@ -878,12 +880,12 @@ function editStopTime(id, day) {
         <input class="edit-input edit-input-time" id="et-arrP-${id}" value="${s.arrP}" maxlength="5"
           inputmode="numeric" oninput="applyMask(this)" onblur="padTime(this)" placeholder="--:--">
       </div>
-      ${s.depP !== undefined && s.depP !== '' ? `
+      ${`
       <div class="edit-field">
         <div class="edit-label">Отпр. план</div>
         <input class="edit-input edit-input-time" id="et-depP-${id}" value="${s.depP}" maxlength="5"
           inputmode="numeric" oninput="applyMask(this)" onblur="padTime(this)" placeholder="--:--">
-      </div>` : ''}
+      </div>`}
     </div>
     <div style="font-size:9px;color:var(--muted);margin-bottom:8px;">Фактическое время остаётся без изменений</div>
     <div class="edit-actions-row">
@@ -1220,7 +1222,9 @@ function openShareDay(day) {
   ).join('\n');
 
   const modal = document.getElementById('shareModal');
-  document.getElementById('share-day-title').textContent = `День ${day} · ${data.date} · ${data.start.name} → ${points[points.length-1].name}`;
+  document.getElementById('share-day-title').textContent =
+    `День ${day} · ${data.date} · ${data.start.name}` +
+    (points.length > 1 ? ` → ${points[points.length-1].name}` : '');
 
   document.getElementById('share-yandex-link').href = yandexUrl;
   document.getElementById('share-yandex-sub').textContent = yandexUrl.slice(0, 60) + '…';
@@ -1650,7 +1654,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.6.0';
-var APP_BUILD   = 43;
+var APP_BUILD   = 46;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 

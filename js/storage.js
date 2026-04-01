@@ -165,6 +165,7 @@ async function loadState() {
       renderAllDays();
       updateProgress();
       switchDay(currentDay <= dayKeys().length ? currentDay : dayKeys()[0] || 1);
+      _lastGeoHash = _buildGeoHash(); // фиксируем геометрию из кэша — первый pollCloud не перерисует карту без причины
     }
   } catch(e) { console.error('loadState localStorage error', e); }
 
@@ -341,17 +342,19 @@ async function pollCloud() {
     renderTabs();
     renderAllDays();
     updateProgress();
-    // Переключаем карту на текущий день — обновляет отрезок после свопа дней
+    // Переключаем карту на текущий день только если изменилась геометрия —
+    // иначе fitBounds прыгает на маршрут каждые 10 сек пока читатель смотрит на карту
     var validDay = dayKeys().includes(currentDay) ? currentDay : (dayKeys()[0] || 1);
     if (validDay !== currentDay) currentDay = validDay;
-    switchMapDay(currentDay);
+    if (geoChanged) switchMapDay(currentDay);
     const t = new Date().toLocaleTimeString('ru', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
     setSyncStatus(`🔄 обновлено ${t}`, 'var(--green)');
     setTimeout(() => setSyncStatus(
       CLOUD_CONFIG.canWrite ? '☁ ок' : '👁 только чтение',
       CLOUD_CONFIG.canWrite ? 'var(--muted)' : 'var(--amber)'
     ), 3000);
-    showToast('🔄 Данные обновлены');
+    // Тост только при геометрических изменениях — иначе мигает каждые 10 сек
+    if (geoChanged) showToast('🔄 Маршрут обновлён');
   } catch(e) {
     console.warn('poll error', e);
   }
