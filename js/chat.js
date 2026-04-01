@@ -65,8 +65,8 @@ function toggleChatSound() {
   localStorage.setItem('travel_chat_notify', next);
   _updateSoundBtn();
   _updateNotifyBtn();
-  // При включении звука на десктопе — попутно запрашиваем разрешение браузера
-  if (next === 'on' || next === 'pin') _requestNotificationPermission();
+  // Запрашиваем разрешение при любом клике пока не выдано — user gesture есть
+  _requestNotificationPermission();
   // Keep-alive management
   if (next === 'pin') {
     if (typeof startKeepAlive === 'function') startKeepAlive();

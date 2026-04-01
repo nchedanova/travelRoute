@@ -187,19 +187,25 @@ async function loadState() {
     const saved = await fetchCloudData();
     const json  = JSON.stringify(saved);
     _lastCloudHash = strHash(json);
+    const geoHashBefore = _buildGeoHash(); // до applyPayload — на основе localStorage-данных
     applyPayload(saved);
-    // Пересоздаём слои карты
-    Object.keys(layers).forEach(k => {
-      if (map.hasLayer(layers[k])) map.removeLayer(layers[k]);
-      delete layers[k];
-    });
-    Object.keys(segmentLayers).forEach(k => { delete segmentLayers[k]; });
-    dayKeys().forEach(d => {
-      layers[d] = L.layerGroup();
-      segmentLayers[d] = [];
-      redrawDay(d);
-    });
-    _lastGeoHash = _buildGeoHash(); // фиксируем геометрию после первой загрузки
+    const geoHashAfter = _buildGeoHash();  // после — на основе облачных данных
+    _lastGeoHash = geoHashAfter;
+
+    if (geoHashBefore !== geoHashAfter) {
+      // Геометрия изменилась (первый визит или маршрут реально поменялся) → полный redraw
+      Object.keys(layers).forEach(k => {
+        if (map.hasLayer(layers[k])) map.removeLayer(layers[k]);
+        delete layers[k];
+      });
+      Object.keys(segmentLayers).forEach(k => { delete segmentLayers[k]; });
+      dayKeys().forEach(d => {
+        layers[d] = L.layerGroup();
+        segmentLayers[d] = [];
+        redrawDay(d);
+      });
+    }
+    // Если геометрия та же — слои не трогаем, линии по дорогам из _routeCache остаются
     // Обновляем UI после загрузки облачных данных
     renderTabs();
     renderAllDays();
