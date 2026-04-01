@@ -198,6 +198,7 @@ async function loadState() {
       segmentLayers[d] = [];
       redrawDay(d);
     });
+    _lastGeoHash = _buildGeoHash(); // фиксируем геометрию после первой загрузки
     // Обновляем UI после загрузки облачных данных
     renderTabs();
     renderAllDays();
@@ -254,9 +255,25 @@ function saveData() {
 
 // ── AUTO-POLL (тихое обновление) ──────────────────────────────────────────────
 let _lastCloudHash = null;
+let _lastGeoHash   = null;  // хэш только координат — перерисовка карты только при изменении геометрии
 let _userIsTyping  = false;
 let _userHasFocus  = false;  // любой инпут сфокусирован
 let _typingTimer   = null;
+
+// Хэш только геометрии маршрута: ключи дней, start + stops lat/lng, walkMode.
+// Изменение времени/факта не влияет → читатель не видит вспышку прямых линий.
+function _buildGeoHash() {
+  try {
+    var parts = dayKeys().sort(function(a,b){return a-b;}).map(function(d) {
+      var day = DAYS_DATA[d];
+      if (!day) return '';
+      var pts = day.start.lat + ',' + day.start.lng;
+      day.stops.forEach(function(s) { pts += '|' + s.lat + ',' + s.lng; });
+      return d + ':' + (day.walkMode ? '1' : '0') + ':' + pts;
+    });
+    return strHash(parts.join(';'));
+  } catch(e) { return null; }
+}
 
 function strHash(s) {
   let h = 0;
@@ -298,17 +315,28 @@ async function pollCloud() {
     applyPayload(saved);
     localStorage.setItem('travel_tracker_v3', json);
 
-    // Пересоздаём слои карты (дни могли поменяться местами)
-    Object.keys(layers).forEach(k => {
-      if (map.hasLayer(layers[k])) map.removeLayer(layers[k]);
-      delete layers[k];
-    });
-    Object.keys(segmentLayers).forEach(k => { delete segmentLayers[k]; });
-    dayKeys().forEach(d => {
-      layers[d] = L.layerGroup();
-      segmentLayers[d] = [];
-      redrawDay(d);
-    });
+    // Проверяем изменилась ли геометрия маршрута (координаты, walkMode, состав дней).
+    // Если нет — не трогаем слои карты: читатель не видит вспышку прямых линий
+    // при каждом поллинге из-за изменения только времён/факта.
+    const newGeoHash = _buildGeoHash();
+    const geoChanged = (newGeoHash !== _lastGeoHash);
+    _lastGeoHash = newGeoHash;
+
+    if (geoChanged) {
+      // Геометрия изменилась (добавили точку, поменяли координаты, поменяли порядок дней)
+      // → пересоздаём слои карты полностью
+      Object.keys(layers).forEach(k => {
+        if (map.hasLayer(layers[k])) map.removeLayer(layers[k]);
+        delete layers[k];
+      });
+      Object.keys(segmentLayers).forEach(k => { delete segmentLayers[k]; });
+      dayKeys().forEach(d => {
+        layers[d] = L.layerGroup();
+        segmentLayers[d] = [];
+        redrawDay(d);
+      });
+    }
+    // Если геометрия та же — слои не трогаем, линии по дорогам остаются
 
     renderTabs();
     renderAllDays();
