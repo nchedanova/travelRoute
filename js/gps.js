@@ -397,3 +397,20 @@ function _showEl(id) {
   const el = document.getElementById(id);
   if (el) el.style.display = 'flex';
 }
+
+// ── ПУБЛИЧНЫЙ МЕТОД: обновить иконку маркера при смене дня ────────────────────
+// Вызывается из switchDay() в app.js когда пользователь переключает вкладку дня.
+// Без этого иконка 🚗/🚶 залипает до следующего Firebase-события.
+function refreshGpsMarkerIcon() {
+  if (!_gpsMarker) return; // демо-режим или GPS ещё не запущен — ничего не делаем
+  var isRemote = typeof CLOUD_CONFIG !== 'undefined' && !CLOUD_CONFIG.canWrite;
+  var newIcon = _makeCarIcon(isRemote);
+  _gpsMarker.setIcon(newIcon);
+  // Обновляем тултип — он создаётся один раз при первом появлении маркера
+  var isWalk = typeof currentDay !== 'undefined' && DAYS_DATA[currentDay]?.walkMode;
+  var label = isRemote
+    ? (isWalk ? '🚶 Путешественник' : '🚗 Путешественник')
+    : '📍 Вы здесь';
+  _gpsMarker.unbindTooltip();
+  _gpsMarker.bindTooltip(label, { permanent: false, direction: 'top', offset: [0, -14] });
+}
