@@ -91,14 +91,11 @@ let _titleBlinkTimer = null;
 const _originalTitle = document.title;
 
 function _requestNotificationPermission() {
-  // Вызывается при включении звука на десктопе — user gesture, браузер не блокирует
-  var isDesktop = !('ontouchstart' in window) && navigator.maxTouchPoints === 0;
-  if (!isDesktop || !('Notification' in window)) return;
-  if (Notification.permission === 'default') {
-    Notification.requestPermission().then(function(result) {
-      if (result === 'granted') showToast('🔔 Уведомления браузера включены');
-    });
-  }
+  if (!('Notification' in window)) return;
+  if (Notification.permission !== 'default') return; // уже выдано или заблокировано
+  Notification.requestPermission().then(function(result) {
+    if (result === 'granted') showToast('🔔 Уведомления браузера включены');
+  });
 }
 
 // Публичная — на случай если нужно вызвать вручную (сейчас не используется в UI)
