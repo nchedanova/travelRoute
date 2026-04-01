@@ -238,10 +238,17 @@ function _updateCoordsDisplay(displayId, latVal, lngVal) {
 }
 
 // Called when user manually types in a lat or lng field in modals
-function onManualCoordInput(latFieldId, lngFieldId, displayId) {
+function onManualCoordInput(latFieldId, lngFieldId, displayId, stopId) {
   var lat = parseFloat(document.getElementById(latFieldId).value);
   var lng = parseFloat(document.getElementById(lngFieldId).value);
-  if (!isNaN(lat) && !isNaN(lng)) _updateCoordsDisplay(displayId, lat, lng);
+  if (!isNaN(lat) && !isNaN(lng)) {
+    _updateCoordsDisplay(displayId, lat, lng);
+    // Синхронизируем _editStopCoords чтобы saveStopEdit взял ручной ввод,
+    // а не исходные координаты точки (которые записываются при открытии формы)
+    if (stopId && typeof _editStopCoords !== 'undefined') {
+      _editStopCoords[stopId] = { lat: lat, lng: lng };
+    }
+  }
 }
 
 function openAddStop(day, prefillLat, prefillLng) {
@@ -1067,13 +1074,13 @@ function editStop(id, day) {
         <div class="edit-label">Широта (lat)</div>
         <input class="edit-input edit-input-coord" id="ei-lat-${id}" type="text" inputmode="decimal"
           value="${s.lat ? s.lat.toFixed(6) : ''}" placeholder="55.7965"
-          oninput="splitCoordsInput(this,'ei-lng-${id}','ei-coords-${id}');onManualCoordInput('ei-lat-${id}','ei-lng-${id}','ei-coords-${id}')">
+          oninput="splitCoordsInput(this,'ei-lng-${id}','ei-coords-${id}');onManualCoordInput('ei-lat-${id}','ei-lng-${id}','ei-coords-${id}','${id}')">
       </div>
       <div class="edit-field edit-field-grow">
         <div class="edit-label">Долгота (lng)</div>
         <input class="edit-input edit-input-coord" id="ei-lng-${id}" type="text" inputmode="decimal"
           value="${s.lng ? s.lng.toFixed(6) : ''}" placeholder="37.9475"
-          oninput="onManualCoordInput('ei-lat-${id}','ei-lng-${id}','ei-coords-${id}')">
+          oninput="onManualCoordInput('ei-lat-${id}','ei-lng-${id}','ei-coords-${id}','${id}')">
       </div>
     </div>
     <div class="edit-actions-row">
@@ -1643,7 +1650,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.6.0';
-var APP_BUILD   = 42;
+var APP_BUILD   = 43;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 
