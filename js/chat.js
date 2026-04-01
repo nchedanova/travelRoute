@@ -64,6 +64,9 @@ function toggleChatSound() {
   const next = modes[(modes.indexOf(cur) + 1) % modes.length];
   localStorage.setItem('travel_chat_notify', next);
   _updateSoundBtn();
+  _updateNotifyBtn();
+  // При включении звука на десктопе — попутно запрашиваем разрешение браузера
+  if (next === 'on' || next === 'pin') _requestNotificationPermission();
   // Keep-alive management
   if (next === 'pin') {
     if (typeof startKeepAlive === 'function') startKeepAlive();
@@ -88,23 +91,38 @@ let _titleBlinkTimer = null;
 const _originalTitle = document.title;
 
 function _requestNotificationPermission() {
-  if ('Notification' in window && Notification.permission === 'default') {
-    Notification.requestPermission();
+  // Вызывается при включении звука на десктопе — user gesture, браузер не блокирует
+  var isDesktop = !('ontouchstart' in window) && navigator.maxTouchPoints === 0;
+  if (!isDesktop || !('Notification' in window)) return;
+  if (Notification.permission === 'default') {
+    Notification.requestPermission().then(function(result) {
+      if (result === 'granted') showToast('🔔 Уведомления браузера включены');
+    });
   }
 }
 
+// Публичная — на случай если нужно вызвать вручную (сейчас не используется в UI)
+async function requestChatNotifyPermission() {
+  if (!('Notification' in window)) return;
+  const result = await Notification.requestPermission();
+  if (result === 'granted') showToast('🔔 Уведомления включены');
+}
+
+function _updateNotifyBtn() {} // заглушка — кнопка убрана, оставляем чтобы не ломать вызовы
+
 function _showNotification(name, text) {
   if (getNotifyMode() === 'off') return;
-  // Browser Notification (works when tab is in background)
+  // Browser Notification — только на десктопе, когда вкладка не активна
   if ('Notification' in window && Notification.permission === 'granted') {
     try {
-      new Notification('🧭 ' + name, {
+      var n = new Notification('🧭 ' + name, {
         body: text || '',
-        icon: './icon.svg',
-        tag: 'travel-chat-' + Date.now(),
-        silent: false
+        icon: './icon-192.png',
+        tag: 'travel-chat',  // один тег — новое заменяет старое, не стек
+        renotify: true       // звук/вибрация даже при замене
       });
-    } catch(e) {} // iOS Safari may throw
+      n.onclick = function() { window.focus(); openChatFromHeader && openChatFromHeader(); };
+    } catch(e) {} // iOS Safari может бросить
   }
   // Vibrate
   if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
@@ -1266,6 +1284,7 @@ function onChatTabOpen() {
   _chatVisible = true; _chatUnread = 0; _updateUnreadBadge();
   _stopTitleBlink();
   _updateSoundBtn();
+  _updateNotifyBtn();
   localStorage.setItem('travel_chat_last_seen', Date.now().toString());
   _writePresence();
   clearInterval(_presenceTimer);

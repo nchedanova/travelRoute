@@ -309,14 +309,39 @@ function toggleDrivingMode() {
   // Keep-alive: держим WebSocket живым для уведомлений
   if (_drivingMode) {
     startKeepAlive();
+    _acquireWakeLock();
   } else {
     stopKeepAlive();
+    _releaseWakeLock();
     _updateSpeedDisplay(null);
     if (_db) _db.ref('gps').remove();
   }
 }
 
-// ── KEEP-ALIVE (AudioContext) ─────────────────────────────────────────────────
+// ── WAKE LOCK — держит экран активным в режиме «Еду» ─────────────────────────
+let _wakeLock = null;
+
+async function _acquireWakeLock() {
+  if (!('wakeLock' in navigator)) return;
+  try {
+    _wakeLock = await navigator.wakeLock.request('screen');
+    _wakeLock.addEventListener('release', () => { _wakeLock = null; });
+  } catch(e) {
+    // Недостаточно заряда или документ не в фокусе — не критично
+    console.warn('[gps] WakeLock not acquired:', e.message);
+  }
+}
+
+function _releaseWakeLock() {
+  if (_wakeLock) { _wakeLock.release(); _wakeLock = null; }
+}
+
+// Перезахватываем Wake Lock если браузер/ОС сам отпустил его (экран погас и снова включился)
+document.addEventListener('visibilitychange', function() {
+  if (_drivingMode && document.visibilityState === 'visible' && !_wakeLock) {
+    _acquireWakeLock();
+  }
+});
 // Тихий осциллятор не даёт браузеру заморозить вкладку.
 // Включается при "Еду" или вручную через 📌 в чате.
 // Переиспользует общий AudioContext из chat.js (_dingCtx) если есть.
