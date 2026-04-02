@@ -173,10 +173,12 @@ async function loadState() {
   // 2. Затем пробуем облако (перезаписывает локальный кэш)
   if (!cloudEnabled()) {
     if (typeof enableRouteLoading === 'function') enableRouteLoading();
-    // Для демо OSRM уже запущен из init (флаг включён до строки 1536)
-    // Для офлайн с данными в localStorage — step 1 уже всё нарисовал
-    // Перерисовка нужна только если step 1 не запустился (нет travel_tracker_v3 в офлайн)
-    if (!localStorage.getItem('travel_tracker_v3')) {
+    // Для демо: enableRouteLoading уже вызван в app.js ДО начального redrawDay —
+    // OSRM уже в очереди, второй redrawDay только очистит слои и удвоит очередь.
+    // Для офлайн без travel_tracker_v3: начальный redrawDay тоже уже запущен,
+    // но там флаг был false → сегменты прямые. Перерисовываем с флагом true.
+    var isDemo = typeof isDemoMode === 'function' && isDemoMode();
+    if (!isDemo && !localStorage.getItem('travel_tracker_v3')) {
       if (typeof dayKeys === 'function' && typeof redrawDay === 'function') {
         dayKeys().forEach(function(d) { redrawDay(d); });
       }
@@ -202,8 +204,17 @@ async function loadState() {
     if (typeof enableRouteLoading === 'function') enableRouteLoading(); // реальные данные из облака — OSRM можно
     const geoHashAfter = _buildGeoHash();
     _lastGeoHash = geoHashAfter;
-    // Сохраняем в localStorage чтобы следующий визит мог пропустить cloud fetch
-    try { localStorage.setItem('travel_tracker_v3', json); } catch(e) {}
+    // Сохраняем в localStorage чтобы следующий визит мог пропустить cloud fetch.
+    // При QuotaExceeded очищаем routeCache — он восстановится через OSRM,
+    // а travel_tracker_v3 важнее (без него каждый визит = прямые линии у читателя)
+    try {
+      localStorage.setItem('travel_tracker_v3', json);
+    } catch(e) {
+      if (e.name === 'QuotaExceededError') {
+        try { localStorage.removeItem('travel_route_cache_v2'); } catch {}
+        try { localStorage.setItem('travel_tracker_v3', json); } catch {}
+      }
+    }
 
     if (geoHashBefore !== geoHashAfter) {
       // Геометрия изменилась (первый визит или маршрут реально поменялся) → полный redraw

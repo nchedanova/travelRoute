@@ -30,7 +30,7 @@ function _persistCache() {
         try { localStorage.setItem(OSRM_CACHE_KEY, JSON.stringify(_routeCache)); } catch {}
       }
     }
-  }, 500);
+  }, 300);
 }
 
 // Страховка: при уходе со страницы сохраняем немедленно (SW auto-reload, ручной F5)
