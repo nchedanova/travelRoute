@@ -142,11 +142,19 @@ async function _osrmFetch(from, to, profile) {
   return null;
 }
 
+// Флаг: OSRM-запросы разрешены только после загрузки реальных данных.
+// Без этого init-рендер demo-данных (5 дней × 7+ сегм.) отправляет ~35 запросов,
+// их геометрия (особенно длинные маршруты) переполняет localStorage-квоту.
+let _routeLoadingEnabled = false;
+function enableRouteLoading() { _routeLoadingEnabled = true; }
+
 function fetchRoadSegment(from, to, profile) {
   profile = profile || 'driving';
   const key = `${profile}|${from.lat},${from.lng}|${to.lat},${to.lng}`;
   // Мгновенный ответ из кэша — без добавления в очередь
   if (_routeCache[key]) return Promise.resolve(_routeCache[key]);
+  // Не отправляем OSRM пока не загружены реальные данные
+  if (!_routeLoadingEnabled) return Promise.resolve(null);
 
   return new Promise((resolve, reject) => {
     _fetchQueue.push({ from, to, profile, resolve, reject });

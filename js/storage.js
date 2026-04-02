@@ -150,6 +150,7 @@ async function loadState() {
     const raw = localStorage.getItem('travel_tracker_v3');
     if (raw) {
       applyPayload(JSON.parse(raw));
+      if (typeof enableRouteLoading === 'function') enableRouteLoading(); // реальные данные есть — OSRM можно
       // Перерисовываем UI сразу по кэшу — убирает «мелькание» захардкоженных данных
       Object.keys(layers).forEach(k => {
         if (map.hasLayer(layers[k])) map.removeLayer(layers[k]);
@@ -165,12 +166,13 @@ async function loadState() {
       renderAllDays();
       updateProgress();
       switchDay(currentDay <= dayKeys().length ? currentDay : dayKeys()[0] || 1);
-      _lastGeoHash = _buildGeoHash(); // фиксируем геометрию из кэша — первый pollCloud не перерисует карту без причины
+      _lastGeoHash = _buildGeoHash();
     }
   } catch(e) { console.error('loadState localStorage error', e); }
 
   // 2. Затем пробуем облако (перезаписывает локальный кэш)
   if (!cloudEnabled()) {
+    if (typeof enableRouteLoading === 'function') enableRouteLoading(); // демо/офлайн — OSRM разрешён
     setSyncStatus('☁ офлайн', 'var(--muted)');
     setModeBadge();
     return;
@@ -189,10 +191,10 @@ async function loadState() {
     _lastCloudHash = strHash(json);
     const geoHashBefore = _buildGeoHash();
     applyPayload(saved);
+    if (typeof enableRouteLoading === 'function') enableRouteLoading(); // реальные данные из облака — OSRM можно
     const geoHashAfter = _buildGeoHash();
     _lastGeoHash = geoHashAfter;
     // Сохраняем в localStorage чтобы следующий визит мог пропустить cloud fetch
-    // (для читателя saveData не вызывается, поэтому сохраняем здесь явно)
     try { localStorage.setItem('travel_tracker_v3', json); } catch(e) {}
 
     if (geoHashBefore !== geoHashAfter) {
