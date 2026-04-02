@@ -14,9 +14,10 @@ const _routeCache = (() => {
     var raw = JSON.parse(localStorage.getItem(OSRM_CACHE_KEY) || '{}');
     // Migrate: drop old-format keys that don't start with a profile prefix
     Object.keys(raw).forEach(k => { if (!/^(driving|foot)\|/.test(k)) delete raw[k]; });
+    console.log('[routeCache] Loaded from localStorage:', Object.keys(raw).length, 'entries');
     return raw;
   }
-  catch { return {}; }
+  catch(e) { console.warn('[routeCache] Failed to load:', e); return {}; }
 })();
 
 // Отложенное сохранение: не дёргаем localStorage на каждый сегмент
@@ -27,7 +28,10 @@ let _cacheSaveTimer = null;
 function _persistCache() {
   clearTimeout(_cacheSaveTimer);
   _cacheSaveTimer = setTimeout(function() {
-    try { localStorage.setItem(OSRM_CACHE_KEY, JSON.stringify(_routeCache)); }
+    try {
+      localStorage.setItem(OSRM_CACHE_KEY, JSON.stringify(_routeCache));
+      console.log('[routeCache] Saved to localStorage:', Object.keys(_routeCache).length, 'entries');
+    }
     catch (e) {
       if (e.name === 'QuotaExceededError') {
         const keys = Object.keys(_routeCache);
@@ -332,6 +336,11 @@ function drawDay(d) {
     // Если маршрут уже в кэше — рисуем сразу по дорогам (без прямой-placeholder).
     // Иначе — прямая как placeholder, потом async заменяем.
     const cachedCoords = _routeCache[cacheKey];
+    if (cachedCoords) {
+      console.log('[drawDay] Cache HIT:', cacheKey.slice(0, 60));
+    } else {
+      console.log('[drawDay] Cache MISS:', cacheKey.slice(0, 60));
+    }
     const initialLatLngs = cachedCoords && cachedCoords.length
       ? cachedCoords
       : [[from.lat, from.lng], [to.lat, to.lng]];
