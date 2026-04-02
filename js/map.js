@@ -36,6 +36,12 @@ function _persistCache() {
   }, 500);
 }
 
+// Сохраняем кэш синхронно при уходе — иначе 500ms таймер не успевает при SW auto-reload
+window.addEventListener('beforeunload', function() {
+  clearTimeout(_cacheSaveTimer);
+  try { localStorage.setItem(OSRM_CACHE_KEY, JSON.stringify(_routeCache)); } catch {}
+});
+
 // Очередь запросов: предотвращает rate-limit на публичном OSRM
 const _fetchQueue = [];
 let   _queueBusy  = false;
