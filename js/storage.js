@@ -144,24 +144,36 @@ function applyPayload(saved) {
 }
 
 // ── LOAD STATE ────────────────────────────────────────────────────────────────
+// loadState — единственная точка включения OSRM (enableRouteLoading).
+// Init в app.js рисует placeholder-прямые БЕЗ OSRM.
+// Здесь мы: flush очередь → enableRouteLoading → redraw → колбэки ссылаются
+// на актуальные полилинии, гонки нет.
 async function loadState() {
+  var _didRedraw = false;  // флаг: step 1 уже перерисовал с OSRM
+
+  // ── ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ: полная перерисовка слоёв ──
+  function _fullRedraw() {
+    if (typeof _flushQueue === 'function') _flushQueue(); // убить OSRM от предыдущего redraw
+    if (typeof enableRouteLoading === 'function') enableRouteLoading();
+    Object.keys(layers).forEach(function(k) {
+      if (map.hasLayer(layers[k])) map.removeLayer(layers[k]);
+      delete layers[k];
+    });
+    Object.keys(segmentLayers).forEach(function(k) { delete segmentLayers[k]; });
+    dayKeys().forEach(function(d) {
+      layers[d] = L.layerGroup();
+      segmentLayers[d] = [];
+      redrawDay(d);
+    });
+  }
+
   // 1. Сначала грузим из localStorage (мгновенно — UI не ждёт)
   try {
     const raw = localStorage.getItem('travel_tracker_v3');
     if (raw) {
       applyPayload(JSON.parse(raw));
-      if (typeof enableRouteLoading === 'function') enableRouteLoading(); // реальные данные есть — OSRM можно
-      // Перерисовываем UI сразу по кэшу — убирает «мелькание» захардкоженных данных
-      Object.keys(layers).forEach(k => {
-        if (map.hasLayer(layers[k])) map.removeLayer(layers[k]);
-        delete layers[k];
-      });
-      Object.keys(segmentLayers).forEach(k => { delete segmentLayers[k]; });
-      dayKeys().forEach(d => {
-        layers[d] = L.layerGroup();
-        segmentLayers[d] = [];
-        redrawDay(d);
-      });
+      _fullRedraw();
+      _didRedraw = true;
       renderTabs();
       renderAllDays();
       updateProgress();
@@ -172,16 +184,10 @@ async function loadState() {
 
   // 2. Затем пробуем облако (перезаписывает локальный кэш)
   if (!cloudEnabled()) {
-    if (typeof enableRouteLoading === 'function') enableRouteLoading();
-    // Для демо: enableRouteLoading уже вызван в app.js ДО начального redrawDay —
-    // OSRM уже в очереди, второй redrawDay только очистит слои и удвоит очередь.
-    // Для офлайн без travel_tracker_v3: начальный redrawDay тоже уже запущен,
-    // но там флаг был false → сегменты прямые. Перерисовываем с флагом true.
-    var isDemo = typeof isDemoMode === 'function' && isDemoMode();
-    if (!isDemo && !localStorage.getItem('travel_tracker_v3')) {
-      if (typeof dayKeys === 'function' && typeof redrawDay === 'function') {
-        dayKeys().forEach(function(d) { redrawDay(d); });
-      }
+    // Демо / офлайн: если step 1 не отработал — перерисовать с OSRM.
+    // Init нарисовал прямые (OSRM был выключен) → нужен redraw с enableRouteLoading.
+    if (!_didRedraw) {
+      _fullRedraw();
     }
     setSyncStatus('☁ офлайн', 'var(--muted)');
     setModeBadge();
@@ -217,17 +223,10 @@ async function loadState() {
     }
 
     if (geoHashBefore !== geoHashAfter) {
-      // Геометрия изменилась (первый визит или маршрут реально поменялся) → полный redraw
-      Object.keys(layers).forEach(k => {
-        if (map.hasLayer(layers[k])) map.removeLayer(layers[k]);
-        delete layers[k];
-      });
-      Object.keys(segmentLayers).forEach(k => { delete segmentLayers[k]; });
-      dayKeys().forEach(d => {
-        layers[d] = L.layerGroup();
-        segmentLayers[d] = [];
-        redrawDay(d);
-      });
+      // Геометрия изменилась (первый визит или маршрут реально поменялся) → полный redraw.
+      // _flushQueue гарантирует: OSRM-колбэки от step 1 не обновят уничтоженные полилинии,
+      // а новые запросы будут ссылаться на актуальные объекты.
+      _fullRedraw();
     }
     // Если геометрия та же — слои не трогаем, линии по дорогам из _routeCache остаются
     // Обновляем UI после загрузки облачных данных
@@ -355,7 +354,8 @@ async function pollCloud() {
 
     if (geoChanged) {
       // Геометрия изменилась (добавили точку, поменяли координаты, поменяли порядок дней)
-      // → пересоздаём слои карты полностью
+      // → flush OSRM очередь + пересоздаём слои карты полностью
+      if (typeof _flushQueue === 'function') _flushQueue();
       Object.keys(layers).forEach(k => {
         if (map.hasLayer(layers[k])) map.removeLayer(layers[k]);
         delete layers[k];

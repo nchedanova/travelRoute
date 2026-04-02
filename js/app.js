@@ -1533,10 +1533,10 @@ async function fetchStartWeather(day) {
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
 initMap();
-// В демо-режиме нет облака и нет localStorage-данных — сразу разрешаем OSRM
-if (typeof isDemoMode === 'function' && isDemoMode()) {
-  if (typeof enableRouteLoading === 'function') enableRouteLoading();
-}
+// OSRM НЕ включаем здесь — init рисует только placeholder (прямые линии).
+// loadState() — единственная точка включения OSRM и авторитетной перерисовки.
+// Это исключает гонку: init ставит OSRM в очередь → loadState пересоздаёт слои
+// → колбэки init'а ссылаются на уничтоженные полилинии → линии не обновляются.
 dayKeys().forEach(d => redrawDay(d));
 layers[currentDay].addTo(map);
 renderTabs();
@@ -1660,7 +1660,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.6.0';
-var APP_BUILD   = 67;
+var APP_BUILD   = 68;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 
