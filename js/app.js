@@ -1005,6 +1005,8 @@ function editDepartTime(day, el) {
 // ── INLINE STOP EDITOR ────────────────────────────────────────────────────────
 // per-card edit state: stores temp lat/lng from Nominatim search
 const _editStopCoords = {};
+// Экранирование для HTML-атрибутов value="..." в шаблонах
+function _escHtml(s) { return (s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;'); }
 let _editStopSearchTimer = null;
 
 function editStop(id, day) {
@@ -1046,11 +1048,11 @@ function editStop(id, day) {
     <div class="edit-row">
       <div class="edit-field">
         <div class="edit-label">Иконка</div>
-        <input class="edit-input edit-input-icon" id="ei-icon-${id}" value="${s.icon}" maxlength="4">
+        <input class="edit-input edit-input-icon" id="ei-icon-${id}" value="${_escHtml(s.icon)}" maxlength="4">
       </div>
       <div class="edit-field" style="flex:1;">
         <div class="edit-label">Название</div>
-        <input class="edit-input edit-input-name" id="ei-name-${id}" value="${s.name}">
+        <input class="edit-input edit-input-name" id="ei-name-${id}" value="${_escHtml(s.name)}">
       </div>
     </div>
     <div class="edit-row">
@@ -1654,7 +1656,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.6.0';
-var APP_BUILD   = 60;
+var APP_BUILD   = 61;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 
