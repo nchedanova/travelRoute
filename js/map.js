@@ -21,22 +21,24 @@ const _routeCache = (() => {
 
 // Отложенное сохранение: не дёргаем localStorage на каждый сегмент
 let _cacheSaveTimer = null;
+// Дебоунс 300ms — короче чем OSRM_DELAY_MS (650ms), поэтому:
+// - батчит ответы очереди в одну запись localStorage (эффективно)
+// - но сохраняет достаточно быстро чтобы не потерять данные при перезагрузке
 function _persistCache() {
   clearTimeout(_cacheSaveTimer);
-  _cacheSaveTimer = setTimeout(() => {
+  _cacheSaveTimer = setTimeout(function() {
     try { localStorage.setItem(OSRM_CACHE_KEY, JSON.stringify(_routeCache)); }
     catch (e) {
-      // localStorage переполнен — чистим половину старых записей
       if (e.name === 'QuotaExceededError') {
         const keys = Object.keys(_routeCache);
         keys.slice(0, Math.floor(keys.length / 2)).forEach(k => delete _routeCache[k]);
         try { localStorage.setItem(OSRM_CACHE_KEY, JSON.stringify(_routeCache)); } catch {}
       }
     }
-  }, 500);
+  }, 300);
 }
 
-// Сохраняем кэш синхронно при уходе — иначе 500ms таймер не успевает при SW auto-reload
+// Страховка: при уходе со страницы сохраняем немедленно (SW auto-reload, ручной F5)
 window.addEventListener('beforeunload', function() {
   clearTimeout(_cacheSaveTimer);
   try { localStorage.setItem(OSRM_CACHE_KEY, JSON.stringify(_routeCache)); } catch {}
