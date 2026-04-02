@@ -172,7 +172,11 @@ async function loadState() {
 
   // 2. Затем пробуем облако (перезаписывает локальный кэш)
   if (!cloudEnabled()) {
-    if (typeof enableRouteLoading === 'function') enableRouteLoading(); // демо/офлайн — OSRM разрешён
+    if (typeof enableRouteLoading === 'function') enableRouteLoading();
+    // Начальный render был без OSRM (флаг был false) — перерисовываем чтобы запросить маршруты
+    if (typeof dayKeys === 'function' && typeof redrawDay === 'function') {
+      dayKeys().forEach(function(d) { redrawDay(d); });
+    }
     setSyncStatus('☁ офлайн', 'var(--muted)');
     setModeBadge();
     return;

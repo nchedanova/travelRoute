@@ -4,74 +4,44 @@ const layers        = {};
 const segmentLayers = {};
 
 // ── OSRM ROUTING ──────────────────────────────────────────────────────────────
-const OSRM_CACHE_KEY = 'travel_route_cache_v2'; // v2: routing.openstreetmap.de for foot
+const OSRM_CACHE_KEY = 'travel_route_cache_v2';
 const OSRM_DELAY_MS  = 650; // задержка между запросами (публичный OSRM ~600ms)
 
-// Кэш маршрутов: ключ = "lat1,lng1|lat2,lng2" → массив [lat,lng]
-// Загружается из localStorage при старте → линии сразу по дорогам без OSRM-запроса
+// Кэш маршрутов — sessionStorage, а не localStorage:
+// • sessionStorage выживает при location.reload() и F5 в той же вкладке
+// • НЕ конкурирует с localStorage-квотой (Firebase SDK, travel_tracker_v3 и т.д.)
+// • Очищается при закрытии вкладки — допустимо, т.к. основная польза именно при рефреше
 const _routeCache = (() => {
   try {
-    var raw = JSON.parse(localStorage.getItem(OSRM_CACHE_KEY) || '{}');
-    // Migrate: drop old-format keys that don't start with a profile prefix
+    var raw = JSON.parse(sessionStorage.getItem(OSRM_CACHE_KEY) || '{}');
     Object.keys(raw).forEach(k => { if (!/^(driving|foot)\|/.test(k)) delete raw[k]; });
-    console.log('[routeCache] Loaded from localStorage:', Object.keys(raw).length, 'entries');
+    console.log('[routeCache] Loaded from sessionStorage:', Object.keys(raw).length, 'entries');
     return raw;
   }
   catch(e) { console.warn('[routeCache] Failed to load:', e); return {}; }
 })();
 
-// Отложенное сохранение: не дёргаем localStorage на каждый сегмент
 let _cacheSaveTimer = null;
 
-// Собирает ключи только для актуальных сегментов текущего маршрута
-function _relevantCacheKeys() {
-  var keys = new Set();
-  try {
-    if (typeof DAYS_DATA !== 'undefined' && typeof dayKeys === 'function') {
-      dayKeys().forEach(function(d) {
-        var data = DAYS_DATA[d];
-        if (!data) return;
-        var profile = data.walkMode ? 'foot' : 'driving';
-        var pts = [{ lat: data.start.lat, lng: data.start.lng }];
-        data.stops.forEach(function(s) { if (s.lat && s.lng) pts.push({ lat: s.lat, lng: s.lng }); });
-        for (var i = 0; i < pts.length - 1; i++) {
-          keys.add(profile + '|' + pts[i].lat + ',' + pts[i].lng + '|' + pts[i+1].lat + ',' + pts[i+1].lng);
-        }
-      });
-    }
-  } catch(e) {}
-  return keys;
-}
-
 // Дебоунс 300ms — короче чем OSRM_DELAY_MS (650ms): батчит ответы в одну запись.
-// Сохраняем ТОЛЬКО маршруты текущих дней — иначе накапливаются старые маршруты
-// и рвётся localStorage квота (наблюдали повторные QuotaExceeded и потерю кэша).
+// sessionStorage не конкурирует с localStorage по квоте → QuotaExceeded маловероятен.
 function _persistCache() {
   clearTimeout(_cacheSaveTimer);
   _cacheSaveTimer = setTimeout(function() {
-    var relevant = _relevantCacheKeys();
-    var toSave = {};
-    relevant.forEach(function(k) { if (_routeCache[k]) toSave[k] = _routeCache[k]; });
     try {
-      localStorage.setItem(OSRM_CACHE_KEY, JSON.stringify(toSave));
-      console.log('[routeCache] Saved to localStorage:', Object.keys(toSave).length, 'entries');
+      sessionStorage.setItem(OSRM_CACHE_KEY, JSON.stringify(_routeCache));
+      console.log('[routeCache] Saved to sessionStorage:', Object.keys(_routeCache).length, 'entries');
     } catch(e) {
-      if (e.name === 'QuotaExceededError') {
-        // Последний резерв — очищаем чтобы не сломать другие данные
-        try { localStorage.removeItem(OSRM_CACHE_KEY); } catch {}
-        console.warn('[routeCache] QuotaExceeded — cache cleared');
-      }
+      // sessionStorage тоже может переполниться (редко) — просто логируем
+      console.warn('[routeCache] Save failed:', e.name);
     }
   }, 300);
 }
 
-// Страховка при уходе со страницы (SW auto-reload, ручной F5)
+// sessionStorage выживает при reload() — beforeunload нужен только как страховка
 window.addEventListener('beforeunload', function() {
   clearTimeout(_cacheSaveTimer);
-  var relevant = _relevantCacheKeys();
-  var toSave = {};
-  relevant.forEach(function(k) { if (_routeCache[k]) toSave[k] = _routeCache[k]; });
-  try { localStorage.setItem(OSRM_CACHE_KEY, JSON.stringify(toSave)); } catch {}
+  try { sessionStorage.setItem(OSRM_CACHE_KEY, JSON.stringify(_routeCache)); } catch {}
 });
 
 
