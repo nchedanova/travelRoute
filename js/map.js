@@ -22,31 +22,58 @@ const _routeCache = (() => {
 
 // Отложенное сохранение: не дёргаем localStorage на каждый сегмент
 let _cacheSaveTimer = null;
-// Дебоунс 300ms — короче чем OSRM_DELAY_MS (650ms), поэтому:
-// - батчит ответы очереди в одну запись localStorage (эффективно)
-// - но сохраняет достаточно быстро чтобы не потерять данные при перезагрузке
+
+// Собирает ключи только для актуальных сегментов текущего маршрута
+function _relevantCacheKeys() {
+  var keys = new Set();
+  try {
+    if (typeof DAYS_DATA !== 'undefined' && typeof dayKeys === 'function') {
+      dayKeys().forEach(function(d) {
+        var data = DAYS_DATA[d];
+        if (!data) return;
+        var profile = data.walkMode ? 'foot' : 'driving';
+        var pts = [{ lat: data.start.lat, lng: data.start.lng }];
+        data.stops.forEach(function(s) { if (s.lat && s.lng) pts.push({ lat: s.lat, lng: s.lng }); });
+        for (var i = 0; i < pts.length - 1; i++) {
+          keys.add(profile + '|' + pts[i].lat + ',' + pts[i].lng + '|' + pts[i+1].lat + ',' + pts[i+1].lng);
+        }
+      });
+    }
+  } catch(e) {}
+  return keys;
+}
+
+// Дебоунс 300ms — короче чем OSRM_DELAY_MS (650ms): батчит ответы в одну запись.
+// Сохраняем ТОЛЬКО маршруты текущих дней — иначе накапливаются старые маршруты
+// и рвётся localStorage квота (наблюдали повторные QuotaExceeded и потерю кэша).
 function _persistCache() {
   clearTimeout(_cacheSaveTimer);
   _cacheSaveTimer = setTimeout(function() {
+    var relevant = _relevantCacheKeys();
+    var toSave = {};
+    relevant.forEach(function(k) { if (_routeCache[k]) toSave[k] = _routeCache[k]; });
     try {
-      localStorage.setItem(OSRM_CACHE_KEY, JSON.stringify(_routeCache));
-      console.log('[routeCache] Saved to localStorage:', Object.keys(_routeCache).length, 'entries');
-    }
-    catch (e) {
+      localStorage.setItem(OSRM_CACHE_KEY, JSON.stringify(toSave));
+      console.log('[routeCache] Saved to localStorage:', Object.keys(toSave).length, 'entries');
+    } catch(e) {
       if (e.name === 'QuotaExceededError') {
-        const keys = Object.keys(_routeCache);
-        keys.slice(0, Math.floor(keys.length / 2)).forEach(k => delete _routeCache[k]);
-        try { localStorage.setItem(OSRM_CACHE_KEY, JSON.stringify(_routeCache)); } catch {}
+        // Последний резерв — очищаем чтобы не сломать другие данные
+        try { localStorage.removeItem(OSRM_CACHE_KEY); } catch {}
+        console.warn('[routeCache] QuotaExceeded — cache cleared');
       }
     }
   }, 300);
 }
 
-// Страховка: при уходе со страницы сохраняем немедленно (SW auto-reload, ручной F5)
+// Страховка при уходе со страницы (SW auto-reload, ручной F5)
 window.addEventListener('beforeunload', function() {
   clearTimeout(_cacheSaveTimer);
-  try { localStorage.setItem(OSRM_CACHE_KEY, JSON.stringify(_routeCache)); } catch {}
+  var relevant = _relevantCacheKeys();
+  var toSave = {};
+  relevant.forEach(function(k) { if (_routeCache[k]) toSave[k] = _routeCache[k]; });
+  try { localStorage.setItem(OSRM_CACHE_KEY, JSON.stringify(toSave)); } catch {}
 });
+
 
 // Очередь запросов: предотвращает rate-limit на публичном OSRM
 const _fetchQueue = [];
