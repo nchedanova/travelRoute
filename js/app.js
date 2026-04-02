@@ -1533,6 +1533,10 @@ async function fetchStartWeather(day) {
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
 initMap();
+// В демо-режиме нет облака и нет localStorage-данных — сразу разрешаем OSRM
+if (typeof isDemoMode === 'function' && isDemoMode()) {
+  if (typeof enableRouteLoading === 'function') enableRouteLoading();
+}
 dayKeys().forEach(d => redrawDay(d));
 layers[currentDay].addTo(map);
 renderTabs();
@@ -1656,7 +1660,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.6.0';
-var APP_BUILD   = 61;
+var APP_BUILD   = 65;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 

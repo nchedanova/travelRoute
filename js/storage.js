@@ -173,9 +173,13 @@ async function loadState() {
   // 2. Затем пробуем облако (перезаписывает локальный кэш)
   if (!cloudEnabled()) {
     if (typeof enableRouteLoading === 'function') enableRouteLoading();
-    // Начальный render был без OSRM (флаг был false) — перерисовываем чтобы запросить маршруты
-    if (typeof dayKeys === 'function' && typeof redrawDay === 'function') {
-      dayKeys().forEach(function(d) { redrawDay(d); });
+    // Для демо OSRM уже запущен из init (флаг включён до строки 1536)
+    // Для офлайн с данными в localStorage — step 1 уже всё нарисовал
+    // Перерисовка нужна только если step 1 не запустился (нет travel_tracker_v3 в офлайн)
+    if (!localStorage.getItem('travel_tracker_v3')) {
+      if (typeof dayKeys === 'function' && typeof redrawDay === 'function') {
+        dayKeys().forEach(function(d) { redrawDay(d); });
+      }
     }
     setSyncStatus('☁ офлайн', 'var(--muted)');
     setModeBadge();

@@ -7,41 +7,36 @@ const segmentLayers = {};
 const OSRM_CACHE_KEY = 'travel_route_cache_v2';
 const OSRM_DELAY_MS  = 650; // задержка между запросами (публичный OSRM ~600ms)
 
-// Кэш маршрутов — sessionStorage, а не localStorage:
-// • sessionStorage выживает при location.reload() и F5 в той же вкладке
-// • НЕ конкурирует с localStorage-квотой (Firebase SDK, travel_tracker_v3 и т.д.)
-// • Очищается при закрытии вкладки — допустимо, т.к. основная польза именно при рефреше
+// Кэш маршрутов: ключ = "profile|lat1,lng1|lat2,lng2" → массив [lat,lng]
+// Загружается из localStorage при старте → линии сразу по дорогам без OSRM-запроса
 const _routeCache = (() => {
   try {
-    var raw = JSON.parse(sessionStorage.getItem(OSRM_CACHE_KEY) || '{}');
+    var raw = JSON.parse(localStorage.getItem(OSRM_CACHE_KEY) || '{}');
     Object.keys(raw).forEach(k => { if (!/^(driving|foot)\|/.test(k)) delete raw[k]; });
-    console.log('[routeCache] Loaded from sessionStorage:', Object.keys(raw).length, 'entries');
     return raw;
   }
   catch(e) { console.warn('[routeCache] Failed to load:', e); return {}; }
 })();
 
 let _cacheSaveTimer = null;
-
-// Дебоунс 300ms — короче чем OSRM_DELAY_MS (650ms): батчит ответы в одну запись.
-// sessionStorage не конкурирует с localStorage по квоте → QuotaExceeded маловероятен.
 function _persistCache() {
   clearTimeout(_cacheSaveTimer);
-  _cacheSaveTimer = setTimeout(function() {
-    try {
-      sessionStorage.setItem(OSRM_CACHE_KEY, JSON.stringify(_routeCache));
-      console.log('[routeCache] Saved to sessionStorage:', Object.keys(_routeCache).length, 'entries');
-    } catch(e) {
-      // sessionStorage тоже может переполниться (редко) — просто логируем
-      console.warn('[routeCache] Save failed:', e.name);
+  _cacheSaveTimer = setTimeout(() => {
+    try { localStorage.setItem(OSRM_CACHE_KEY, JSON.stringify(_routeCache)); }
+    catch (e) {
+      if (e.name === 'QuotaExceededError') {
+        const keys = Object.keys(_routeCache);
+        keys.slice(0, Math.floor(keys.length / 2)).forEach(k => delete _routeCache[k]);
+        try { localStorage.setItem(OSRM_CACHE_KEY, JSON.stringify(_routeCache)); } catch {}
+      }
     }
-  }, 300);
+  }, 500);
 }
 
-// sessionStorage выживает при reload() — beforeunload нужен только как страховка
+// Страховка: при уходе со страницы сохраняем немедленно (SW auto-reload, ручной F5)
 window.addEventListener('beforeunload', function() {
   clearTimeout(_cacheSaveTimer);
-  try { sessionStorage.setItem(OSRM_CACHE_KEY, JSON.stringify(_routeCache)); } catch {}
+  try { localStorage.setItem(OSRM_CACHE_KEY, JSON.stringify(_routeCache)); } catch {}
 });
 
 
@@ -341,11 +336,6 @@ function drawDay(d) {
     // Если маршрут уже в кэше — рисуем сразу по дорогам (без прямой-placeholder).
     // Иначе — прямая как placeholder, потом async заменяем.
     const cachedCoords = _routeCache[cacheKey];
-    if (cachedCoords) {
-      console.log('[drawDay] Cache HIT:', cacheKey.slice(0, 60));
-    } else {
-      console.log('[drawDay] Cache MISS:', cacheKey.slice(0, 60));
-    }
     const initialLatLngs = cachedCoords && cachedCoords.length
       ? cachedCoords
       : [[from.lat, from.lng], [to.lat, to.lng]];
