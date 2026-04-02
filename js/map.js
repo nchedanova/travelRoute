@@ -324,19 +324,24 @@ function drawDay(d) {
 
   for (let i = 0; i < allPoints.length - 1; i++) {
     const from = allPoints[i], to = allPoints[i + 1];
-    // Сразу добавляем прямую линию как placeholder (стиль зависит от режима)
     const isWalk = !!data.walkMode;
-    // Auto: white outline layer underneath for contrast (вариант А)
+    const profile = isWalk ? 'foot' : 'driving';
+    const cacheKey = `${profile}|${from.lat},${from.lng}|${to.lat},${to.lng}`;
+    // Если маршрут уже в кэше — рисуем сразу по дорогам (без прямой-placeholder).
+    // Иначе — прямая как placeholder, потом async заменяем.
+    const cachedCoords = _routeCache[cacheKey];
+    const initialLatLngs = cachedCoords && cachedCoords.length
+      ? cachedCoords
+      : [[from.lat, from.lng], [to.lat, to.lng]];
+
     let segOutline = null;
     if (!isWalk) {
-      segOutline = L.polyline(
-        [[from.lat, from.lng], [to.lat, to.lng]],
+      segOutline = L.polyline(initialLatLngs,
         { color:'#ffffff', weight:5, opacity:0.08, lineCap:'round', lineJoin:'round' }
       );
       group.addLayer(segOutline);
     }
-    const seg = L.polyline(
-      [[from.lat, from.lng], [to.lat, to.lng]],
+    const seg = L.polyline(initialLatLngs,
       isWalk
         ? { color:'#4ade80', weight:3, opacity:0.3, lineCap:'round', lineJoin:'round', dashArray:'8 5' }
         : { color, weight:3, opacity:0.55, lineCap:'round', lineJoin:'round', dashArray:'6 4' }
@@ -344,15 +349,16 @@ function drawDay(d) {
     group.addLayer(seg);
     segmentLayers[d].push({ seg, segOutline: segOutline || null, fromId: from.id || null, toId: to.id });
 
-    // Асинхронно заменяем на маршрут по дорогам.
-    // Проверяем group.hasLayer(seg): если до ответа вызвали redrawDay()
-    // и clearLayers(), seg уже отвязан от карты — обновлять его бессмысленно.
-    fetchRoadSegment(from, to, data.walkMode ? 'foot' : 'driving').then(coords => {
-      if (!coords || !group.hasLayer(seg)) return;
-      seg.setLatLngs(coords);
-      if (segOutline && group.hasLayer(segOutline)) segOutline.setLatLngs(coords);
-      refreshSegments();
-    }).catch(() => { /* оставляем прямую линию */ });
+    if (!cachedCoords) {
+      // Нет в кэше — запрашиваем OSRM и заменяем прямую когда ответит
+      fetchRoadSegment(from, to, profile).then(coords => {
+        if (!coords || !group.hasLayer(seg)) return;
+        seg.setLatLngs(coords);
+        if (segOutline && group.hasLayer(segOutline)) segOutline.setLatLngs(coords);
+        refreshSegments();
+      }).catch(() => {});
+    }
+    // Кешированный случай: redrawDay вызовет refreshSegments() после drawDay — стили применятся там
   }
 
   // Маркеры остановок
