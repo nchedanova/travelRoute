@@ -187,10 +187,13 @@ async function loadState() {
     const saved = await fetchCloudData();
     const json  = JSON.stringify(saved);
     _lastCloudHash = strHash(json);
-    const geoHashBefore = _buildGeoHash(); // до applyPayload — на основе localStorage-данных
+    const geoHashBefore = _buildGeoHash();
     applyPayload(saved);
-    const geoHashAfter = _buildGeoHash();  // после — на основе облачных данных
+    const geoHashAfter = _buildGeoHash();
     _lastGeoHash = geoHashAfter;
+    // Сохраняем в localStorage чтобы следующий визит мог пропустить cloud fetch
+    // (для читателя saveData не вызывается, поэтому сохраняем здесь явно)
+    try { localStorage.setItem('travel_tracker_v3', json); } catch(e) {}
 
     if (geoHashBefore !== geoHashAfter) {
       // Геометрия изменилась (первый визит или маршрут реально поменялся) → полный redraw
