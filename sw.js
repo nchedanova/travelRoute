@@ -156,13 +156,22 @@ async function cacheFirst(request, cacheName) {
 }
 
 // Stale-while-revalidate: return cached immediately, update in background
-// Uses ignoreSearch:true so ?v=67 matches cached ./js/app.js
+// Uses ignoreSearch:true so ?v=68 matches cached ./js/app.js from install.
+// CRITICAL: background cache.put uses NORMALIZED url (no query string) so it
+// OVERWRITES the install entry. Without this, install writes key "app.js" and
+// background writes key "app.js?v=68" — two entries, ignoreSearch always finds
+// the stale install one first → infinite stale loop.
 async function staleWhileRevalidate(request, cacheName) {
   const cache = await caches.open(cacheName);
   // ignoreSearch lets versioned ?v=N URLs hit unversioned precache entries
   const cached = await cache.match(request, { ignoreSearch: true });
   const fetchPromise = fetch(request).then(response => {
-    if (response.ok) cache.put(request, response.clone());
+    if (response.ok) {
+      // Normalize: strip query string so we overwrite the precache entry
+      var normalUrl = new URL(request.url);
+      normalUrl.search = '';
+      cache.put(normalUrl.href, response.clone());
+    }
     return response;
   }).catch(() => null);
 
