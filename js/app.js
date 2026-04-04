@@ -633,7 +633,7 @@ function swapDays(fromDay, toDay) {
   renderTabs();
   renderAllDays();
   updateProgress();
-  switchDay(currentDay <= dayKeys().length ? currentDay : 1);
+  switchDay(dayKeys().includes(currentDay) ? currentDay : dayKeys()[0] || 1);
   saveData();
   showToast('📅 Дни переставлены');
 }
@@ -1636,7 +1636,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.7.0';
-var APP_BUILD   = 69;
+var APP_BUILD   = 70;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 

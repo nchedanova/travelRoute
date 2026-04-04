@@ -312,7 +312,6 @@ function makeStopCard(s, day) {
           html += '</div></div></div></div>';
         }
       });
-      if (admin) html += '<button class="stop-note-add-btn" onclick="addStopNote(\''+s.id+'\','+day+')" title="Добавить заметку">+</button>';
       html += '</div>';
       return html;
     })()}`;

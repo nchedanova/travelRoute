@@ -191,7 +191,7 @@ async function loadState() {
       renderTabs();
       renderAllDays();
       updateProgress();
-      switchDay(currentDay <= dayKeys().length ? currentDay : dayKeys()[0] || 1);
+      switchDay(dayKeys().includes(currentDay) ? currentDay : dayKeys()[0] || 1);
       _lastGeoHash = _buildGeoHash();
       _lastViewerHash = _buildViewerHash();
     }
