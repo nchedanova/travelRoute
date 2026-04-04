@@ -396,8 +396,10 @@ function redrawDay(d) {
 }
 
 function switchMapDay(d) {
+  var viewer = typeof isViewer === 'function' && isViewer();
   dayKeys().forEach(n => {
-    if (n === d) {
+    // Читатель не видит скрытые дни на карте
+    if (n === d && !(viewer && DAYS_DATA[n]?.hidden)) {
       layers[n] && layers[n].addTo(map);
     } else {
       layers[n] && map.hasLayer(layers[n]) && map.removeLayer(layers[n]);
@@ -405,6 +407,7 @@ function switchMapDay(d) {
   });
   const data = DAYS_DATA[d];
   if (!data) return;
+  if (viewer && data.hidden) return;
   const pts = [[data.start.lat, data.start.lng], ...data.stops.map(s => [s.lat, s.lng])].filter(p => p[0] && p[1]);
   if (pts.length > 1) map.fitBounds(L.latLngBounds(pts), { padding:[40,40] });
 }

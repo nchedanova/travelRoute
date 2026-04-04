@@ -372,6 +372,14 @@ function renderDaySection(d) {
           <button onclick="confirmReset(${d});closeDayMenus()">⟳ Сбросить факт</button>` : ''}
           <button onclick="fetchDayWeather(${d});closeDayMenus()">🌤 Погода</button>
           ${isAdmin() ? `<div class="day-overflow-divider"></div>
+          <div class="day-mode-row" id="dayVisRow${d}">
+            <span class="day-mode-label">Читатель</span>
+            <div class="day-mode-pills">
+              <button class="day-mode-pill ${!data.hidden ? 'active-auto' : 'inactive'}" onclick="setDayVisibility(${d},true)">видит</button>
+              <button class="day-mode-pill ${data.hidden ? 'active-walk' : 'inactive'}" onclick="setDayVisibility(${d},false)">скрыт</button>
+            </div>
+          </div>
+          <div class="day-overflow-divider"></div>
           <div class="day-mode-row" id="dayModeRow${d}">
             <span class="day-mode-label">Режим</span>
             <div class="day-mode-pills">
@@ -432,7 +440,9 @@ function renderDaySection(d) {
 function renderAllDays() {
   const container = document.getElementById('daySections');
   container.innerHTML = '';
+  var admin = typeof isAdmin === 'function' && isAdmin();
   dayKeys().forEach(d => {
+    if (!admin && DAYS_DATA[d].hidden) return;
     container.appendChild(renderDaySection(d));
     renderStops(d);
     updateDayRoute(d);
@@ -484,19 +494,22 @@ function fmtDateDMY(d) {
 function renderTabs() {
   const tabsEl = document.getElementById('dayTabs');
   tabsEl.innerHTML = '';
+  var admin = typeof isAdmin === 'function' && isAdmin();
   dayKeys().forEach(d => {
     const data = DAYS_DATA[d];
+    // Читатель не видит скрытые дни
+    if (!admin && data.hidden) return;
     const btn  = document.createElement('button');
-    btn.className  = 'day-tab' + (d === currentDay ? ' active' : '');
+    btn.className  = 'day-tab' + (d === currentDay ? ' active' : '') + (data.hidden ? ' day-hidden' : '');
     btn.dataset.day = d;
     btn.textContent = data.dateISO ? fmtDateShort(data.dateISO) : ('День ' + d);
     btn.onclick = () => switchDay(d);
-    if (d === currentDay) {
+    if (d === currentDay && !data.hidden) {
       btn.style.backgroundColor = data.color;
       btn.style.borderColor     = data.color;
     }
     // Drag-and-drop for day tabs
-    if (typeof isAdmin === 'function' && isAdmin()) {
+    if (admin) {
       btn.draggable = true;
       btn.addEventListener('dragstart', function(e) {
         e.dataTransfer.setData('text/plain', String(d));
@@ -524,7 +537,7 @@ function renderTabs() {
     }
     tabsEl.appendChild(btn);
   });
-  if (typeof isAdmin === 'function' && isAdmin()) {
+  if (admin) {
     const addBtn = document.createElement('button');
     addBtn.className  = 'day-tab-add';
     addBtn.textContent = '＋ день';

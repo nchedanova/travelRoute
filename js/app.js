@@ -750,6 +750,22 @@ function setDayMode(day, mode) {
   showToast(data.walkMode ? '🚶 Режим: пешком' : '🚗 Режим: авто');
 }
 
+function setDayVisibility(day, visible) {
+  var data = DAYS_DATA[day];
+  if (!data) return;
+  data.hidden = !visible;
+  renderTabs();
+  // Обновить пиллы в меню
+  var row = document.getElementById('dayVisRow' + day);
+  if (row) {
+    row.querySelectorAll('.day-mode-pill').forEach(function(btn) { btn.className = 'day-mode-pill inactive'; });
+    var activeBtn = row.querySelector(visible ? '.day-mode-pill:first-child' : '.day-mode-pill:last-child');
+    if (activeBtn) activeBtn.className = 'day-mode-pill ' + (visible ? 'active-auto' : 'active-walk');
+  }
+  saveData();
+  showToast(visible ? '👁 День виден читателю' : '🔒 День скрыт от читателя');
+}
+
 function addNewDay() {
   const keys     = dayKeys();
   const newD     = Math.max(...keys) + 1;
@@ -1636,7 +1652,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.7.0';
-var APP_BUILD   = 70;
+var APP_BUILD   = 71;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 
@@ -1645,9 +1661,11 @@ var APP_CHANGELOG = [
     '📝 Несколько заметок к каждой точке маршрута',
     '👁 Переключатель видимости заметки для читателя',
     '🔒 Заметки скрыты от читателя по умолчанию',
+    '👁 Скрытие дней маршрута от читателя (··· → Читатель: видит/скрыт)',
     '⚡ Фикс мигания сайдбара у читателя при изменении приватных заметок',
     '🔧 Фикс прямых линий маршрута у читателя/демо при обновлении страницы',
-    '🔧 Фикс зависания старой версии после деплоя (staleWhileRevalidate)'
+    '🔧 Фикс зависания старой версии после деплоя (staleWhileRevalidate)',
+    '🔧 Фикс пустого сайдбара после удаления первого дня'
   ]},
   { ver: '2.6.0', date: '29.03.2026', items: [
     '🗓 Импорт в новый день больше не проставляет дату автоматически — выбирай сам',

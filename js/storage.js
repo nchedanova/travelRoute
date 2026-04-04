@@ -191,7 +191,7 @@ async function loadState() {
       renderTabs();
       renderAllDays();
       updateProgress();
-      switchDay(dayKeys().includes(currentDay) ? currentDay : dayKeys()[0] || 1);
+      switchDay(_pickVisibleDay(currentDay));
       _lastGeoHash = _buildGeoHash();
       _lastViewerHash = _buildViewerHash();
     }
@@ -249,7 +249,7 @@ async function loadState() {
     renderTabs();
     renderAllDays();
     updateProgress();
-    var validDay = dayKeys().includes(currentDay) ? currentDay : (dayKeys()[0] || 1);
+    var validDay = _pickVisibleDay(currentDay);
     if (validDay !== currentDay) currentDay = validDay;
     switchMapDay(currentDay);
     setSyncStatus('☁ загружено', 'var(--green)');
@@ -329,7 +329,7 @@ function _buildViewerHash() {
     var parts = dayKeys().sort(function(a,b){return a-b;}).map(function(d) {
       var day = DAYS_DATA[d];
       if (!day) return '';
-      var s = d + ':' + (day.dateISO||'') + ':' + (day.date||'') + ':' + (day.departP||'') + ':' + (day.departA||'');
+      var s = d + ':' + (day.hidden?'H':'') + ':' + (day.dateISO||'') + ':' + (day.date||'') + ':' + (day.departP||'') + ':' + (day.departA||'');
       day.stops.forEach(function(st) {
         s += '|' + st.lat + ',' + st.lng + ',' + (st.arrP||'') + ',' + (st.arrA||'') + ',' + (st.depP||'') + ',' + (st.depA||'');
         // Только public notes
@@ -349,6 +349,18 @@ function strHash(s) {
   let h = 0;
   for (let i = 0; i < s.length; i++) { h = (Math.imul(31, h) + s.charCodeAt(i)) | 0; }
   return h;
+}
+
+// Выбрать currentDay с учётом скрытых дней для читателя
+function _pickVisibleDay(preferred) {
+  var keys = dayKeys();
+  if (!keys.length) return 1;
+  var viewer = typeof isViewer === 'function' && isViewer();
+  if (keys.includes(preferred) && (!viewer || !DAYS_DATA[preferred]?.hidden)) return preferred;
+  for (var i = 0; i < keys.length; i++) {
+    if (!viewer || !DAYS_DATA[keys[i]]?.hidden) return keys[i];
+  }
+  return keys[0] || 1;
 }
 
 document.addEventListener('input', () => {
@@ -423,7 +435,7 @@ async function pollCloud() {
     updateProgress();
     // Переключаем карту на текущий день только если изменилась геометрия —
     // иначе fitBounds прыгает на маршрут каждые 10 сек пока читатель смотрит на карту
-    var validDay = dayKeys().includes(currentDay) ? currentDay : (dayKeys()[0] || 1);
+    var validDay = _pickVisibleDay(currentDay);
     if (validDay !== currentDay) currentDay = validDay;
     if (geoChanged) switchMapDay(currentDay);
     const t = new Date().toLocaleTimeString('ru', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
