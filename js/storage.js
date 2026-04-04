@@ -141,6 +141,20 @@ function applyPayload(saved) {
   dayKeys().forEach(day => {
     if (saved['dep' + day]) DAYS_DATA[day].departA = saved['dep' + day];
   });
+
+  // ── Миграция note → notes[] ─────────────────────────────────────────────
+  dayKeys().forEach(function(day) {
+    (DAYS_DATA[day].stops || []).forEach(function(s) {
+      if (s.notes) return; // уже новый формат
+      if (s.note || (s.noteImages && s.noteImages.length)) {
+        s.notes = [{ text: s.note || '', images: s.noteImages || [], public: false }];
+      } else {
+        s.notes = [];
+      }
+      delete s.note;
+      delete s.noteImages;
+    });
+  });
 }
 
 // ── LOAD STATE ────────────────────────────────────────────────────────────────
@@ -179,6 +193,7 @@ async function loadState() {
       updateProgress();
       switchDay(currentDay <= dayKeys().length ? currentDay : dayKeys()[0] || 1);
       _lastGeoHash = _buildGeoHash();
+      _lastViewerHash = _buildViewerHash();
     }
   } catch(e) { console.error('loadState localStorage error', e); }
 
@@ -210,6 +225,7 @@ async function loadState() {
     if (typeof enableRouteLoading === 'function') enableRouteLoading(); // реальные данные из облака — OSRM можно
     const geoHashAfter = _buildGeoHash();
     _lastGeoHash = geoHashAfter;
+    _lastViewerHash = _buildViewerHash();
     // Сохраняем в localStorage чтобы следующий визит мог пропустить cloud fetch.
     // При QuotaExceeded очищаем routeCache — он восстановится через OSRM,
     // а travel_tracker_v3 важнее (без него каждый визит = прямые линии у читателя)
@@ -286,6 +302,7 @@ function saveData() {
 // ── AUTO-POLL (тихое обновление) ──────────────────────────────────────────────
 let _lastCloudHash = null;
 let _lastGeoHash   = null;  // хэш только координат — перерисовка карты только при изменении геометрии
+let _lastViewerHash = null; // хэш видимых читателю данных — сайдбар обновляется только при видимых изменениях
 let _userIsTyping  = false;
 let _userHasFocus  = false;  // любой инпут сфокусирован
 let _typingTimer   = null;
@@ -300,6 +317,29 @@ function _buildGeoHash() {
       var pts = day.start.lat + ',' + day.start.lng;
       day.stops.forEach(function(s) { pts += '|' + s.lat + ',' + s.lng; });
       return d + ':' + (day.walkMode ? '1' : '0') + ':' + pts;
+    });
+    return strHash(parts.join(';'));
+  } catch(e) { return null; }
+}
+
+// Хэш данных видимых читателю: координаты + времена + public notes + даты.
+// Приватные заметки НЕ входят → их добавление/изменение не мигает сайдбаром у читателя.
+function _buildViewerHash() {
+  try {
+    var parts = dayKeys().sort(function(a,b){return a-b;}).map(function(d) {
+      var day = DAYS_DATA[d];
+      if (!day) return '';
+      var s = d + ':' + (day.dateISO||'') + ':' + (day.date||'') + ':' + (day.departP||'') + ':' + (day.departA||'');
+      day.stops.forEach(function(st) {
+        s += '|' + st.lat + ',' + st.lng + ',' + (st.arrP||'') + ',' + (st.arrA||'') + ',' + (st.depP||'') + ',' + (st.depA||'');
+        // Только public notes
+        if (st.notes) {
+          st.notes.forEach(function(n) {
+            if (n.public) s += ',N:' + (n.text||'') + ':' + (n.images||[]).length;
+          });
+        }
+      });
+      return s;
     });
     return strHash(parts.join(';'));
   } catch(e) { return null; }
@@ -369,8 +409,17 @@ async function pollCloud() {
     }
     // Если геометрия та же — слои не трогаем, линии по дорогам остаются
 
-    renderTabs();
-    renderAllDays();
+    // Для читателя: renderAllDays только если изменились видимые данные
+    // (координаты, времена, public notes). Приватные заметки не мигают сайдбаром.
+    var newViewerHash = _buildViewerHash();
+    var viewerChanged = (newViewerHash !== _lastViewerHash);
+    _lastViewerHash = newViewerHash;
+
+    var shouldRenderUI = isAdmin() || viewerChanged;
+    if (shouldRenderUI) {
+      renderTabs();
+      renderAllDays();
+    }
     updateProgress();
     // Переключаем карту на текущий день только если изменилась геометрия —
     // иначе fitBounds прыгает на маршрут каждые 10 сек пока читатель смотрит на карту

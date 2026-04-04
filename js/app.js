@@ -389,7 +389,7 @@ function doAddStop() {
   const arrP = document.getElementById('new-stop-arrP').value.trim();
   const depP = document.getElementById('new-stop-depP').value.trim();
   const id   = 'd' + addStopDay + 's' + Date.now();
-  const stop = { id, num:0, icon, type, name, lat:newStopLat, lng:newStopLng, arrP:arrP||'', depP:depP||'', arrA:'', depA:'' };
+  const stop = { id, num:0, icon, type, name, lat:newStopLat, lng:newStopLng, arrP:arrP||'', depP:depP||'', arrA:'', depA:'', notes:[] };
   const day  = addStopDay;
   snapshotForUndo('Добавлена точка');
   DAYS_DATA[day].stops.push(stop);
@@ -667,7 +667,7 @@ function reverseDay(d) {
     newStops.push({
       id: '', num: 0, icon: s.icon || '🛎️', type: s.type,
       name: s.name, lat: s.lat, lng: s.lng,
-      arrP: '', depP: '', arrA: '', depA: ''
+      arrP: '', depP: '', arrA: '', depA: '', notes: []
     });
   }
 
@@ -677,7 +677,7 @@ function reverseDay(d) {
     newStops.push({
       id: '', num: 0, icon: day.start.icon || '🚗', type: 'Другое',
       name: day.start.name, lat: day.start.lat, lng: day.start.lng,
-      arrP: '', depP: '', arrA: '', depA: ''
+      arrP: '', depP: '', arrA: '', depA: '', notes: []
     });
   }
 
@@ -1613,31 +1613,7 @@ function switchSidebarTab(tab) {
 }
 
 // ── STOP NOTE TOGGLE ───────────────────────────────────────────────────────────
-function toggleStopNote(stopId) {
-  const wrap = document.getElementById('stop-note-wrap-' + stopId);
-  if (!wrap) return;
-  const visible = wrap.style.display !== 'none';
-  if (visible) {
-    wrap.style.display = 'none';
-    return;
-  }
-  // Opening — decide whether to show edit or preview
-  wrap.style.display = 'block';
-  const edit = document.getElementById('stop-note-edit-' + stopId);
-  const preview = document.getElementById('stop-note-preview-' + stopId);
-  const hasPreviewContent = preview && preview.textContent.trim();
-  if (hasPreviewContent) {
-    // Has saved content → show preview (click on it opens edit)
-    if (edit) edit.style.display = 'none';
-    if (preview) preview.style.display = 'block';
-  } else {
-    // Empty → show edit
-    if (edit) edit.style.display = 'flex';
-    if (preview) preview.style.display = 'none';
-    const ta = document.getElementById('stop-note-' + stopId);
-    if (ta) { autoResizeNote(ta); setTimeout(() => ta.focus(), 50); }
-  }
-}
+// toggleStopNote removed — replaced by addStopNote + notes[] in notes.js
 
 // ── DEMO: подгрузить заметки к точкам из localStorage при старте ───────────────
 if (typeof isDemoMode === 'function' && isDemoMode()) {
@@ -1659,12 +1635,20 @@ document.addEventListener('click', e => {
 });
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
-var APP_VERSION = '2.6.0';
-var APP_BUILD   = 68;
+var APP_VERSION = '2.7.0';
+var APP_BUILD   = 69;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 
 var APP_CHANGELOG = [
+  { ver: '2.7.0', date: '04.04.2026', items: [
+    '📝 Несколько заметок к каждой точке маршрута',
+    '👁 Переключатель видимости заметки для читателя',
+    '🔒 Заметки скрыты от читателя по умолчанию',
+    '⚡ Фикс мигания сайдбара у читателя при изменении приватных заметок',
+    '🔧 Фикс прямых линий маршрута у читателя/демо при обновлении страницы',
+    '🔧 Фикс зависания старой версии после деплоя (staleWhileRevalidate)'
+  ]},
   { ver: '2.6.0', date: '29.03.2026', items: [
     '🗓 Импорт в новый день больше не проставляет дату автоматически — выбирай сам',
     '⚡ Устранено мигание страницы при первом открытии',

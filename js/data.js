@@ -33,7 +33,11 @@ const DAYS_DATA = {
         lat:53.700104, lng:38.045031, arrP:'05:50', depP:'06:10', arrA:'', depA:'' },
       // +40 км ÷ 90 = 27мин → arr 06:37
       { id:'d1s2', num:2, icon:'🥞', type:'Кафе', name:'Помпончик · Ефремов',
-        lat:53.204038, lng:38.225938, arrP:'06:40', depP:'07:30', arrA:'', depA:'' },
+        lat:53.204038, lng:38.225938, arrP:'06:40', depP:'07:30', arrA:'', depA:'',
+        notes:[
+          { text:'Вкусные блинчики и кофе, парковка у входа', images:[], public:true },
+          { text:'Заказать заранее: +7 900 123-45-67', images:[], public:false }
+        ] },
       // +260 км ÷ 90 = 2ч 53мин → arr 10:23
       { id:'d1s3', num:3, icon:'⛽', type:'Заправка', name:'Газпромнефть · за Воронежем',
         lat:51.247589, lng:39.654248, arrP:'10:30', depP:'10:50', arrA:'', depA:'' },
@@ -48,7 +52,8 @@ const DAYS_DATA = {
         lat:47.278214, lng:39.796337, arrP:'17:30', depP:'17:50', arrA:'', depA:'' },
       // +7 км ÷ 30 = 14мин → arr 18:04
       { id:'d1s7', num:7, icon:'🛎️', type:'Отель', name:'Амакс Конгресс Отель · Ростов',
-        lat:47.248822, lng:39.711902, arrP:'18:00', depP:'', arrA:'', depA:'' },
+        lat:47.248822, lng:39.711902, arrP:'18:00', depP:'', arrA:'', depA:'',
+        notes:[{ text:'Чекин с 14:00, завтрак включён', images:[], public:true }] },
     ]
   },
 

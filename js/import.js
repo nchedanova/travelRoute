@@ -280,7 +280,7 @@ function commitImport() {
     var newDateISO='';
     var stops=stopPts.map(function(p,i){
       var t=stopTypes[i];
-      return {id:'d'+newD+'s'+(i+1),num:i+1,icon:TYPE_ICONS[t]||'📍',type:t,name:stopNames[i],lat:p.lat,lng:p.lng,arrP:'',depP:'',arrA:'',depA:''};
+      return {id:'d'+newD+'s'+(i+1),num:i+1,icon:TYPE_ICONS[t]||'📍',type:t,name:stopNames[i],lat:p.lat,lng:p.lng,arrP:'',depP:'',arrA:'',depA:'',notes:[]};
     });
     DAYS_DATA[newD]={color:DAY_COLORS[colIdx],dateISO:newDateISO,
       date:startName+(stops.length?' → '+stops[stops.length-1].name:''),
@@ -299,7 +299,7 @@ function commitImport() {
     var ec=DAYS_DATA[day].stops.length;
     stopPts.forEach(function(p,i){
       var t=stopTypes[i];
-      DAYS_DATA[day].stops.push({id:'d'+day+'s'+(ec+i+1)+'_'+Date.now(),num:ec+i+1,icon:TYPE_ICONS[t]||'📍',type:t,name:stopNames[i],lat:p.lat,lng:p.lng,arrP:'',depP:'',arrA:'',depA:''});
+      DAYS_DATA[day].stops.push({id:'d'+day+'s'+(ec+i+1)+'_'+Date.now(),num:ec+i+1,icon:TYPE_ICONS[t]||'📍',type:t,name:stopNames[i],lat:p.lat,lng:p.lng,arrP:'',depP:'',arrA:'',depA:'',notes:[]});
     });
     renderStops(day); updateDayRoute(day); redrawDay(day); switchDay(day);
   }

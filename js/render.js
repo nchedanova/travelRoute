@@ -221,7 +221,7 @@ function makeStopCard(s, day) {
       ${isAdmin() ? `
       <button class="stop-dropdown-item" onclick="closeStopMenus(); editStop('${s.id}', ${day});"><span class="di-icon">✎</span> Редактировать</button>
       <button class="stop-dropdown-item" onclick="closeStopMenus(); editStopTime('${s.id}', ${day});"><span class="di-icon">⏱</span> Изменить время</button>
-      <button class="stop-dropdown-item" onclick="closeStopMenus(); toggleStopNote('${s.id}');"><span class="di-icon">📝</span> Заметка</button>
+      <button class="stop-dropdown-item" onclick="closeStopMenus(); addStopNote('${s.id}', ${day});"><span class="di-icon">📝</span> Добавить заметку</button>
       <div class="stop-dropdown-divider"></div>
       <button class="stop-dropdown-item danger" onclick="closeStopMenus(); deleteStop(${day}, '${s.id}');"><span class="di-icon">×</span> Удалить точку</button>` : ''}
     </div>
@@ -260,32 +260,62 @@ function makeStopCard(s, day) {
     </div>
     <div class="weather-strip" id="ws-${s.id}" style="display:none" onclick="event.stopPropagation();toggleWeatherStrip('${s.id}')"></div>
     <div class="stop-edit-form" id="edit-form-${s.id}" style="display:none;"></div>
-    ${isAdmin() ? `
-    <div class="stop-note-wrap" id="stop-note-wrap-${s.id}" style="display:${(s.note || (s.noteImages && s.noteImages.length)) ? 'block' : 'none'}"
-      ontouchstart="event.stopPropagation()" ontouchmove="event.stopPropagation()" onmousedown="event.stopPropagation()">
-      <div class="stop-note-edit" id="stop-note-edit-${s.id}" style="display:${(s.note || (s.noteImages && s.noteImages.length)) ? 'none' : 'flex'}">
-        <div class="stop-note-bubble">
-          <textarea class="stop-note-input" id="stop-note-${s.id}"
-            placeholder="Заметка к точке…"
-            style="touch-action:auto"
-            oninput="autoResizeNote(this)"
-            onfocus="var c=this.closest('.stop-card');if(c)c.draggable=false"
-            ontouchstart="event.stopPropagation()" ontouchmove="event.stopPropagation()"
-            onmousedown="event.stopPropagation()">${s.note || ''}</textarea>
-          <div class="note-images-inline" id="stop-note-edit-images-${s.id}">${s.noteImages && s.noteImages.length ? s.noteImages.map((url,i)=>`<div class="note-img-thumb-wrap"><img src="${typeof _escN==='function'?_escN(url):url}" class="note-img-thumb" onclick="event.stopPropagation();openChatPhoto(this)" alt=""><button class="pending-thumb-remove" onclick="event.stopPropagation();removePendingStopImage('${s.id}',${i})">×</button></div>`).join('') : ''}</div>
-        </div>
-        <div class="stop-note-btns">
-          <button class="stop-note-photo-btn" onmousedown="event.preventDefault()" onclick="triggerStopNotePhoto('${s.id}',${day})" title="Добавить фото">📷</button>
-          <button class="stop-note-save-btn" onmousedown="event.preventDefault()" onclick="commitStopNote('${s.id}',${day})" title="Сохранить">✓</button>
-        </div>
-      </div>
-      <div class="stop-note-display" id="stop-note-preview-${s.id}" style="display:${(s.note || (s.noteImages && s.noteImages.length)) ? 'block' : 'none'};cursor:pointer"
-        onclick="openStopNoteEdit('${s.id}')"
-        onmousedown="event.stopPropagation()" ontouchstart="event.stopPropagation()">
-        <div id="stop-note-text-${s.id}">${typeof _linkifyN==='function'?_linkifyN(s.note||'').replace(/\n/g,'<br>'):''}</div>
-        <div class="note-images-inline" id="stop-note-images-${s.id}">${s.noteImages && s.noteImages.length ? s.noteImages.map((url)=>`<div class="note-img-thumb-wrap"><img src="${typeof _escN==='function'?_escN(url):url}" class="note-img-thumb" onclick="event.stopPropagation();openChatPhoto(this)" alt=""></div>`).join('') : ''}</div>
-      </div>
-    </div>` : ''}`;
+    ${(function(){
+      var notes = s.notes || [];
+      var _e = typeof _escN==='function' ? _escN : function(x){return x;};
+      var _l = typeof _linkifyN==='function' ? _linkifyN : _e;
+      var eyeOn = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+      var eyeOff = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+      var admin = typeof isAdmin==='function' && isAdmin();
+      var visibleNotes = admin ? notes : notes.filter(function(n){return n.public;});
+      if (!visibleNotes.length && !admin) return '';
+      var html = '<div class="stop-notes-wrap" id="stop-notes-wrap-'+s.id+'" ontouchstart="event.stopPropagation()" ontouchmove="event.stopPropagation()" onmousedown="event.stopPropagation()">';
+      notes.forEach(function(n, i){
+        var hasContent = n.text || (n.images && n.images.length);
+        if (!admin && !n.public) return;
+        if (admin) {
+          html += '<div class="stop-note-item" id="stop-note-item-'+s.id+'-'+i+'">';
+          html += '<div class="stop-note-edit" id="stop-note-edit-'+s.id+'-'+i+'" style="display:'+(hasContent?'none':'flex')+'">';
+          html += '<div class="stop-note-bubble">';
+          html += '<textarea class="stop-note-input" id="stop-note-'+s.id+'-'+i+'" placeholder="Заметка к точке…" style="touch-action:auto" oninput="autoResizeNote(this)" onfocus="var c=this.closest(\'.stop-card\');if(c)c.draggable=false" ontouchstart="event.stopPropagation()" ontouchmove="event.stopPropagation()" onmousedown="event.stopPropagation()">'+_e(n.text||'')+'</textarea>';
+          html += '<div class="note-images-inline" id="stop-note-edit-images-'+s.id+'-'+i+'">';
+          if (n.images && n.images.length) n.images.forEach(function(url,j){
+            html += '<div class="note-img-thumb-wrap"><img src="'+_e(url)+'" class="note-img-thumb" onclick="event.stopPropagation();openChatPhoto(this)" alt=""><button class="pending-thumb-remove" onclick="event.stopPropagation();removePendingStopImage(\''+s.id+'\','+i+','+j+')">×</button></div>';
+          });
+          html += '</div></div>';
+          html += '<div class="stop-note-btns">';
+          html += '<button class="note-vis-btn '+(n.public?'note-vis-on':'')+'" onmousedown="event.preventDefault()" onclick="toggleNotePublic(\''+s.id+'\','+i+','+day+')" title="'+(n.public?'Видна читателю':'Скрыта от читателя')+'">'+(n.public?eyeOn:eyeOff)+'</button>';
+          html += '<button class="stop-note-photo-btn" onmousedown="event.preventDefault()" onclick="triggerStopNotePhoto(\''+s.id+'\','+day+','+i+')" title="Добавить фото">📷</button>';
+          html += '<button class="stop-note-save-btn" onmousedown="event.preventDefault()" onclick="commitStopNote(\''+s.id+'\','+day+','+i+')" title="Сохранить">✓</button>';
+          html += '<button class="stop-note-del-btn" onmousedown="event.preventDefault()" onclick="deleteStopNote(\''+s.id+'\','+day+','+i+')" title="Удалить заметку">×</button>';
+          html += '</div></div>';
+          if (hasContent) {
+            html += '<div class="stop-note-display" id="stop-note-preview-'+s.id+'-'+i+'" style="cursor:pointer" onclick="openStopNoteEdit(\''+s.id+'\','+i+')" onmousedown="event.stopPropagation()" ontouchstart="event.stopPropagation()">';
+            html += '<div class="stop-note-display-inner"><div id="stop-note-text-'+s.id+'-'+i+'">'+_l(n.text||'').replace(/\n/g,'<br>')+'</div>';
+            html += '<div class="note-images-inline" id="stop-note-images-'+s.id+'-'+i+'">';
+            if (n.images && n.images.length) n.images.forEach(function(url){
+              html += '<div class="note-img-thumb-wrap"><img src="'+_e(url)+'" class="note-img-thumb" onclick="event.stopPropagation();openChatPhoto(this)" alt=""></div>';
+            });
+            html += '</div></div>';
+            html += '<button class="note-vis-btn '+(n.public?'note-vis-on':'')+'" onclick="event.stopPropagation();toggleNotePublic(\''+s.id+'\','+i+','+day+')" title="'+(n.public?'Видна читателю':'Скрыта от читателя')+'">'+(n.public?eyeOn:eyeOff)+'</button>';
+            html += '</div>';
+          }
+          html += '</div>';
+        } else {
+          html += '<div class="stop-note-item">';
+          html += '<div class="stop-note-display stop-note-readonly">';
+          html += '<div class="stop-note-display-inner"><div>'+_l(n.text||'').replace(/\n/g,'<br>')+'</div>';
+          html += '<div class="note-images-inline">';
+          if (n.images && n.images.length) n.images.forEach(function(url){
+            html += '<div class="note-img-thumb-wrap"><img src="'+_e(url)+'" class="note-img-thumb" onclick="event.stopPropagation();openChatPhoto(this)" alt=""></div>';
+          });
+          html += '</div></div></div></div>';
+        }
+      });
+      if (admin) html += '<button class="stop-note-add-btn" onclick="addStopNote(\''+s.id+'\','+day+')" title="Добавить заметку">+</button>';
+      html += '</div>';
+      return html;
+    })()}`;
 
   if (typeof isAdmin === 'function' && isAdmin()) {
     div.addEventListener('dragstart', onDragStart);
