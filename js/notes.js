@@ -360,7 +360,7 @@ function commitStopNote(stopId, day, idx) {
 function openStopNoteEdit(stopId, idx) {
   var edit = document.getElementById('stop-note-edit-' + stopId + '-' + idx);
   var preview = document.getElementById('stop-note-preview-' + stopId + '-' + idx);
-  if (edit) edit.style.display = 'flex';
+  if (edit) edit.style.display = 'block';
   if (preview) preview.style.display = 'none';
   _renderStopNoteEditImages(stopId, idx);
   var ta = document.getElementById('stop-note-' + stopId + '-' + idx);

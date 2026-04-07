@@ -275,20 +275,21 @@ function makeStopCard(s, day) {
         if (!admin && !n.public) return;
         if (admin) {
           html += '<div class="stop-note-item" id="stop-note-item-'+s.id+'-'+i+'">';
-          html += '<div class="stop-note-edit" id="stop-note-edit-'+s.id+'-'+i+'" style="display:'+(hasContent?'none':'flex')+'">';
+          html += '<div class="stop-note-edit" id="stop-note-edit-'+s.id+'-'+i+'" style="display:'+(hasContent?'none':'block')+'">';
           html += '<div class="stop-note-bubble">';
           html += '<textarea class="stop-note-input" id="stop-note-'+s.id+'-'+i+'" placeholder="Заметка к точке…" style="touch-action:auto" oninput="autoResizeNote(this)" onfocus="var c=this.closest(\'.stop-card\');if(c)c.draggable=false" ontouchstart="event.stopPropagation()" ontouchmove="event.stopPropagation()" onmousedown="event.stopPropagation()">'+_e(n.text||'')+'</textarea>';
           html += '<div class="note-images-inline" id="stop-note-edit-images-'+s.id+'-'+i+'">';
           if (n.images && n.images.length) n.images.forEach(function(url,j){
             html += '<div class="note-img-thumb-wrap"><img src="'+_e(url)+'" class="note-img-thumb" onclick="event.stopPropagation();openChatPhoto(this)" alt=""><button class="pending-thumb-remove" onclick="event.stopPropagation();removePendingStopImage(\''+s.id+'\','+i+','+j+')">×</button></div>';
           });
-          html += '</div></div>';
-          html += '<div class="stop-note-btns">';
+          html += '</div>';
+          html += '<div class="stop-note-toolbar">';
           html += '<button class="note-vis-btn '+(n.public?'note-vis-on':'')+'" onmousedown="event.preventDefault()" onclick="toggleNotePublic(\''+s.id+'\','+i+','+day+')" title="'+(n.public?'Видна читателю':'Скрыта от читателя')+'">'+(n.public?eyeOn:eyeOff)+'</button>';
           html += '<button class="stop-note-photo-btn" onmousedown="event.preventDefault()" onclick="triggerStopNotePhoto(\''+s.id+'\','+day+','+i+')" title="Добавить фото">📷</button>';
+          html += '<div style="flex:1"></div>';
           html += '<button class="stop-note-save-btn" onmousedown="event.preventDefault()" onclick="commitStopNote(\''+s.id+'\','+day+','+i+')" title="Сохранить">✓</button>';
           html += '<button class="stop-note-del-btn" onmousedown="event.preventDefault()" onclick="deleteStopNote(\''+s.id+'\','+day+','+i+')" title="Удалить заметку">×</button>';
-          html += '</div></div>';
+          html += '</div></div></div>';
           if (hasContent) {
             html += '<div class="stop-note-display" id="stop-note-preview-'+s.id+'-'+i+'" style="cursor:pointer" onclick="openStopNoteEdit(\''+s.id+'\','+i+')" onmousedown="event.stopPropagation()" ontouchstart="event.stopPropagation()">';
             html += '<div class="stop-note-display-inner"><div id="stop-note-text-'+s.id+'-'+i+'">'+_l(n.text||'').replace(/\n/g,'<br>')+'</div>';
