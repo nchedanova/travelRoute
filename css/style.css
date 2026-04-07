@@ -2059,13 +2059,13 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 }
 .stop-note-toolbar .stop-note-photo-btn {
   width: 28px; height: 28px;
-  border: none; background: none;
-  color: var(--muted); font-size: 13px;
+  border: 1px solid var(--border); background: none;
+  color: var(--muted); font-size: 12px; line-height: 1;
   cursor: pointer; display: flex; align-items: center; justify-content: center;
   border-radius: 4px; padding: 0;
-  transition: color 0.15s;
+  transition: color 0.15s, border-color 0.15s;
 }
-.stop-note-toolbar .stop-note-photo-btn:hover { color: var(--amber); }
+.stop-note-toolbar .stop-note-photo-btn:hover { color: var(--amber); border-color: var(--amber); }
 .stop-note-btns {
   display: flex;
   flex-direction: column;
@@ -2075,7 +2075,7 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 .stop-note-save-btn {
   width: 28px; height: 28px;
   border-radius: 4px;
-  border: none;
+  border: 1px solid color-mix(in srgb, var(--green) 35%, transparent);
   background: none;
   color: var(--green, #4ade80);
   font-size: 14px; line-height: 1;
@@ -2126,14 +2126,14 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 }
 .note-vis-btn:hover { background: rgba(255,255,255,0.05); }
 .note-vis-btn.note-vis-on {
-  background: rgba(245,166,35,0.15); border-color: rgba(245,166,35,0.3); color: var(--amber);
+  background: var(--accent-bg); border-color: var(--amber); color: var(--amber);
 }
-.note-vis-btn.note-vis-on:hover { background: rgba(245,166,35,0.25); }
+.note-vis-btn.note-vis-on:hover { background: var(--accent-bg); filter: brightness(1.3); }
 
 .stop-note-del-btn {
   width: 28px; height: 28px;
-  border-radius: 4px; border: none;
-  background: none; color: var(--muted);
+  border-radius: 4px; border: 1px solid color-mix(in srgb, var(--red) 35%, transparent);
+  background: none; color: var(--red);
   font-size: 14px; line-height: 1; cursor: pointer;
   display: flex; align-items: center; justify-content: center; padding: 0;
   transition: color 0.15s, background 0.15s;
