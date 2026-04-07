@@ -494,9 +494,14 @@ function fmtDateDMY(d) {
 
 function renderTabs() {
   // Пересчитать цвета по позиции: каждый следующий день — другой цвет
+  var _colorsChanged = false;
   dayKeys().forEach(function(d, i) {
-    DAYS_DATA[d].color = DAY_COLORS[i % DAY_COLORS.length];
+    var newColor = DAY_COLORS[i % DAY_COLORS.length];
+    if (DAYS_DATA[d].color !== newColor) { DAYS_DATA[d].color = newColor; _colorsChanged = true; }
   });
+  if (_colorsChanged && typeof redrawDay === 'function') {
+    dayKeys().forEach(function(d) { redrawDay(d); });
+  }
   const tabsEl = document.getElementById('dayTabs');
   tabsEl.innerHTML = '';
   var admin = typeof isAdmin === 'function' && isAdmin();
@@ -509,6 +514,7 @@ function renderTabs() {
     btn.dataset.day = d;
     btn.textContent = data.dateISO ? fmtDateShort(data.dateISO) : ('День ' + d);
     btn.onclick = () => switchDay(d);
+    btn.style.setProperty('--dc', data.color);
     if (d === currentDay && !data.hidden) {
       btn.style.color           = data.color;
       btn.style.borderColor     = data.color;

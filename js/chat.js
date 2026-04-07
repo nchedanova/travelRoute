@@ -1444,11 +1444,7 @@ function switchChatRoom(roomId) {
 
 function _updateRoomHeader() {
   var clearBtn = document.getElementById('chatClearBtn');
-  if (_currentRoom === 'group') {
-    if (clearBtn) clearBtn.style.display = (typeof isAdmin === 'function' && isAdmin()) ? 'inline-flex' : 'none';
-  } else {
-    if (clearBtn) clearBtn.style.display = 'none';
-  }
+  if (clearBtn) clearBtn.style.display = (typeof isAdmin === 'function' && isAdmin()) ? 'inline-flex' : 'none';
 }
 
 // ── DM: ROOM TABS RENDERING ─────────────────────────────────────────────────
