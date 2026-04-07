@@ -102,7 +102,7 @@ header {
   -webkit-tap-highlight-color:transparent;
 }
 .day-tab:focus, .day-tab:focus-visible { outline:none !important; box-shadow:none !important; }
-.day-tab.active { background:var(--amber); color:var(--accent-text-on); border-color:var(--amber); font-weight:500; }
+.day-tab.active { background:var(--accent-bg); color:var(--amber); border-color:var(--amber); font-weight:500; }
 .day-tab:hover:not(.active) { border-color:var(--amber-dim); color:var(--text); }
 .day-tab.day-hidden { opacity: 0.35; }
 .day-tab.day-hidden.active { opacity: 0.5; }
@@ -2279,8 +2279,8 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 }
 .chat-room-tab:hover { border-color: var(--amber); color: var(--text); }
 .chat-room-tab.active {
-  background: var(--amber);
-  color: var(--accent-text-on);
+  background: var(--accent-bg);
+  color: var(--amber);
   border-color: var(--amber);
   font-weight: 500;
 }

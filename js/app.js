@@ -14,9 +14,11 @@ function switchDay(d) {
     const day = parseInt(tab.dataset.day);
     tab.style.backgroundColor = '';
     tab.style.borderColor     = '';
+    tab.style.color           = '';
     if (day === d && DAYS_DATA[day]?.color) {
-      tab.style.backgroundColor = DAYS_DATA[day].color;
+      tab.style.color           = DAYS_DATA[day].color;
       tab.style.borderColor     = DAYS_DATA[day].color;
+      tab.style.backgroundColor = DAYS_DATA[day].color + '1f';
     }
   });
   switchMapDay(d);
@@ -1652,7 +1654,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.7.0';
-var APP_BUILD   = 75;
+var APP_BUILD   = 76;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 

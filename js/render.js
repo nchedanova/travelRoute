@@ -493,6 +493,10 @@ function fmtDateDMY(d) {
 }
 
 function renderTabs() {
+  // Пересчитать цвета по позиции: каждый следующий день — другой цвет
+  dayKeys().forEach(function(d, i) {
+    DAYS_DATA[d].color = DAY_COLORS[i % DAY_COLORS.length];
+  });
   const tabsEl = document.getElementById('dayTabs');
   tabsEl.innerHTML = '';
   var admin = typeof isAdmin === 'function' && isAdmin();
@@ -506,8 +510,9 @@ function renderTabs() {
     btn.textContent = data.dateISO ? fmtDateShort(data.dateISO) : ('День ' + d);
     btn.onclick = () => switchDay(d);
     if (d === currentDay && !data.hidden) {
-      btn.style.backgroundColor = data.color;
+      btn.style.color           = data.color;
       btn.style.borderColor     = data.color;
+      btn.style.backgroundColor = data.color + '1f';
     }
     // Drag-and-drop for day tabs
     if (admin) {
