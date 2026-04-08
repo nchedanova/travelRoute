@@ -64,7 +64,11 @@ function updateProgress() {
     const pct   = Math.round((filled / (stops.length || 1)) * 100);
     const fill  = document.getElementById('d' + day + '-fill');
     const pctEl = document.getElementById('d' + day + '-pct');
-    if (fill)  fill.style.width  = pct + '%';
+    if (fill) {
+      fill.style.width = pct + '%';
+      var dc = DAYS_DATA[day].color || '#f5a623';
+      fill.style.background = 'linear-gradient(90deg,' + dc + ',' + dc + '99)';
+    }
     if (pctEl) pctEl.textContent = pct + '%';
 
     const dEl = document.getElementById('d' + day + '-delta-val');

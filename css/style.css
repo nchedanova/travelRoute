@@ -127,7 +127,7 @@ header {
 
 /* ── SIDEBAR ─────────────────────────────────────────── */
 .sidebar {
-  width:370px; background:var(--surface);
+  width:380px; background:var(--surface);
   border-right:1px solid var(--border);
   overflow:hidden; flex-shrink:0;
   display:flex; flex-direction:column;
@@ -172,10 +172,8 @@ header {
 .progress-bar { height:2px; background:var(--border); border-radius:2px; overflow:hidden; }
 .progress-fill {
   height:100%; width:0%;
-  background:linear-gradient(90deg,var(--amber),var(--amber-dim));
   border-radius:2px; transition:width 0.5s;
 }
-.day-section[data-day="2"] .progress-fill { background:linear-gradient(90deg,var(--d2),#3b82f6); }
 
 .stats-row { display:flex; border-bottom:1px solid var(--border); }
 .stat-box { flex:1; text-align:center; padding:8px 0; border-right:1px solid var(--border); }

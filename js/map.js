@@ -349,7 +349,7 @@ function drawDay(d) {
     }
     const seg = L.polyline(initialLatLngs,
       isWalk
-        ? { color:'#4ade80', weight:3, opacity:0.3, lineCap:'round', lineJoin:'round', dashArray:'8 5' }
+        ? { color, weight:3, opacity:0.3, lineCap:'round', lineJoin:'round', dashArray:'8 5' }
         : { color, weight:3, opacity:0.55, lineCap:'round', lineJoin:'round', dashArray:'6 4' }
     );
     group.addLayer(seg);
@@ -476,7 +476,7 @@ function refreshSegments() {
       if (fromDone && toArrFilled && toDepFilled) {
         // Completed segment
         if (isWalk) {
-          seg.setStyle({ color:'#4ade80', opacity:0.85, weight: close ? 5 : 3, dashArray:'8 5' });
+          seg.setStyle({ color: dayData ? dayData.color : '#888', opacity:0.85, weight: close ? 5 : 3, dashArray:'8 5' });
         } else {
           seg.setStyle({ color: dayData ? dayData.color : undefined, opacity:0.85, weight: close ? 4 : 3, dashArray:null });
           if (segOutline) segOutline.setStyle({ opacity:0.1, weight: close ? 7 : 5 });
@@ -484,7 +484,7 @@ function refreshSegments() {
       } else {
         // Pending segment
         if (isWalk) {
-          seg.setStyle({ color:'#4ade80', opacity:0.5, weight: close ? 5 : 3, dashArray:'8 5' });
+          seg.setStyle({ color: dayData ? dayData.color : '#888', opacity:0.5, weight: close ? 5 : 3, dashArray:'8 5' });
         } else {
           var w = close ? 5 : 3;
           var dash = close ? '10 6' : '6 4';

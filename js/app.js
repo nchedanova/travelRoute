@@ -1046,7 +1046,7 @@ function editStop(id, day) {
   const card = document.getElementById('card-' + id);
   if (card) card.draggable = false;
 
-  const typeOptions = ['Заправка', 'Кафе', 'Отель', 'Жильё', 'Другое']
+  const typeOptions = ['Заправка', 'Кафе', 'Магазин', 'Отель', 'Жильё', 'Другое']
     .map(t => `<option value="${t}" ${t === s.type ? 'selected' : ''}>${TYPE_ICONS[t] || '📍'} ${t}</option>`)
     .join('');
 
@@ -1654,7 +1654,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.7.0';
-var APP_BUILD   = 81;
+var APP_BUILD   = 82;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 
