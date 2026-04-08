@@ -1143,7 +1143,7 @@ function editStop(id, day) {
     <div style="display:grid;grid-template-columns:48px 1fr;gap:8px;margin-bottom:8px;">
       <div class="edit-field">
         <div class="edit-label">Иконка</div>
-        <input class="edit-input" style="width:100%;text-align:center;font-size:16px;padding:6px 4px" id="ei-icon-${id}" value="${_escHtml(s.icon)}" maxlength="4">
+        <input class="edit-input" style="width:100%;text-align:center;font-size:16px;padding:0 4px" id="ei-icon-${id}" value="${_escHtml(s.icon)}" maxlength="4">
       </div>
       <div class="edit-field">
         <div class="edit-label">Название</div>
@@ -1729,7 +1729,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.7.0';
-var APP_BUILD   = 88;
+var APP_BUILD   = 89;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 
