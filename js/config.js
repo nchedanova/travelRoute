@@ -1,5 +1,5 @@
 // ── CONSTANTS ─────────────────────────────────────────────────────────────────
-const DAY_COLORS   = ['#f5a623','#00CED1','#a78bfa','#34d399','#FDBCB4','#CED23A','#00BFFF','#CC5500'];
+const DAY_COLORS   = ['#f5a623','#00CED1','#a78bfa','#34d399','#FA8072','#CED23A','#00BFFF','#CC5500'];
 
 const TYPE_ICONS = {
   'Заправка': '⛽',
