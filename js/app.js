@@ -1,4 +1,3 @@
-function _isDark(hex){var r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return(r*299+g*587+b*114)/1000<160;}
 // ── UI STATE ──────────────────────────────────────────────────────────────────
 let currentDay = 1;
 
@@ -40,7 +39,7 @@ function highlightStop(id, d) {
     c.style.borderLeftColor = '';
     c.style.background = '';
     var num = c.querySelector('.stop-num');
-    if (num) { num.style.background = ''; num.style.color = ''; }
+    if (num) { num.style.background = ''; }
   });
   const card = document.getElementById('card-' + id);
   const color = DAYS_DATA[d]?.color || '#f5a623';
@@ -49,7 +48,7 @@ function highlightStop(id, d) {
     card.style.borderLeftColor = color;
     card.style.background = color + '0f';
     var num = card.querySelector('.stop-num');
-    if (num) { num.style.background = color; num.style.color = _isDark(color) ? '#fff' : '#111'; }
+    if (num) num.style.background = color;
     card.scrollIntoView({ behavior:'smooth', block:'nearest' });
   }
   const stop = DAYS_DATA[d]?.stops.find(s => s.id === id);
@@ -1750,7 +1749,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.7.0';
-var APP_BUILD   = 93;
+var APP_BUILD   = 94;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 

@@ -404,7 +404,7 @@ function _highlightNearest(lat, lng) {
     el.style.borderLeftColor = '';
     el.style.background = '';
     var num = el.querySelector('.stop-num');
-    if (num) { num.style.background = ''; num.style.color = ''; }
+    if (num) num.style.background = '';
   });
   if (nearestId) {
     const card = document.getElementById('card-' + nearestId);
@@ -414,7 +414,7 @@ function _highlightNearest(lat, lng) {
       card.style.borderLeftColor = color;
       card.style.background = color + '0f';
       var num = card.querySelector('.stop-num');
-      if (num) { num.style.background = color; num.style.color = _isDark(color) ? '#fff' : '#111'; }
+      if (num) num.style.background = color;
       card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
   }
