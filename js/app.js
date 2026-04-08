@@ -1150,19 +1150,19 @@ function editStop(id, day) {
         <input class="edit-input edit-input-name" id="ei-name-${id}" value="${_escHtml(s.name)}">
       </div>
     </div>
-    <div class="edit-row">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px;">
       <div class="edit-field">
         <div class="edit-label">Тип</div>
         <div id="ei-type-container-${id}">${_buildTypeDropdownHTML('ei-type-' + id, s.type)}</div>
       </div>
       <div class="edit-field">
         <div class="edit-label">Приб. план</div>
-        <input class="edit-input edit-input-time" id="ei-arrP-${id}" value="${s.arrP}" maxlength="5"
+        <input class="edit-input" style="width:100%" id="ei-arrP-${id}" value="${s.arrP}" maxlength="5"
           oninput="applyMask(this)" onblur="padTime(this)" placeholder="--:--">
       </div>
       <div class="edit-field">
         <div class="edit-label">Отпр. план</div>
-        <input class="edit-input edit-input-time" id="ei-depP-${id}" value="${s.depP}" maxlength="5"
+        <input class="edit-input" style="width:100%" id="ei-depP-${id}" value="${s.depP}" maxlength="5"
           oninput="applyMask(this)" onblur="padTime(this)" placeholder="--:--">
       </div>
     </div>
@@ -1729,7 +1729,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.7.0';
-var APP_BUILD   = 85;
+var APP_BUILD   = 86;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 
