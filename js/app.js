@@ -34,9 +34,23 @@ function switchDay(d) {
 }
 
 function highlightStop(id, d) {
-  document.querySelectorAll('.stop-card').forEach(c => c.classList.remove('selected'));
+  document.querySelectorAll('.stop-card').forEach(c => {
+    c.classList.remove('selected');
+    c.style.borderLeftColor = '';
+    c.style.background = '';
+    var num = c.querySelector('.stop-num');
+    if (num) { num.style.background = ''; }
+  });
   const card = document.getElementById('card-' + id);
-  if (card) { card.classList.add('selected'); card.scrollIntoView({ behavior:'smooth', block:'nearest' }); }
+  const color = DAYS_DATA[d]?.color || '#f5a623';
+  if (card) {
+    card.classList.add('selected');
+    card.style.borderLeftColor = color;
+    card.style.background = color + '0f';
+    var num = card.querySelector('.stop-num');
+    if (num) num.style.background = color;
+    card.scrollIntoView({ behavior:'smooth', block:'nearest' });
+  }
   const stop = DAYS_DATA[d]?.stops.find(s => s.id === id);
   if (!stop) return;
   const isWalk = !!(DAYS_DATA[d] && DAYS_DATA[d].walkMode);
@@ -1735,7 +1749,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.7.0';
-var APP_BUILD   = 91;
+var APP_BUILD   = 92;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 

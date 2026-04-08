@@ -399,11 +399,22 @@ function _highlightNearest(lat, lng) {
   if (nearestId === _nearestStopId) return;
   _nearestStopId = nearestId;
 
-  document.querySelectorAll('.stop-card').forEach(el => el.classList.remove('gps-nearest'));
+  document.querySelectorAll('.stop-card').forEach(el => {
+    el.classList.remove('gps-nearest');
+    el.style.borderLeftColor = '';
+    el.style.background = '';
+    var num = el.querySelector('.stop-num');
+    if (num) num.style.background = '';
+  });
   if (nearestId) {
     const card = document.getElementById('card-' + nearestId);
+    const color = dayData.color || '#f5a623';
     if (card) {
       card.classList.add('gps-nearest');
+      card.style.borderLeftColor = color;
+      card.style.background = color + '0f';
+      var num = card.querySelector('.stop-num');
+      if (num) num.style.background = color;
       card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
   }

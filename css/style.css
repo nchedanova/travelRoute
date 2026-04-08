@@ -220,8 +220,7 @@ header {
   position:relative;
 }
 .stop-card:hover { background:var(--surface2); }
-.stop-card.selected { background:var(--surface2); border-left-color:var(--amber); }
-.day-section[data-day="2"] .stop-card.selected { border-left-color:var(--d2); }
+.stop-card.selected { background:var(--surface2); }
 
 .stop-main {
   padding:10px 42px 6px 18px;
@@ -233,8 +232,7 @@ header {
   justify-content:center; font-size:11px; color:var(--muted);
   flex-shrink:0; margin-top:1px;
 }
-.stop-card.selected .stop-num { background:var(--amber); color:var(--accent-text-on); }
-.day-section[data-day="2"] .stop-card.selected .stop-num { background:var(--d2); }
+.stop-card.selected .stop-num { color:var(--accent-text-on); }
 .stop-info { flex:1; min-width:0; }
 .stop-name { font-size:13px; color:var(--text); margin-bottom:2px; display:flex; align-items:center; gap:5px; }
 .stop-icon { font-size:14px; flex-shrink:0; }
@@ -864,12 +862,7 @@ input.day-date-input {
 }
 
 /* Подсветка ближайшей остановки — только в режиме "Еду" */
-body.driving-active .stop-card.gps-nearest {
-  border-left-color: #60a5fa !important;
-  background: rgba(96,165,250,.07) !important;
-}
 body.driving-active .stop-card.gps-nearest .stop-num {
-  background: #60a5fa !important;
   color: #000 !important;
 }
 
