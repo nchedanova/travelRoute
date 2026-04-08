@@ -414,7 +414,7 @@ function _highlightNearest(lat, lng) {
       card.style.borderLeftColor = color;
       card.style.background = color + '0f';
       var num = card.querySelector('.stop-num');
-      if (num) num.style.background = color;
+      if (num) num.style.background = color + '59';
       card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
   }

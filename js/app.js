@@ -48,7 +48,7 @@ function highlightStop(id, d) {
     card.style.borderLeftColor = color;
     card.style.background = color + '0f';
     var num = card.querySelector('.stop-num');
-    if (num) num.style.background = color;
+    if (num) num.style.background = color + '59';
     card.scrollIntoView({ behavior:'smooth', block:'nearest' });
   }
   const stop = DAYS_DATA[d]?.stops.find(s => s.id === id);
@@ -1749,7 +1749,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.7.0';
-var APP_BUILD   = 92;
+var APP_BUILD   = 93;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 
