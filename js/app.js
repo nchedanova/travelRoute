@@ -1131,7 +1131,7 @@ function editStop(id, day) {
     <div class="edit-field" style="margin-bottom:8px;">
       <div class="edit-label">Поиск нового места</div>
       <div class="search-wrap">
-        <input class="edit-input edit-input-name" id="ei-search-${id}"
+        <input class="edit-input" style="width:100%" id="ei-search-${id}"
           type="text" placeholder="Название, адрес…"
           oninput="editStopSearch(this.value, '${id}')" autocomplete="off">
         <div class="search-results" id="ei-results-${id}"></div>
@@ -1140,27 +1140,27 @@ function editStop(id, day) {
     <div id="ei-coords-${id}-display" style="font-size:10px;color:var(--green);margin-bottom:6px;display:${s.lat ? 'block' : 'none'};">
       📍 <span id="ei-coords-${id}-text">${s.lat ? s.lat.toFixed(5) + ', ' + s.lng.toFixed(5) : ''}</span>
     </div>
-    <div class="edit-row">
+    <div style="display:grid;grid-template-columns:48px 1fr;gap:8px;margin-bottom:8px;">
       <div class="edit-field">
         <div class="edit-label">Иконка</div>
-        <input class="edit-input edit-input-icon" id="ei-icon-${id}" value="${_escHtml(s.icon)}" maxlength="4">
+        <input class="edit-input" style="width:100%;text-align:center;font-size:16px;padding:6px 4px" id="ei-icon-${id}" value="${_escHtml(s.icon)}" maxlength="4">
       </div>
-      <div class="edit-field" style="flex:1;">
+      <div class="edit-field">
         <div class="edit-label">Название</div>
-        <input class="edit-input edit-input-name" id="ei-name-${id}" value="${_escHtml(s.name)}">
+        <input class="edit-input" style="width:100%" id="ei-name-${id}" value="${_escHtml(s.name)}">
       </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px;">
-      <div class="edit-field">
+      <div class="edit-field" style="min-width:0">
         <div class="edit-label">Тип</div>
         <div id="ei-type-container-${id}">${_buildTypeDropdownHTML('ei-type-' + id, s.type)}</div>
       </div>
-      <div class="edit-field">
+      <div class="edit-field" style="min-width:0">
         <div class="edit-label">Приб. план</div>
         <input class="edit-input" style="width:100%" id="ei-arrP-${id}" value="${s.arrP}" maxlength="5"
           oninput="applyMask(this)" onblur="padTime(this)" placeholder="--:--">
       </div>
-      <div class="edit-field">
+      <div class="edit-field" style="min-width:0">
         <div class="edit-label">Отпр. план</div>
         <input class="edit-input" style="width:100%" id="ei-depP-${id}" value="${s.depP}" maxlength="5"
           oninput="applyMask(this)" onblur="padTime(this)" placeholder="--:--">
@@ -1729,7 +1729,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.7.0';
-var APP_BUILD   = 86;
+var APP_BUILD   = 87;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 
