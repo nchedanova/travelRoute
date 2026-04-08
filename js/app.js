@@ -1128,9 +1128,9 @@ function editStop(id, day) {
   if (card) card.draggable = false;
 
   form.innerHTML = `
-    <div class="edit-field" style="margin-bottom:8px;">
+    <div class="edit-field" style="margin-bottom:8px;width:100%">
       <div class="edit-label">Поиск нового места</div>
-      <div class="search-wrap">
+      <div class="search-wrap" style="width:100%">
         <input class="edit-input" style="width:100%" id="ei-search-${id}"
           type="text" placeholder="Название, адрес…"
           oninput="editStopSearch(this.value, '${id}')" autocomplete="off">
@@ -1729,7 +1729,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.7.0';
-var APP_BUILD   = 87;
+var APP_BUILD   = 88;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 
