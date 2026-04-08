@@ -253,7 +253,7 @@ header {
 .time-inputs { display:flex; align-items:flex-start; gap:5px; }
 .time-input-wrap { display:flex; flex-direction:column; gap:1px; }
 .time-mini-label { font-size:9px; color:var(--muted); opacity:0.6; }
-.planned-time { font-size:13px; color:var(--muted); padding:3px 5px; border:1px solid transparent; }
+.planned-time { font-size:13px; color:var(--muted); padding:4px 0; }
 
 input.time-in {
   background:var(--bg); border:1px solid var(--border);
