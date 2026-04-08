@@ -342,7 +342,6 @@ function renderStops(day) {
 // ── DAY SECTION ───────────────────────────────────────────────────────────────
 function renderDaySection(d) {
   const data    = DAYS_DATA[d];
-  const ordinal = DAY_ORDINALS[d - 1] || `${d}-й`;
   const sec     = document.createElement('div');
   sec.className  = 'day-section' + (d === currentDay ? ' visible' : '');
   sec.dataset.day = d;
