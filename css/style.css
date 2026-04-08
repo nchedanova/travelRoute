@@ -956,7 +956,13 @@ body.driving-active .stop-card.gps-nearest .stop-num {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
 }
+.notes-list::-webkit-scrollbar { width: 5px; }
+.notes-list::-webkit-scrollbar-track { background: transparent; }
+.notes-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.notes-list::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 .notes-empty {
   color: var(--muted);
   font-size: 11px;
