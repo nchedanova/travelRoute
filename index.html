@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=83">
+<link rel="stylesheet" href="css/style.css?v=84">
 <script>
 (function(){
   var t=localStorage.getItem('travel_theme');
@@ -171,14 +171,7 @@
         </div>
         <div class="modal-field">
           <div class="modal-label">Тип</div>
-          <select class="modal-select" id="new-stop-type" onchange="prefillStopIcon(this.value);prefillDepTime()">
-            <option value="Заправка">⛽ Заправка</option>
-            <option value="Кафе">🍜 Кафе</option>
-            <option value="Магазин">🛒 Магазин</option>
-            <option value="Отель">🛎 Отель</option>
-            <option value="Жильё">🏠 Жильё</option>
-            <option value="Другое">📍 Другое</option>
-          </select>
+          <div id="new-stop-type-container"></div>
         </div>
       </div>
       <div class="modal-row">
@@ -530,18 +523,18 @@
 
 <!-- Scripts: порядок важен — config и data первыми -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="js/config.js?v=83"></script>
-<script src="js/data.js?v=83"></script>
-<script src="js/storage.js?v=83"></script>
-<script src="js/offline.js?v=83"></script>
-<script src="js/map.js?v=83"></script>
-<script src="js/render.js?v=83"></script>
-<script src="js/app.js?v=83"></script>
-<script src="js/gps.js?v=83"></script>
-<script src="js/chat.js?v=83"></script>
-<script src="js/notes.js?v=83"></script>
-<script src="js/import.js?v=83"></script>
-<script src="js/gpx.js?v=83"></script>
+<script src="js/config.js?v=84"></script>
+<script src="js/data.js?v=84"></script>
+<script src="js/storage.js?v=84"></script>
+<script src="js/offline.js?v=84"></script>
+<script src="js/map.js?v=84"></script>
+<script src="js/render.js?v=84"></script>
+<script src="js/app.js?v=84"></script>
+<script src="js/gps.js?v=84"></script>
+<script src="js/chat.js?v=84"></script>
+<script src="js/notes.js?v=84"></script>
+<script src="js/import.js?v=84"></script>
+<script src="js/gpx.js?v=84"></script>
 <script>
   window._swReg         = null;
   window._swReg = null;

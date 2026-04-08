@@ -263,7 +263,7 @@ function openAddStop(day, prefillLat, prefillLng) {
       el.value = '';
       if (el.classList.contains('modal-input')) el.classList.remove('empty');
     });
-  document.getElementById('new-stop-type').value = 'Другое';
+  document.getElementById('new-stop-type-container').innerHTML = _buildTypeDropdownHTML('new-stop-type', 'Другое');
   document.getElementById('new-stop-icon').value = TYPE_ICONS['Другое'];
   document.getElementById('nominatim-results').classList.remove('show');
   if (newStopLat && newStopLng) {
@@ -348,6 +348,87 @@ function nominatimSearch(q) {
 
 // Offsets in minutes per stop type for auto-fill of departure plan time
 const DEP_OFFSETS = { 'Кафе': 60, 'Заправка': 20 };
+
+// ── TYPE DROPDOWN (custom select) ─────────────────────────────────────────────
+var _typeKeys = Object.keys(TYPE_ICONS);
+
+function _buildTypeDropdownHTML(inputId, selectedType) {
+  var sel = selectedType || 'Другое';
+  var icon = TYPE_ICONS[sel] || '📍';
+  var items = _typeKeys.map(function(t) {
+    var active = t === sel;
+    return '<div class="type-dropdown-item' + (active ? ' active' : '') + '" data-type="' + t + '" onmousedown="event.preventDefault()" onclick="_selectTypeItem(\'' + inputId + '\',\'' + t + '\')">'
+      + '<span class="type-dropdown-icon">' + (TYPE_ICONS[t] || '📍') + '</span>'
+      + '<span>' + t + '</span>'
+      + (active ? '<span class="type-dropdown-check">✓</span>' : '')
+      + '</div>';
+  }).join('');
+  return '<input type="hidden" id="' + inputId + '" value="' + sel + '">'
+    + '<div class="type-dropdown" id="' + inputId + '-dd">'
+    + '<div class="type-dropdown-btn" onclick="_toggleTypeDropdown(\'' + inputId + '\')">'
+    + '<span class="type-dropdown-icon" id="' + inputId + '-icon">' + icon + '</span>'
+    + '<span class="type-dropdown-label" id="' + inputId + '-label">' + sel + '</span>'
+    + '<span class="type-dropdown-arrow" id="' + inputId + '-arrow">▾</span>'
+    + '</div>'
+    + '<div class="type-dropdown-menu" id="' + inputId + '-menu">' + items + '</div>'
+    + '</div>';
+}
+
+function _toggleTypeDropdown(inputId) {
+  var menu = document.getElementById(inputId + '-menu');
+  var btn = menu.previousElementSibling;
+  var isOpen = menu.classList.contains('show');
+  _closeAllTypeDropdowns();
+  if (!isOpen) {
+    menu.classList.add('show');
+    btn.classList.add('open');
+    document.getElementById(inputId + '-arrow').textContent = '▴';
+  }
+}
+
+function _closeAllTypeDropdowns() {
+  document.querySelectorAll('.type-dropdown-menu.show').forEach(function(m) {
+    m.classList.remove('show');
+    m.previousElementSibling.classList.remove('open');
+    var arrowId = m.id.replace('-menu', '-arrow');
+    var arrow = document.getElementById(arrowId);
+    if (arrow) arrow.textContent = '▾';
+  });
+}
+
+function _selectTypeItem(inputId, type) {
+  var input = document.getElementById(inputId);
+  input.value = type;
+  document.getElementById(inputId + '-icon').textContent = TYPE_ICONS[type] || '📍';
+  document.getElementById(inputId + '-label').textContent = type;
+  // Update active state
+  var menu = document.getElementById(inputId + '-menu');
+  menu.querySelectorAll('.type-dropdown-item').forEach(function(item) {
+    var isActive = item.dataset.type === type;
+    item.classList.toggle('active', isActive);
+    var check = item.querySelector('.type-dropdown-check');
+    if (isActive && !check) {
+      item.insertAdjacentHTML('beforeend', '<span class="type-dropdown-check">✓</span>');
+    } else if (!isActive && check) {
+      check.remove();
+    }
+  });
+  _closeAllTypeDropdowns();
+  // Fire callbacks
+  if (inputId === 'new-stop-type') {
+    prefillStopIcon(type);
+    prefillDepTime();
+  } else if (inputId.startsWith('ei-type-')) {
+    var stopId = inputId.replace('ei-type-', '');
+    var iconEl = document.getElementById('ei-icon-' + stopId);
+    if (iconEl) iconEl.value = TYPE_ICONS[type] || '📍';
+  }
+}
+
+// Close dropdown on click outside
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.type-dropdown')) _closeAllTypeDropdowns();
+});
 
 function prefillStopIcon(type) {
   const iconEl    = document.getElementById('new-stop-icon');
@@ -1046,10 +1127,6 @@ function editStop(id, day) {
   const card = document.getElementById('card-' + id);
   if (card) card.draggable = false;
 
-  const typeOptions = ['Заправка', 'Кафе', 'Магазин', 'Отель', 'Жильё', 'Другое']
-    .map(t => `<option value="${t}" ${t === s.type ? 'selected' : ''}>${TYPE_ICONS[t] || '📍'} ${t}</option>`)
-    .join('');
-
   form.innerHTML = `
     <div class="edit-field" style="margin-bottom:8px;">
       <div class="edit-label">Поиск нового места</div>
@@ -1076,9 +1153,7 @@ function editStop(id, day) {
     <div class="edit-row">
       <div class="edit-field">
         <div class="edit-label">Тип</div>
-        <select class="edit-select" id="ei-type-${id}" onchange="document.getElementById('ei-icon-${id}').value=TYPE_ICONS[this.value]||'📍'">
-          ${typeOptions}
-        </select>
+        <div id="ei-type-container-${id}">${_buildTypeDropdownHTML('ei-type-' + id, s.type)}</div>
       </div>
       <div class="edit-field">
         <div class="edit-label">Приб. план</div>
@@ -1654,7 +1729,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.7.0';
-var APP_BUILD   = 83;
+var APP_BUILD   = 84;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 
