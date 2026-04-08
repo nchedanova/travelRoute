@@ -818,10 +818,10 @@ function setDayMode(day, mode) {
   var row = document.getElementById('dayModeRow' + day);
   if (row) {
     row.querySelectorAll('.day-mode-pill').forEach(function(btn) {
-      btn.className = 'day-mode-pill inactive';
+      btn.className = 'day-mode-pill';
     });
     var activeBtn = row.querySelector(data.walkMode ? '.day-mode-pill:last-child' : '.day-mode-pill:first-child');
-    if (activeBtn) activeBtn.className = 'day-mode-pill ' + (data.walkMode ? 'active-walk' : 'active-auto');
+    if (activeBtn) activeBtn.className = 'day-mode-pill active';
   }
 
   // Refresh Еду/Иду button
@@ -841,9 +841,9 @@ function setDayVisibility(day, visible) {
   // Обновить пиллы в меню
   var row = document.getElementById('dayVisRow' + day);
   if (row) {
-    row.querySelectorAll('.day-mode-pill').forEach(function(btn) { btn.className = 'day-mode-pill inactive'; });
+    row.querySelectorAll('.day-mode-pill').forEach(function(btn) { btn.className = 'day-mode-pill'; });
     var activeBtn = row.querySelector(visible ? '.day-mode-pill:first-child' : '.day-mode-pill:last-child');
-    if (activeBtn) activeBtn.className = 'day-mode-pill ' + (visible ? 'active-auto' : 'active-walk');
+    if (activeBtn) activeBtn.className = 'day-mode-pill active';
   }
   saveData();
   showToast(visible ? '👁 День виден читателю' : '🔒 День скрыт от читателя');
@@ -1123,6 +1123,10 @@ function editStop(id, day) {
   tg.style.display   = 'none';
   form.style.display = 'block';
 
+  // Hide ··· menu while editing
+  var dotsBtn = document.getElementById('dots-' + id);
+  if (dotsBtn) dotsBtn.style.display = 'none';
+
   // Disable drag while editing so text selection works normally
   const card = document.getElementById('card-' + id);
   if (card) card.draggable = false;
@@ -1234,6 +1238,8 @@ function cancelStopEdit(id) {
   if (main) main.style.display = '';
   if (tg)   tg.style.display   = '';
   if (form) form.style.display  = 'none';
+  var dotsBtn = document.getElementById('dots-' + id);
+  if (dotsBtn) dotsBtn.style.display = '';
   // Re-enable drag
   const card = document.getElementById('card-' + id);
   if (card) card.draggable = true;
@@ -1729,7 +1735,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.7.0';
-var APP_BUILD   = 89;
+var APP_BUILD   = 90;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 

@@ -2675,56 +2675,45 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 /* ── DAY MODE TOGGLE ─────────────────────────────────────────────────────────── */
 .day-mode-row {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 14px;
-  border-bottom: 1px solid var(--border);
+  gap: 10px;
+  padding: 5px 12px;
 }
+.day-mode-group { flex: 1; }
 .day-mode-label {
-  font-size: 11px;
+  font-size: 8px;
   color: var(--muted);
-  flex-shrink: 0;
+  letter-spacing: 0.06em;
+  margin-bottom: 4px;
 }
 .day-mode-pills {
   display: flex;
-  align-items: center;
-  gap: 3px;
-  background: var(--bg);
+  border-radius: 12px;
   border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 3px;
-  margin-left: auto;
+  overflow: hidden;
 }
 .day-mode-pill {
-  font-size: 10px;
-  padding: 3px 10px;
-  border-radius: 16px;
+  flex: 1;
+  padding: 5px 0;
   border: none;
   cursor: pointer;
   font-family: 'JetBrains Mono', monospace;
-  transition: opacity 0.15s, background 0.15s;
-  white-space: nowrap;
-  line-height: 1.4;
-  min-height: 26px;
-  -webkit-tap-highlight-color: transparent;
-}
-.day-mode-pill.inactive {
+  font-size: 14px;
+  line-height: 1;
   background: transparent;
   color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+  -webkit-tap-highlight-color: transparent;
 }
-@media (hover: hover) {
-  .day-mode-pill.inactive:hover { color: var(--text); }
-}
-.day-mode-pill.active-auto {
-  background: var(--amber);
-  color: #111;
+.day-mode-pill.active {
+  background: var(--accent-bg);
+  color: var(--amber);
+  border-radius: 11px;
   cursor: default;
 }
-.day-mode-pill.active-walk {
-  background: var(--accent);
-  color: #111;
-  cursor: default;
-}
+.day-mode-pill svg { pointer-events: none; }
 
 
 /* ── TYPE DROPDOWN (custom select) ───────────────────────────────────────────── */

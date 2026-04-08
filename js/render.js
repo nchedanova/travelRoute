@@ -376,19 +376,20 @@ function renderDaySection(d) {
           <button onclick="confirmReset(${d});closeDayMenus()">⟳ Сбросить факт</button>` : ''}
           <button onclick="fetchDayWeather(${d});closeDayMenus()">🌤 Погода</button>
           ${isAdmin() ? `<div class="day-overflow-divider"></div>
-          <div class="day-mode-row" id="dayVisRow${d}">
-            <span class="day-mode-label">Читатель</span>
-            <div class="day-mode-pills">
-              <button class="day-mode-pill ${!data.hidden ? 'active-auto' : 'inactive'}" onclick="setDayVisibility(${d},true)">видит</button>
-              <button class="day-mode-pill ${data.hidden ? 'active-walk' : 'inactive'}" onclick="setDayVisibility(${d},false)">скрыт</button>
+          <div class="day-mode-row">
+            <div class="day-mode-group" id="dayVisRow${d}">
+              <div class="day-mode-label">ЧИТАТЕЛЬ</div>
+              <div class="day-mode-pills">
+                <button class="day-mode-pill ${!data.hidden ? 'active' : ''}" onclick="setDayVisibility(${d},true)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                <button class="day-mode-pill ${data.hidden ? 'active' : ''}" onclick="setDayVisibility(${d},false)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg></button>
+              </div>
             </div>
-          </div>
-          <div class="day-overflow-divider"></div>
-          <div class="day-mode-row" id="dayModeRow${d}">
-            <span class="day-mode-label">Режим</span>
-            <div class="day-mode-pills">
-              <button class="day-mode-pill ${!data.walkMode ? 'active-auto' : 'inactive'}" onclick="setDayMode(${d},'auto')">🚗 авто</button>
-              <button class="day-mode-pill ${data.walkMode ? 'active-walk' : 'inactive'}" onclick="setDayMode(${d},'walk')">🚶 пешком</button>
+            <div class="day-mode-group" id="dayModeRow${d}">
+              <div class="day-mode-label">РЕЖИМ</div>
+              <div class="day-mode-pills">
+                <button class="day-mode-pill ${!data.walkMode ? 'active' : ''}" onclick="setDayMode(${d},'auto')">🚗</button>
+                <button class="day-mode-pill ${data.walkMode ? 'active' : ''}" onclick="setDayMode(${d},'walk')">🚶</button>
+              </div>
             </div>
           </div>
           <div class="day-overflow-divider"></div>
