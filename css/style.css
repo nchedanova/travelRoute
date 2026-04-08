@@ -886,7 +886,7 @@ body.driving-active .stop-card.gps-nearest .stop-num {
   border-bottom: 2px solid transparent;
   color: var(--muted);
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 12px;
   cursor: pointer;
   display: flex;
   align-items: center;
