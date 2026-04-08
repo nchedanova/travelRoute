@@ -203,6 +203,10 @@ async function loadState() {
     // Init нарисовал прямые (OSRM был выключен) → нужен redraw с enableRouteLoading.
     if (!_didRedraw) {
       _fullRedraw();
+      renderTabs();
+      renderAllDays();
+      updateProgress();
+      switchDay(_pickVisibleDay(currentDay));
     }
     setSyncStatus('☁ офлайн', 'var(--muted)');
     setModeBadge();
