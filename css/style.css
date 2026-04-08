@@ -331,7 +331,7 @@ body.viewer-mode #undoBtn { display:none !important; }
 .modal-overlay.show { display:flex; }
 .modal {
   background:var(--surface2); border:1px solid var(--border);
-  border-radius:8px; padding:24px 28px; max-width:300px; width:90%;
+  border-radius:12px; padding:24px 28px; max-width:300px; width:90%;
   box-shadow:0 8px 32px rgba(0,0,0,0.6);
   animation:modal-in 0.18s ease;
 }
@@ -343,14 +343,14 @@ body.viewer-mode #undoBtn { display:none !important; }
 .modal-body { font-size:11px; color:var(--muted); margin-bottom:20px; line-height:1.6; }
 .modal-actions { display:flex; gap:8px; justify-content:flex-end; }
 .modal-cancel {
-  padding:6px 16px; border-radius:4px;
+  padding:6px 16px; border-radius:6px;
   border:1px solid var(--border); background:transparent;
   color:var(--muted); font-family:'JetBrains Mono',monospace;
   font-size:11px; cursor:pointer; transition:all 0.15s;
 }
 .modal-cancel:hover { border-color:var(--text); color:var(--text); }
 .modal-confirm {
-  padding:6px 16px; border-radius:4px;
+  padding:6px 16px; border-radius:6px;
   border:1px solid var(--red); background:rgba(248,113,113,0.1);
   color:var(--red); font-family:'JetBrains Mono',monospace;
   font-size:11px; cursor:pointer; transition:all 0.15s;
@@ -429,12 +429,12 @@ body.viewer-mode #undoBtn { display:none !important; }
 .edit-field { display:flex; flex-direction:column; gap:3px; min-width:0; }
 .edit-field-grow { flex:1; min-width:0; }
 .edit-input-coord { width:100%; min-width:0; box-sizing:border-box; }
-.edit-label { font-size:8px; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); }
+.edit-label { font-size:9px; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); }
 .edit-input {
   background:var(--bg); border:1px solid var(--border);
-  border-radius:4px; color:var(--text);
+  border-radius:6px; color:var(--text);
   font-family:'JetBrains Mono',monospace; font-size:12px;
-  padding:5px 8px; outline:none; transition:border-color 0.2s;
+  padding:6px 9px; outline:none; transition:border-color 0.2s;
 }
 .edit-input:focus { border-color:var(--amber); }
 .edit-input-icon { width:40px; text-align:center; font-size:16px; }
@@ -443,21 +443,21 @@ body.viewer-mode #undoBtn { display:none !important; }
 .edit-input-time:focus { color:var(--text); }
 .edit-select {
   background:var(--bg); border:1px solid var(--border);
-  border-radius:4px; color:var(--text);
-  font-family:'JetBrains Mono',monospace; font-size:11px;
-  padding:5px 8px; outline:none; cursor:pointer;
+  border-radius:6px; color:var(--text);
+  font-family:'JetBrains Mono',monospace; font-size:12px;
+  padding:6px 9px; outline:none; cursor:pointer;
 }
 .edit-actions-row { display:flex; justify-content:flex-end; gap:8px; margin-top:10px; }
 .edit-cancel-btn {
   font-family:'JetBrains Mono',monospace; font-size:10px;
   background:transparent; border:1px solid var(--border);
-  color:var(--muted); border-radius:4px; padding:5px 12px; cursor:pointer;
+  color:var(--muted); border-radius:6px; padding:5px 12px; cursor:pointer;
 }
 .edit-cancel-btn:hover { border-color:var(--muted); color:var(--text); }
 .edit-save-btn {
   font-family:'JetBrains Mono',monospace; font-size:10px;
   background:rgba(74,222,128,0.08); border:1px solid var(--green);
-  color:var(--green); border-radius:4px; padding:5px 12px; cursor:pointer;
+  color:var(--green); border-radius:6px; padding:5px 12px; cursor:pointer;
 }
 .edit-save-btn:hover { background:rgba(74,222,128,0.18); }
 
@@ -495,21 +495,21 @@ body.viewer-mode #undoBtn { display:none !important; }
 .modal-label { font-size:9px; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:5px; }
 .modal-input {
   width:100%; background:var(--bg); border:1px solid var(--border);
-  border-radius:4px; color:var(--text); font-family:'JetBrains Mono',monospace;
-  font-size:12px; padding:6px 9px; outline:none; transition:border-color 0.2s;
+  border-radius:6px; color:var(--text); font-family:'JetBrains Mono',monospace;
+  font-size:12px; padding:8px 10px; outline:none; transition:border-color 0.2s;
 }
 .modal-input:focus { border-color:var(--amber); }
 .modal-select {
   width:100%; background:var(--bg); border:1px solid var(--border);
-  border-radius:4px; color:var(--text); font-family:'JetBrains Mono',monospace;
-  font-size:12px; padding:6px 9px; outline:none; cursor:pointer;
+  border-radius:6px; color:var(--text); font-family:'JetBrains Mono',monospace;
+  font-size:12px; padding:8px 10px; outline:none; cursor:pointer;
 }
 .modal-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 .search-wrap { position:relative; }
 .search-results {
   position:absolute; top:100%; left:0; right:0; z-index:100;
   background:var(--surface2); border:1px solid var(--border);
-  border-radius:0 0 4px 4px; max-height:160px; overflow-y:auto;
+  border-radius:0 0 6px 6px; max-height:160px; overflow-y:auto;
   display:none;
 }
 .search-results.show { display:block; }
@@ -2731,21 +2731,21 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 .type-dropdown { position: relative; }
 .type-dropdown-btn {
   display: flex; align-items: center; gap: 8px;
-  background: var(--surface2); border: 1px solid var(--border); border-radius: 4px;
-  padding: 7px 10px; cursor: pointer; width: 100%;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+  padding: 8px 10px; cursor: pointer; width: 100%;
   font-family: 'JetBrains Mono', monospace; font-size: 12px;
   transition: border-color 0.15s;
 }
 .type-dropdown-btn:hover { border-color: var(--amber); }
-.type-dropdown-btn.open { border-color: var(--amber); border-radius: 4px 4px 0 0; }
+.type-dropdown-btn.open { border-color: var(--amber); border-radius: 6px 6px 0 0; }
 .type-dropdown-icon { display: inline-block; width: 22px; text-align: center; font-size: 14px; flex-shrink: 0; }
 .type-dropdown-label { flex: 1; color: var(--amber); }
 .type-dropdown-arrow { font-size: 10px; color: var(--muted); transition: color 0.15s; }
 .type-dropdown-btn.open .type-dropdown-arrow { color: var(--amber); }
 .type-dropdown-menu {
   display: none; position: absolute; left: 0; right: 0; top: 100%;
-  background: var(--surface2); border: 1px solid var(--border); border-top: none;
-  border-radius: 0 0 4px 4px; z-index: 200; overflow: hidden;
+  background: var(--bg); border: 1px solid var(--border); border-top: none;
+  border-radius: 0 0 6px 6px; z-index: 200; overflow: hidden;
 }
 .type-dropdown-menu.show { display: block; }
 .type-dropdown-item {
