@@ -68,6 +68,57 @@ function fillOnTime(el) {
   saveData();
 }
 
+function _parseTime(s) {
+  if (!s || typeof s !== 'string') return null;
+  var p = s.split(':');
+  if (p.length !== 2) return null;
+  var h = parseInt(p[0], 10), m = parseInt(p[1], 10);
+  if (isNaN(h) || isNaN(m)) return null;
+  return h * 60 + m;
+}
+
+function _fmtTime(totalMin) {
+  totalMin = ((totalMin % 1440) + 1440) % 1440;
+  var h = Math.floor(totalMin / 60), m = totalMin % 60;
+  return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
+}
+
+function autoFillTimes(day) {
+  if (!isAdmin()) return;
+  var data = DAYS_DATA[day];
+  if (!data) return;
+  var profile = data.walkMode ? 'foot' : 'driving';
+  var stops = data.stops;
+  var changed = false;
+
+  for (var i = 0; i < stops.length; i++) {
+    if (stops[i].arrP) continue;
+    var prev, prevDep;
+    if (i === 0) {
+      prev = data.start;
+      prevDep = _parseTime(data.departP);
+    } else {
+      prev = stops[i - 1];
+      prevDep = _parseTime(stops[i - 1].depP) || _parseTime(stops[i - 1].arrP);
+    }
+    if (prevDep == null) continue;
+    var dur = getSegmentDuration(prev, stops[i], profile);
+    if (dur == null) continue;
+    var arrMin = prevDep + Math.round(dur / 60);
+    stops[i].arrP = _fmtTime(arrMin);
+    changed = true;
+
+    var planEl = document.getElementById('planned-arr-' + stops[i].id);
+    if (planEl) planEl.textContent = stops[i].arrP;
+    var inp = document.getElementById('arr-' + stops[i].id);
+    if (inp && !inp.value) inp.placeholder = stops[i].arrP;
+  }
+  if (changed) {
+    updateProgress();
+    saveData();
+  }
+}
+
 // ── PROGRESS + DELTAS ─────────────────────────────────────────────────────────
 function updateProgress() {
   dayKeys().forEach(day => {

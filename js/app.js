@@ -497,6 +497,7 @@ function doAddStop() {
   updateProgress();
   saveData();
   showToast('✅ Точка добавлена');
+  autoFillTimes(day);
   // Auto-fetch weather for the new stop (delay for DOM readiness on mobile PWA)
   setTimeout(function() { fetchStopWeather(day, id); }, 500);
 }
@@ -1030,6 +1031,7 @@ function saveStopTime(id, day) {
   cancelStopEdit(id);
   updateProgress();
   saveData();
+  autoFillTimes(day);
   showToast('✅ Время обновлено');
   // Re-fetch weather for this stop with updated plan time
   fetchStopWeather(day, id);
@@ -1749,7 +1751,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.7.0';
-var APP_BUILD   = 95;
+var APP_BUILD   = 96;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 

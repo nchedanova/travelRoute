@@ -18,6 +18,14 @@ const _routeCache = (() => {
   catch(e) { console.warn('[routeCache] Failed to load:', e); return {}; }
 })();
 
+const _durationCache = {};
+
+function getSegmentDuration(from, to, profile) {
+  profile = profile || 'driving';
+  var key = profile + '|' + from.lat + ',' + from.lng + '|' + to.lat + ',' + to.lng;
+  return _durationCache[key] != null ? _durationCache[key] : null;
+}
+
 let _cacheSaveTimer = null;
 function _persistCache() {
   clearTimeout(_cacheSaveTimer);
@@ -97,6 +105,7 @@ async function _osrmFetch(from, to, profile) {
       if (data.code !== 'Ok' || !data.routes?.length) return null;
       const coords = data.routes[0].geometry.coordinates.map(([lng, lat]) => [lat, lng]);
       _routeCache[key] = coords;
+      if (data.routes[0].duration != null) _durationCache[key] = data.routes[0].duration;
       _persistCache(); // сохраняем в localStorage для следующей сессии
       return coords;
     } catch (_) {
@@ -362,6 +371,7 @@ function drawDay(d) {
         seg.setLatLngs(coords);
         if (segOutline && group.hasLayer(segOutline)) segOutline.setLatLngs(coords);
         refreshSegments();
+        if (typeof autoFillTimes === 'function') autoFillTimes(d);
       }).catch(() => {});
     }
     // Кешированный случай: redrawDay вызовет refreshSegments() после drawDay — стили применятся там
