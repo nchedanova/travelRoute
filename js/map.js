@@ -71,11 +71,11 @@ const _fetchQueue = [];
 let   _queueBusy  = false;
 
 function _flushQueue() {
-  // Reject all pending requests so new redraw doesn't wait behind stale fetches
   while (_fetchQueue.length > 0) {
     const item = _fetchQueue.shift();
     item.reject(new Error('flushed'));
   }
+  _durQueue.length = 0;
 }
 
 async function _drainQueue() {
@@ -154,7 +154,22 @@ function fetchRoadSegment(from, to, profile) {
   });
 }
 
-async function _fetchDuration(from, to, profile) {
+var _durQueue = [];
+var _durBusy = false;
+
+async function _drainDurQueue() {
+  if (_durBusy) return;
+  _durBusy = true;
+  while (_durQueue.length > 0) {
+    var item = _durQueue.shift();
+    try { await _fetchDurationSingle(item.from, item.to, item.profile); } catch(_) {}
+    if (item.cb) item.cb();
+    if (_durQueue.length > 0) await new Promise(function(r) { setTimeout(r, OSRM_DELAY_MS); });
+  }
+  _durBusy = false;
+}
+
+async function _fetchDurationSingle(from, to, profile) {
   profile = profile || 'driving';
   var key = profile + '|' + from.lat + ',' + from.lng + '|' + to.lat + ',' + to.lng;
   if (_durationCache[key] != null) return;
@@ -174,6 +189,11 @@ async function _fetchDuration(from, to, profile) {
     _durationCache[key] = data.routes[0].duration;
     _persistCache();
   } catch (_) {}
+}
+
+function _fetchDuration(from, to, profile, cb) {
+  _durQueue.push({ from: from, to: to, profile: profile, cb: cb });
+  _drainDurQueue();
 }
 
 function initMap() {
@@ -414,10 +434,9 @@ function drawDay(d) {
         if (typeof autoFillTimes === 'function') autoFillTimes(d);
       }).catch(() => {});
     } else if (_durationCache[cacheKey] == null && _routeLoadingEnabled) {
-      // Coords в кэше, но duration нет — фоновый запрос за duration
-      _fetchDuration(from, to, profile).then(() => {
+      _fetchDuration(from, to, profile, function() {
         if (typeof autoFillTimes === 'function') autoFillTimes(d);
-      }).catch(() => {});
+      });
     }
     // Кешированный случай: redrawDay вызовет refreshSegments() после drawDay — стили применятся там
   }
