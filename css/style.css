@@ -247,7 +247,7 @@ header {
 .time-grid { padding:0 18px 10px 50px; display:grid; grid-template-columns:1fr 1fr; gap:8px; }
 .time-block { display:flex; flex-direction:column; gap:4px; }
 .time-block-label { font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); }
-.time-inputs { display:flex; align-items:flex-end; gap:5px; }
+.time-inputs { display:flex; align-items:flex-start; gap:5px; }
 .time-input-wrap { display:flex; flex-direction:column; gap:1px; }
 .time-mini-label { font-size:9px; color:var(--muted); opacity:0.6; }
 .planned-time { font-size:13px; color:var(--muted); padding:4px 0; }
@@ -265,7 +265,7 @@ input.time-in::placeholder { color:var(--muted); opacity:0.5; }
 input.time-in.ontime { color:var(--green);  border-color:rgba(74,222,128,0.4); }
 input.time-in.late   { color:var(--red);    border-color:rgba(248,113,113,0.4); }
 
-.delta-wrap { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; }
+.delta-wrap { display:flex; flex-direction:column; align-items:center; align-self:center; justify-content:center; gap:1px; }
 .delta-arrow { color:var(--border); font-size:9px; }
 .delta-badge {
   font-size:9px; font-weight:500; padding:1px 4px;
