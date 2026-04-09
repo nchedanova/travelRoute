@@ -18,7 +18,16 @@ const _routeCache = (() => {
   catch(e) { console.warn('[routeCache] Failed to load:', e); return {}; }
 })();
 
-const _durationCache = {};
+const OSRM_DURATION_KEY = 'travel_duration_cache_v1';
+
+const _durationCache = (() => {
+  try {
+    var raw = JSON.parse(localStorage.getItem(OSRM_DURATION_KEY) || '{}');
+    Object.keys(raw).forEach(k => { if (!/^(driving|foot)\|/.test(k)) delete raw[k]; });
+    return raw;
+  }
+  catch(e) { return {}; }
+})();
 
 function getSegmentDuration(from, to, profile) {
   profile = profile || 'driving';
@@ -30,12 +39,18 @@ let _cacheSaveTimer = null;
 function _persistCache() {
   clearTimeout(_cacheSaveTimer);
   _cacheSaveTimer = setTimeout(() => {
-    try { localStorage.setItem(OSRM_CACHE_KEY, JSON.stringify(_routeCache)); }
+    try {
+      localStorage.setItem(OSRM_CACHE_KEY, JSON.stringify(_routeCache));
+      localStorage.setItem(OSRM_DURATION_KEY, JSON.stringify(_durationCache));
+    }
     catch (e) {
       if (e.name === 'QuotaExceededError') {
         const keys = Object.keys(_routeCache);
-        keys.slice(0, Math.floor(keys.length / 2)).forEach(k => delete _routeCache[k]);
-        try { localStorage.setItem(OSRM_CACHE_KEY, JSON.stringify(_routeCache)); } catch {}
+        keys.slice(0, Math.floor(keys.length / 2)).forEach(k => { delete _routeCache[k]; delete _durationCache[k]; });
+        try {
+          localStorage.setItem(OSRM_CACHE_KEY, JSON.stringify(_routeCache));
+          localStorage.setItem(OSRM_DURATION_KEY, JSON.stringify(_durationCache));
+        } catch {}
       }
     }
   }, 300);
@@ -44,7 +59,10 @@ function _persistCache() {
 // Страховка: при уходе со страницы сохраняем немедленно (SW auto-reload, ручной F5)
 window.addEventListener('beforeunload', function() {
   clearTimeout(_cacheSaveTimer);
-  try { localStorage.setItem(OSRM_CACHE_KEY, JSON.stringify(_routeCache)); } catch {}
+  try {
+    localStorage.setItem(OSRM_CACHE_KEY, JSON.stringify(_routeCache));
+    localStorage.setItem(OSRM_DURATION_KEY, JSON.stringify(_durationCache));
+  } catch {}
 });
 
 
@@ -134,6 +152,28 @@ function fetchRoadSegment(from, to, profile) {
     _fetchQueue.push({ from, to, profile, resolve, reject });
     _drainQueue();
   });
+}
+
+async function _fetchDuration(from, to, profile) {
+  profile = profile || 'driving';
+  var key = profile + '|' + from.lat + ',' + from.lng + '|' + to.lat + ',' + to.lng;
+  if (_durationCache[key] != null) return;
+  var url;
+  if (profile === 'foot') {
+    url = 'https://routing.openstreetmap.de/routed-foot/route/v1/foot/' +
+      from.lng + ',' + from.lat + ';' + to.lng + ',' + to.lat + '?overview=false';
+  } else {
+    url = 'https://router.project-osrm.org/route/v1/driving/' +
+      from.lng + ',' + from.lat + ';' + to.lng + ',' + to.lat + '?overview=false';
+  }
+  try {
+    var r = await fetch(url);
+    if (!r.ok) return;
+    var data = await r.json();
+    if (data.code !== 'Ok' || !data.routes?.length) return;
+    _durationCache[key] = data.routes[0].duration;
+    _persistCache();
+  } catch (_) {}
 }
 
 function initMap() {
@@ -371,6 +411,11 @@ function drawDay(d) {
         seg.setLatLngs(coords);
         if (segOutline && group.hasLayer(segOutline)) segOutline.setLatLngs(coords);
         refreshSegments();
+        if (typeof autoFillTimes === 'function') autoFillTimes(d);
+      }).catch(() => {});
+    } else if (_durationCache[cacheKey] == null && _routeLoadingEnabled) {
+      // Coords в кэше, но duration нет — фоновый запрос за duration
+      _fetchDuration(from, to, profile).then(() => {
         if (typeof autoFillTimes === 'function') autoFillTimes(d);
       }).catch(() => {});
     }
