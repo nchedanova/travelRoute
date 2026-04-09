@@ -863,7 +863,7 @@ input.day-date-input {
 }
 
 /* Подсветка ближайшей остановки — только в режиме "Еду" */
-body.driving-active .stop-card.gps-nearest .stop-num {
+.stop-card.gps-nearest .stop-num {
   color: #000 !important;
 }
 
