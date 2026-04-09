@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=102">
+<link rel="stylesheet" href="css/style.css?v=103">
 <script>
 (function(){
   var t=localStorage.getItem('travel_theme');
@@ -308,6 +308,7 @@
   <!-- Share / Nav Modal -->
   <div class="modal-overlay" id="shareModal" onclick="if(event.target===this)closeShareModal()">
     <div class="modal modal-lg">
+      <button class="modal-close-x" onclick="closeShareModal()">✕</button>
       <div class="modal-title">🗺️ Открыть в навигаторе</div>
       <div class="modal-body" id="share-day-title" style="margin-bottom:14px;font-size:11px;color:var(--muted);"></div>
       <div class="nav-option">
@@ -336,15 +337,14 @@
             <div class="nav-link-title">Organic Maps / OsmAnd</div>
             <div class="nav-link-sub" id="organic-maps-sub">На телефоне откроет маршрут прямо в приложении</div>
           </div>
-          <button class="nav-link-btn" id="organic-maps-btn" onclick="exportGpxAndOpen(currentDay)">📲 Открыть в картах</button>
+          <button class="nav-link-btn" id="organic-maps-btn" onclick="exportGpxAndOpen(currentDay)">📲 Открыть</button>
         </div>
 
       </div>
-      <div class="modal-actions" style="flex-wrap:wrap;gap:8px;">
-        <button class="nav-link-btn admin-only-el" onclick="prefetchRouteTiles(currentDay)" style="padding:6px 14px;">📥 Скачать карту</button>
-        <button class="nav-link-btn admin-only-el" onclick="clearTileCache()" style="padding:6px 14px;">🗑 Удалить кэш</button>
-        <button id="copy-coords-btn" class="nav-link-btn admin-only-el" onclick="copyShareText()" style="padding:6px 14px;">📋 Координаты</button>
-        <button class="modal-cancel" onclick="closeShareModal()">Закрыть</button>
+      <div class="nav-admin-grid admin-only-el">
+        <button class="nav-link-btn" onclick="prefetchRouteTiles(currentDay)">📥 Скачать карту</button>
+        <button class="nav-link-btn" onclick="clearTileCache()">🗑 Удалить кэш</button>
+        <button id="copy-coords-btn" class="nav-link-btn" onclick="copyShareText()">📋 Координаты</button>
       </div>
     </div>
   </div>
@@ -523,18 +523,18 @@
 
 <!-- Scripts: порядок важен — config и data первыми -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="js/config.js?v=102"></script>
-<script src="js/data.js?v=102"></script>
-<script src="js/storage.js?v=102"></script>
-<script src="js/offline.js?v=102"></script>
-<script src="js/map.js?v=102"></script>
-<script src="js/render.js?v=102"></script>
-<script src="js/app.js?v=102"></script>
-<script src="js/gps.js?v=102"></script>
-<script src="js/chat.js?v=102"></script>
-<script src="js/notes.js?v=102"></script>
-<script src="js/import.js?v=102"></script>
-<script src="js/gpx.js?v=102"></script>
+<script src="js/config.js?v=103"></script>
+<script src="js/data.js?v=103"></script>
+<script src="js/storage.js?v=103"></script>
+<script src="js/offline.js?v=103"></script>
+<script src="js/map.js?v=103"></script>
+<script src="js/render.js?v=103"></script>
+<script src="js/app.js?v=103"></script>
+<script src="js/gps.js?v=103"></script>
+<script src="js/chat.js?v=103"></script>
+<script src="js/notes.js?v=103"></script>
+<script src="js/import.js?v=103"></script>
+<script src="js/gpx.js?v=103"></script>
 <script>
   window._swReg         = null;
   window._swReg = null;

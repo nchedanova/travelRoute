@@ -79,7 +79,7 @@ header {
   border-bottom:1px solid var(--border);
   padding:8px 16px;
   display:flex; align-items:center; gap:10px;
-  flex-shrink:0; z-index:200; overflow:hidden;
+  flex-shrink:0; z-index:200;
   flex-wrap:nowrap;
 }
 .logo { font-family:'Unbounded',sans-serif; font-size:14px; letter-spacing:0.02em; color:var(--amber); white-space:nowrap; flex-shrink:0; }
@@ -179,7 +179,7 @@ header {
 .stat-box { flex:1; text-align:center; padding:8px 0; border-right:1px solid var(--border); }
 .stat-box:last-child { border-right:none; }
 .stat-val { font-size:13px; font-weight:500; color:var(--text); }
-.stat-key { font-size:8px; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase; margin-top:1px; }
+.stat-key { font-size:9px; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase; margin-top:1px; }
 
 /* ── STOP CARDS ──────────────────────────────────────── */
 /* ── NAV / SHARE BUTTON ───────────────────────────────── */
@@ -199,18 +199,28 @@ header {
   background:var(--surface2); border:1px solid var(--border);
   border-radius:6px; padding:8px 10px;
 }
-.nav-link-icon { font-size:18px; flex-shrink:0; }
+.nav-link-icon { font-size:20px; flex-shrink:0; }
 .nav-link-info { flex:1; min-width:0; }
 .nav-link-title { font-size:11px; color:var(--text); margin-bottom:2px; }
 .nav-link-sub { font-size:9px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .nav-link-btn {
-  font-family:'JetBrains Mono',monospace; font-size:9px;
+  font-family:'JetBrains Mono',monospace; font-size:11px;
   background:transparent; border:1px solid var(--border);
   color:var(--muted); border-radius:4px; padding:5px 10px;
   cursor:pointer; transition:all 0.15s; flex-shrink:0; white-space:nowrap;
 }
 .nav-link-btn:hover { border-color:var(--green); color:var(--green); }
 .nav-link-btn.copy-ok { border-color:var(--green); color:var(--green); }
+.nav-admin-grid {
+  display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-top:14px;
+}
+.nav-admin-grid .nav-link-btn { text-align:center; padding:7px 4px; }
+.modal-close-x {
+  position:absolute; top:12px; right:14px; background:none; border:none;
+  color:var(--muted); font-size:18px; cursor:pointer; width:28px; height:28px;
+  display:flex; align-items:center; justify-content:center;
+}
+.modal-close-x:hover { color:var(--text); }
 
 /* ── STOP CARD ───────────────────────────────────────── */
 .stop-card {
@@ -332,7 +342,7 @@ body.viewer-mode #undoBtn { display:none !important; }
   background:var(--surface2); border:1px solid var(--border);
   border-radius:12px; padding:24px 28px; max-width:300px; width:90%;
   box-shadow:0 8px 32px rgba(0,0,0,0.6);
-  animation:modal-in 0.18s ease;
+  animation:modal-in 0.18s ease; position:relative;
 }
 @keyframes modal-in { from { opacity:0; transform:scale(0.95); } to { opacity:1; transform:scale(1); } }
 .modal-title {
