@@ -389,20 +389,13 @@ function _highlightNearest(lat, lng) {
   const dayData = DAYS_DATA[currentDay];
   if (!dayData?.stops?.length) return;
 
-  // Ищем первую непосещённую точку (без arrA) — кандидаты от неё и далее
-  var firstUnvisited = 0;
+  // Ищем первую непосещённую точку (без arrA) — это текущая цель
+  var firstUnvisited = -1;
   for (var fi = 0; fi < dayData.stops.length; fi++) {
     if (!dayData.stops[fi].arrA) { firstUnvisited = fi; break; }
-    if (fi === dayData.stops.length - 1) firstUnvisited = fi;
   }
 
-  let minDist = Infinity, nearestId = null;
-  for (var si = firstUnvisited; si < dayData.stops.length; si++) {
-    var s = dayData.stops[si];
-    if (!s.lat || !s.lng) continue;
-    const d = Math.hypot(s.lat - lat, s.lng - lng);
-    if (d < minDist) { minDist = d; nearestId = s.id; }
-  }
+  var nearestId = firstUnvisited >= 0 ? dayData.stops[firstUnvisited].id : null;
 
   if (nearestId === _nearestStopId) return;
   _nearestStopId = nearestId;
