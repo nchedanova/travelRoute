@@ -49,6 +49,25 @@ function padTime(el) {
   saveData();
 }
 
+function fillOnTime(el) {
+  if (el.value) return;
+  var id = el.id;
+  var planEl;
+  if (id.match(/^arr-/)) planEl = document.getElementById('planned-' + id);
+  else if (id.match(/^dep-/)) planEl = document.getElementById('planned-' + id);
+  else {
+    var m = id.match(/^d(\d+)-depart$/);
+    if (m) planEl = document.getElementById('d' + m[1] + '-departP-display');
+  }
+  if (!planEl) return;
+  var t = planEl.textContent.trim();
+  if (!t || t === '—' || t === '--:--') return;
+  el.value = t;
+  el.classList.remove('empty');
+  applyMask(el);
+  saveData();
+}
+
 // ── PROGRESS + DELTAS ─────────────────────────────────────────────────────────
 function updateProgress() {
   dayKeys().forEach(day => {
@@ -201,7 +220,7 @@ function makeStopCard(s, day) {
           <input class="time-in ${s.depA ? '' : 'empty'}" id="dep-${s.id}"
             type="text" inputmode="numeric" maxlength="5" value="${s.depA || ''}" placeholder="${s.depP || '--:--'}"
             autocomplete="off"
-            ${isAdmin() ? `oninput="applyMask(this)" onblur="padTime(this)"` : `readonly style="pointer-events:none;border-style:solid;"`}>
+            ${isAdmin() ? `oninput="applyMask(this)" onblur="padTime(this)" ondblclick="fillOnTime(this)"` : `readonly style="pointer-events:none;border-style:solid;"`}>
         </div>
       </div>
     </div>` : `<div></div>`;
@@ -256,7 +275,7 @@ function makeStopCard(s, day) {
             <input class="time-in ${s.arrA ? '' : 'empty'}" id="arr-${s.id}"
               type="text" inputmode="numeric" maxlength="5" value="${s.arrA || ''}" placeholder="${s.arrP || '--:--'}"
               autocomplete="off"
-              ${isAdmin() ? `oninput="applyMask(this)" onblur="padTime(this)"` : `readonly style="pointer-events:none;border-style:solid;"`}>
+              ${isAdmin() ? `oninput="applyMask(this)" onblur="padTime(this)" ondblclick="fillOnTime(this)"` : `readonly style="pointer-events:none;border-style:solid;"`}>
           </div>
         </div>
       </div>
@@ -366,7 +385,7 @@ function renderDaySection(d) {
         </div>
         <div class="day-route" id="d${d}-route"></div>
       </div>
-      <button class="nav-day-btn" onclick="openShareDay(${d})" title="Открыть маршрут в навигаторе">🗺 НАВИГАТОР</button>
+      <button class="nav-day-btn" onclick="openShareDay(${d})" title="Открыть маршрут в навигаторе">🗺️ НАВИГАТОР</button>
       <div class="day-overflow-wrap" style="position:relative">
         <button class="nav-day-btn" onclick="toggleDayMenu(${d})" title="Ещё">···</button>
         <div class="day-overflow-menu" id="dayMenu${d}">
@@ -417,7 +436,7 @@ function renderDaySection(d) {
           <input class="time-in ${data.departA ? '' : 'empty'}" id="d${d}-depart"
             type="text" inputmode="numeric" maxlength="5" value="${data.departA || ''}" placeholder="--:--"
             autocomplete="off"
-            ${isAdmin() ? `oninput="applyMask(this)" onblur="padTime(this)"` : `readonly style="pointer-events:none;border-style:solid;"`}>
+            ${isAdmin() ? `oninput="applyMask(this)" onblur="padTime(this)" ondblclick="fillOnTime(this)"` : `readonly style="pointer-events:none;border-style:solid;"`}>
         </div>
       </div>
     </div>
