@@ -103,7 +103,13 @@ function autoFillTimes(day) {
     }
     if (prevDep == null) continue;
     var dur = getSegmentDuration(prev, stops[i], profile);
-    if (dur == null) continue;
+    if (dur == null) {
+      if (typeof _fetchDuration === 'function') {
+        var _day = day;
+        _fetchDuration(prev, stops[i], profile, function() { autoFillTimes(_day); });
+      }
+      continue;
+    }
     var arrMin = prevDep + Math.round(dur / 60);
     stops[i].arrP = _fmtTime(arrMin);
     changed = true;

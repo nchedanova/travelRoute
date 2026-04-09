@@ -433,10 +433,6 @@ function drawDay(d) {
         refreshSegments();
         if (typeof autoFillTimes === 'function') autoFillTimes(d);
       }).catch(() => {});
-    } else if (_durationCache[cacheKey] == null && _routeLoadingEnabled) {
-      _fetchDuration(from, to, profile, function() {
-        if (typeof autoFillTimes === 'function') autoFillTimes(d);
-      });
     }
     // Кешированный случай: redrawDay вызовет refreshSegments() после drawDay — стили применятся там
   }
