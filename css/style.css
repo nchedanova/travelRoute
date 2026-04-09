@@ -88,7 +88,7 @@ header {
   display:flex; align-items:center; gap:8px; margin-left:auto; min-width:0;
   overflow-x:auto; -webkit-overflow-scrolling:touch;
   scrollbar-width:thin; scrollbar-color:var(--border) transparent;
-  flex-shrink:1;
+  flex-shrink:1; padding-bottom:4px;
 }
 .header-right::-webkit-scrollbar { height:4px; }
 .header-right::-webkit-scrollbar-track { background:transparent; }
