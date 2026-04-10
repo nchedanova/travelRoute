@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=6">
+<link rel="stylesheet" href="css/style.css?v=7">
 <script>
 (function(){
   var t=localStorage.getItem('travel_theme');
@@ -225,11 +225,17 @@
       <div class="modal-title">Точка старта</div>
       <div class="modal-field">
         <div class="modal-label">Поиск места</div>
-        <div class="search-wrap">
+        <div class="search-wrap" style="position:relative;">
           <input class="modal-input" id="edit-start-search" type="text" placeholder="Название, адрес…"
-            oninput="startNominatimSearch(this.value)" autocomplete="off">
+            oninput="startNominatimSearch(this.value)" autocomplete="off" style="padding-right:28px;">
+          <span style="position:absolute;right:9px;top:50%;transform:translateY(-50%);font-size:15px;cursor:pointer;line-height:1;"
+            onclick="enterMapPickModeForEditStart()" title="Выбрать на карте">📍</span>
           <div class="search-results" id="edit-start-results"></div>
         </div>
+      </div>
+      <div id="edit-start-coords-display" style="display:none;align-items:center;justify-content:space-between;padding:4px 8px;background:var(--bg);border-radius:5px;border:1px solid var(--border);margin-bottom:6px;font-size:11px;">
+        <span style="color:var(--muted);">📍 <span id="edit-start-coords-text"></span></span>
+        <span style="color:var(--muted);font-size:10px;">💡 Или перетащите маркер</span>
       </div>
       <div class="modal-field">
         <div class="modal-label">Название</div>
@@ -240,25 +246,20 @@
           <div class="modal-label">Иконка</div>
           <input class="modal-input" id="edit-start-icon" type="text" placeholder="🏠" style="font-size:18px;text-align:center;">
         </div>
-        <div class="modal-field" style="display:flex;flex-direction:column;justify-content:flex-end;">
-          <div id="edit-start-coords-display" style="font-size:10px;color:var(--green);display:none;">
-            📍 <span id="edit-start-coords-text"></span>
-          </div>
+        <div class="modal-field">
+          <div class="modal-label">Отпр. план</div>
+          <input class="modal-input" id="edit-start-departP" type="text" placeholder="--:--" maxlength="5"
+            oninput="applyMask(this)" onblur="padTime(this)">
         </div>
-      </div>
-      <div class="modal-field">
-        <div class="modal-label">Отпр. план</div>
-        <input class="modal-input" id="edit-start-departP" type="text" placeholder="--:--" maxlength="5"
-          oninput="applyMask(this)" onblur="padTime(this)">
       </div>
       <div class="modal-row">
         <div class="modal-field">
           <div class="modal-label">Широта (lat)</div>
-          <input class="modal-input" id="edit-start-lat" type="text" inputmode="decimal" placeholder="55.7965" oninput="splitCoordsInput(this,'edit-start-lng','edit-start-coords')">
+          <input class="modal-input" id="edit-start-lat" type="text" inputmode="decimal" placeholder="55.7965" oninput="splitCoordsInput(this,'edit-start-lng','edit-start-coords');_onEditStartManualCoord()">
         </div>
         <div class="modal-field">
           <div class="modal-label">Долгота (lng)</div>
-          <input class="modal-input" id="edit-start-lng" type="text" inputmode="decimal" placeholder="37.9475" oninput="onManualCoordInput('edit-start-lat','edit-start-lng','edit-start-coords')">
+          <input class="modal-input" id="edit-start-lng" type="text" inputmode="decimal" placeholder="37.9475" oninput="_onEditStartManualCoord()">
         </div>
       </div>
       <div class="modal-actions">
@@ -530,18 +531,18 @@
 
 <!-- Scripts: порядок важен — config и data первыми -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="js/config.js?v=6"></script>
-<script src="js/data.js?v=6"></script>
-<script src="js/storage.js?v=6"></script>
-<script src="js/offline.js?v=6"></script>
-<script src="js/map.js?v=6"></script>
-<script src="js/render.js?v=6"></script>
-<script src="js/app.js?v=6"></script>
-<script src="js/gps.js?v=6"></script>
-<script src="js/chat.js?v=6"></script>
-<script src="js/notes.js?v=6"></script>
-<script src="js/import.js?v=6"></script>
-<script src="js/gpx.js?v=6"></script>
+<script src="js/config.js?v=7"></script>
+<script src="js/data.js?v=7"></script>
+<script src="js/storage.js?v=7"></script>
+<script src="js/offline.js?v=7"></script>
+<script src="js/map.js?v=7"></script>
+<script src="js/render.js?v=7"></script>
+<script src="js/app.js?v=7"></script>
+<script src="js/gps.js?v=7"></script>
+<script src="js/chat.js?v=7"></script>
+<script src="js/notes.js?v=7"></script>
+<script src="js/import.js?v=7"></script>
+<script src="js/gpx.js?v=7"></script>
 <script>
   window._swReg         = null;
   window._swReg = null;

@@ -479,7 +479,14 @@ function renderStops(day) {
   const container = document.getElementById('d' + day + '-stops');
   container.innerHTML = '';
   DAYS_DATA[day].stops.forEach((s, i) => { s.num = i + 1; });
-  DAYS_DATA[day].stops.forEach(s => container.appendChild(makeStopCard(s, day)));
+  if (DAYS_DATA[day].stops.length === 0 && typeof isAdmin === 'function' && isAdmin()) {
+    var emptyBtn = document.createElement('div');
+    emptyBtn.style.cssText = 'padding:12px 14px;';
+    emptyBtn.innerHTML = '<button style="width:100%;height:34px;border-radius:6px;border:1px dashed var(--border);background:transparent;color:var(--amber);font-family:\'JetBrains Mono\',monospace;font-size:12px;cursor:pointer;" onclick="openInlineAddFirstStop(' + day + ')">＋ Добавить первую точку</button>';
+    container.appendChild(emptyBtn);
+  } else {
+    DAYS_DATA[day].stops.forEach(s => container.appendChild(makeStopCard(s, day)));
+  }
   const cntEl = document.getElementById('d' + day + '-stop-count');
   if (cntEl) cntEl.textContent = DAYS_DATA[day].stops.length;
   if (typeof _reapplyDayWeather === 'function') _reapplyDayWeather(day);
