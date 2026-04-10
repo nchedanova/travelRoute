@@ -249,7 +249,7 @@ function _updateCoordsDisplay(displayId, latVal, lngVal) {
   if (isNaN(lat) || isNaN(lng)) return;
   var disp = document.getElementById(displayId + '-display');
   var text = document.getElementById(displayId + '-text');
-  if (disp) disp.style.display = 'block';
+  if (disp) disp.style.display = displayId.startsWith('ei-coords') ? 'flex' : 'block';
   if (text) text.textContent = lat.toFixed(5) + ', ' + lng.toFixed(5);
 }
 
@@ -1171,18 +1171,20 @@ function editStop(id, day) {
   if (card) card.draggable = false;
 
   form.innerHTML = `
-    <div class="edit-field" style="margin-bottom:8px;width:100%">
+    <div class="edit-field" style="margin-bottom:6px;width:100%">
       <div class="edit-label">Поиск нового места</div>
-      <div class="search-wrap" style="width:100%">
-        <input class="edit-input" style="width:100%" id="ei-search-${id}"
+      <div class="search-wrap" style="width:100%;position:relative;">
+        <input class="edit-input" style="width:100%;padding-right:28px;" id="ei-search-${id}"
           type="text" placeholder="Название, адрес…"
           oninput="editStopSearch(this.value, '${id}')" autocomplete="off">
+        <span style="position:absolute;right:7px;top:50%;transform:translateY(-50%);font-size:15px;cursor:pointer;line-height:1;"
+          onclick="enterMapPickModeForEdit('${id}', ${day})" title="Выбрать на карте">📍</span>
         <div class="search-results" id="ei-results-${id}"></div>
       </div>
     </div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">💡 Или перетащите маркер на карте</div>
-    <div id="ei-coords-${id}-display" style="font-size:10px;color:var(--green);margin-bottom:6px;display:${s.lat ? 'block' : 'none'};">
-      📍 <span id="ei-coords-${id}-text">${s.lat ? s.lat.toFixed(5) + ', ' + s.lng.toFixed(5) : ''}</span>
+    <div id="ei-coords-${id}-display" style="display:${s.lat ? 'flex' : 'none'};align-items:center;justify-content:space-between;padding:4px 8px;background:var(--bg);border-radius:5px;border:1px solid var(--border);margin-bottom:8px;font-size:11px;">
+      <span style="color:var(--muted);">📍 <span id="ei-coords-${id}-text">${s.lat ? s.lat.toFixed(5) + ', ' + s.lng.toFixed(5) : ''}</span></span>
+      <span style="color:var(--muted);font-size:10px;">💡 Или перетащите маркер</span>
     </div>
     <div style="display:grid;grid-template-columns:48px 1fr;gap:8px;margin-bottom:8px;">
       <div class="edit-field">
@@ -1241,10 +1243,9 @@ function editStop(id, day) {
       var latInp    = document.getElementById('ei-lat-' + id);
       var lngInp    = document.getElementById('ei-lng-' + id);
       if (coordText) coordText.textContent = lat.toFixed(5) + ', ' + lng.toFixed(5);
-      if (coordDisp) coordDisp.style.display = 'block';
+      if (coordDisp) coordDisp.style.display = 'flex';
       if (latInp)    latInp.value  = lat.toFixed(6);
       if (lngInp)    lngInp.value  = lng.toFixed(6);
-      // Reverse geocoding для обновления названия (debounce через timeout)
       clearTimeout(_editDragGeoTimer);
       _editDragGeoTimer = setTimeout(function() {
         _reverseGeoForEditMarker(id, lat, lng);
@@ -1283,7 +1284,7 @@ function editStopSearch(q, id) {
           }
           document.getElementById('ei-search-' + id).value = item.display_name;
           document.getElementById('ei-coords-' + id + '-text').textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-          document.getElementById('ei-coords-' + id + '-display').style.display = 'block';
+          document.getElementById('ei-coords-' + id + '-display').style.display = 'flex';
           res.classList.remove('show');
         };
         res.appendChild(el);
@@ -1558,6 +1559,12 @@ function _finalizeInlineAdd(afterId, day, newId) {
 // ── MAP PICK MODE ─────────────────────────────────────────────────────────────
 var _mapPickAfterIdGlobal = null;
 var _mapPickDayGlobal     = null;
+var _mapPickIsEdit        = false;
+
+function enterMapPickModeForEdit(id, day) {
+  _mapPickIsEdit = true;
+  enterMapPickMode(id, day);
+}
 
 function enterMapPickMode(afterId, day) {
   _mapPickAfterIdGlobal = afterId;
@@ -1637,38 +1644,52 @@ document.addEventListener('keydown', function(e) {
 
 function _onMapPickClick(e) {
   L.DomEvent.stopPropagation(e);
-  var afterId = _mapPickAfterIdGlobal;
-  var day     = _mapPickDayGlobal;
+  var id      = _mapPickAfterIdGlobal;
+  var isEdit  = _mapPickIsEdit;
+  _mapPickIsEdit = false;
   exitMapPickMode();
-  if (!afterId) return;
+  if (!id) return;
 
   var lat = e.latlng.lat, lng = e.latlng.lng;
-  _inlineAddCoords[afterId] = { lat: lat, lng: lng };
 
-  // Fill form fields
-  var coordDisp = document.getElementById('ia-coords-' + afterId + '-display');
-  var coordText = document.getElementById('ia-coords-' + afterId + '-text');
-  var latInp    = document.getElementById('ia-lat-' + afterId);
-  var lngInp    = document.getElementById('ia-lng-' + afterId);
-  if (coordText) coordText.textContent = lat.toFixed(5) + ', ' + lng.toFixed(5);
-  if (coordDisp) coordDisp.style.display = 'block';
-  if (latInp)    latInp.value  = lat.toFixed(6);
-  if (lngInp)    lngInp.value  = lng.toFixed(6);
-
-  // Reverse geocoding (debounced, single request)
-  clearTimeout(_editDragGeoTimer);
-  _editDragGeoTimer = setTimeout(function() {
-    fetch('https://nominatim.openstreetmap.org/reverse?lat=' + lat + '&lon=' + lng + '&format=json&accept-language=ru')
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-        if (!data || data.error) return;
-        var name = data.name || (data.address && (data.address.road || data.address.village || data.address.town || data.address.city)) || '';
-        var nameEl = document.getElementById('ia-name-' + afterId);
-        if (nameEl && !nameEl.value && name) nameEl.value = name;
-        var searchEl = document.getElementById('ia-search-' + afterId);
-        if (searchEl) searchEl.value = data.display_name ? data.display_name.split(',').slice(0, 2).join(',') : name;
-      }).catch(function() {});
-  }, 800);
+  if (isEdit) {
+    // Режим редактирования точки
+    _editStopCoords[id] = { lat: lat, lng: lng };
+    var coordDisp = document.getElementById('ei-coords-' + id + '-display');
+    var coordText = document.getElementById('ei-coords-' + id + '-text');
+    var latInp    = document.getElementById('ei-lat-' + id);
+    var lngInp    = document.getElementById('ei-lng-' + id);
+    if (coordText) coordText.textContent = lat.toFixed(5) + ', ' + lng.toFixed(5);
+    if (coordDisp) coordDisp.style.display = 'flex';
+    if (latInp)    latInp.value  = lat.toFixed(6);
+    if (lngInp)    lngInp.value  = lng.toFixed(6);
+    clearTimeout(_editDragGeoTimer);
+    _editDragGeoTimer = setTimeout(function() { _reverseGeoForEditMarker(id, lat, lng); }, 800);
+  } else {
+    // Режим добавления точки
+    _inlineAddCoords[id] = { lat: lat, lng: lng };
+    var coordDisp = document.getElementById('ia-coords-' + id + '-display');
+    var coordText = document.getElementById('ia-coords-' + id + '-text');
+    var latInp    = document.getElementById('ia-lat-' + id);
+    var lngInp    = document.getElementById('ia-lng-' + id);
+    if (coordText) coordText.textContent = lat.toFixed(5) + ', ' + lng.toFixed(5);
+    if (coordDisp) coordDisp.style.display = 'block';
+    if (latInp)    latInp.value  = lat.toFixed(6);
+    if (lngInp)    lngInp.value  = lng.toFixed(6);
+    clearTimeout(_editDragGeoTimer);
+    _editDragGeoTimer = setTimeout(function() {
+      fetch('https://nominatim.openstreetmap.org/reverse?lat=' + lat + '&lon=' + lng + '&format=json&accept-language=ru')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (!data || data.error) return;
+          var name = data.name || (data.address && (data.address.road || data.address.village || data.address.town || data.address.city)) || '';
+          var nameEl = document.getElementById('ia-name-' + id);
+          if (nameEl && !nameEl.value && name) nameEl.value = name;
+          var searchEl = document.getElementById('ia-search-' + id);
+          if (searchEl) searchEl.value = data.display_name ? data.display_name.split(',').slice(0, 2).join(',') : name;
+        }).catch(function() {});
+    }, 800);
+  }
 }
 
 function saveStopEdit(id, day) {
@@ -2163,11 +2184,16 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.8.0';
-var APP_BUILD   = 4;
+var APP_BUILD   = 5;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 
 var APP_CHANGELOG = [
+  { ver: '2.8.0 b5', date: '10.04.2026', items: [
+    '📍 Кнопка выбора на карте прямо в поле поиска при редактировании точки',
+    '✏️ Форма редактирования: координаты и подсказка объединены в одну строку',
+    '🗺️ Map pick mode теперь работает и в форме редактирования, и при добавлении'
+  ]},
   { ver: '2.8.0', date: '10.04.2026', items: [
     '🗺️ Перетаскивание точки прямо на карте при редактировании',
     '⏱ OSRM авторасчёт времени после импорта из карт',
