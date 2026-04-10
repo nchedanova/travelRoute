@@ -1477,7 +1477,7 @@ function openInlineAddFirstStop(day) {
   if (!container) return;
   var fakeId = '__first__' + day;
   _inlineAddCoords[fakeId] = null;
-  container.innerHTML = '<div id="add-form-' + fakeId + '" style="display:block;padding-top:12px;border-top:1px solid var(--border);margin-top:4px;"></div>';
+  container.innerHTML = '<div id="add-form-' + fakeId + '" class="stop-edit-form" style="display:block"></div>';
   var form = document.getElementById('add-form-' + fakeId);
   form.innerHTML = `
     <div class="edit-field" style="margin-bottom:6px;width:100%">
