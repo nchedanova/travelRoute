@@ -54,15 +54,15 @@
   --amber-dim: #7abcbc;
   --green: #AFEEEE;
   --text: #f0f0f0;
-  --muted: #777777;
+  --muted: #999999;
   --red: #e07070;
   --d2: #AFEEEE;
   --accent: #AFEEEE;
   --accent-dim: #7abcbc;
   --accent-bg: rgba(175,238,238,0.08);
   --accent-text-on: #000;
-  --chat-mine-bg: #151e1e;
-  --chat-mine-border: #202e2e;
+  --chat-mine-bg: #0c3737;
+  --chat-mine-border: #092a2a;
   --chat-mine-text: #f0f0f0;
 }
 
