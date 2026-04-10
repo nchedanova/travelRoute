@@ -442,6 +442,8 @@ body.viewer-mode #undoBtn { display:none !important; }
   pointer-events:all;
 }
 .map-pick-banner-text { flex:1; font-size:11px; color:var(--green); font-family:'JetBrains Mono',monospace; }
+.map-pick-esc-hint { opacity:0.5; margin-left:8px; }
+@media (max-width: 768px) { .map-pick-esc-hint { display:none; } }
 .map-pick-banner-cancel {
   width:24px; height:24px; border-radius:50%;
   background:#1a3a2a; border:0.5px solid rgba(74,222,128,0.35);

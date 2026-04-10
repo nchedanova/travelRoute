@@ -1568,7 +1568,8 @@ function enterMapPickMode(afterId, day) {
   if (sidebar) sidebar.classList.add('pick-mode-hidden');
 
   // Move banner/strip inside #map so they overlay only the map
-  var mapEl = document.getElementById('map');
+  var mapEl  = document.getElementById('map');
+  var banner = document.getElementById('mapPickBanner');
   if (banner && mapEl && banner.parentElement !== mapEl) mapEl.appendChild(banner);
   if (banner) banner.style.display = 'flex';
   var strip = document.getElementById('mapPickStrip');
@@ -1601,6 +1602,13 @@ function exitMapPickMode() {
     map.off('click', _onMapPickClick);
   }
 }
+
+// Escape на десктопе выходит из режима выбора
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape' && _mapPickAfterIdGlobal) {
+    exitMapPickMode();
+  }
+});
 
 function _onMapPickClick(e) {
   L.DomEvent.stopPropagation(e);
