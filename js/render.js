@@ -92,36 +92,87 @@ function autoFillTimes(day) {
   var changed = false;
 
   for (var i = 0; i < stops.length; i++) {
-    if (stops[i].arrP) continue;
-    var prev, prevDep;
-    if (i === 0) {
-      prev = data.start;
-      prevDep = _parseTime(data.departP);
-    } else {
-      prev = stops[i - 1];
-      prevDep = _parseTime(stops[i - 1].depP) || _parseTime(stops[i - 1].arrP);
-    }
-    if (prevDep == null) continue;
-    var dur = getSegmentDuration(prev, stops[i], profile);
-    if (dur == null) {
-      if (typeof _fetchDuration === 'function') {
-        var _day = day;
-        _fetchDuration(prev, stops[i], profile, function() { autoFillTimes(_day); });
+    var s = stops[i];
+    // ── Заполняем arrP если пусто ──────────────────────────────────────────
+    if (!s.arrP) {
+      var prev, prevDep;
+      if (i === 0) {
+        prev    = data.start;
+        prevDep = _parseTime(data.departP);
+      } else {
+        prev    = stops[i - 1];
+        prevDep = _parseTime(stops[i - 1].depP) || _parseTime(stops[i - 1].arrP);
       }
-      continue;
+      if (prevDep != null) {
+        var dur = getSegmentDuration(prev, s, profile);
+        if (dur == null) {
+          if (typeof _fetchDuration === 'function') {
+            var _day = day;
+            _fetchDuration(prev, s, profile, function() { autoFillTimes(_day); });
+          }
+          continue;
+        }
+        var arrMin = prevDep + Math.round(dur / 60);
+        s.arrP = _fmtTime(arrMin);
+        changed = true;
+        var planEl = document.getElementById('planned-arr-' + s.id);
+        if (planEl) planEl.textContent = s.arrP;
+        var arrInp = document.getElementById('arr-' + s.id);
+        if (arrInp && !arrInp.value) arrInp.placeholder = s.arrP;
+      }
     }
-    var arrMin = prevDep + Math.round(dur / 60);
-    stops[i].arrP = _fmtTime(arrMin);
-    changed = true;
-
-    var planEl = document.getElementById('planned-arr-' + stops[i].id);
-    if (planEl) planEl.textContent = stops[i].arrP;
-    var inp = document.getElementById('arr-' + stops[i].id);
-    if (inp && !inp.value) inp.placeholder = stops[i].arrP;
+    // ── Заполняем depP для типов со стоянкой (Заправка/Кафе) если пусто ──
+    if (s.arrP && !s.depP && typeof DEP_OFFSETS !== 'undefined') {
+      var offset = DEP_OFFSETS[s.type];
+      if (offset) {
+        var arrMins = _parseTime(s.arrP);
+        if (arrMins != null) {
+          s.depP = _fmtTime(arrMins + offset);
+          changed = true;
+          var depPlanEl = document.getElementById('planned-dep-' + s.id);
+          if (depPlanEl) depPlanEl.textContent = s.depP;
+          var depInp = document.getElementById('dep-' + s.id);
+          if (depInp && !depInp.value) depInp.placeholder = s.depP;
+        }
+      }
+    }
   }
   if (changed) {
     updateProgress();
     saveData();
+  }
+}
+
+// Сбросить arrP у всех точек НИЖЕ stopId и пересчитать через autoFillTimes.
+// Используется при ручном изменении план.времени чтобы каскадно обновить
+// последующие точки. depP сбрасывается только для типов с авто-offset (не
+// трогаем вручную выставленное время отправления для прочих типов).
+function cascadeAutoFillFrom(day, stopId) {
+  if (!isAdmin()) return;
+  var data = DAYS_DATA[day];
+  if (!data) return;
+  var idx = data.stops.findIndex(function(x) { return x.id === stopId; });
+  if (idx < 0) return;
+  var changed = false;
+  for (var i = idx + 1; i < data.stops.length; i++) {
+    var s = data.stops[i];
+    s.arrP = '';
+    // Сбрасываем depP только для типов, у которых он был авто-вычислен
+    if (typeof DEP_OFFSETS !== 'undefined' && DEP_OFFSETS[s.type]) {
+      s.depP = '';
+    }
+    changed = true;
+  }
+  if (changed) {
+    // Обновляем DOM немедленно чтобы не было старых значений пока OSRM отвечает
+    data.stops.forEach(function(s, i) {
+      if (i <= idx) return;
+      var planEl = document.getElementById('planned-arr-' + s.id);
+      if (planEl) planEl.textContent = '—';
+      var depPlanEl = document.getElementById('planned-dep-' + s.id);
+      if (depPlanEl && !s.depP) depPlanEl.textContent = '—';
+    });
+    autoFillTimes(day);
   }
 }
 

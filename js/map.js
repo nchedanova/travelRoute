@@ -565,3 +565,34 @@ function refreshSegments() {
     });
   });
 }
+
+// ── DRAGGABLE EDIT MARKER ──────────────────────────────────────────────────────
+var _editDragMarker = null;
+
+function setEditDragMarker(stopId, lat, lng, icon, color, onDragEnd) {
+  removeEditDragMarker();
+  if (!map || !lat || !lng) return;
+  var dragIcon = makeIcon(icon || '📍', color || '#f5a623', 38, true);
+  _editDragMarker = L.marker([lat, lng], {
+    icon: dragIcon,
+    draggable: true,
+    autoPan: true,
+    autoPanPadding: [60, 60]
+  });
+  _editDragMarker.addTo(map);
+  _editDragMarker.on('dragend', function(e) {
+    var pos = e.target.getLatLng();
+    if (typeof onDragEnd === 'function') onDragEnd(pos.lat, pos.lng);
+  });
+  // Панорамируем к точке если вне зоны видимости
+  if (!map.getBounds().contains([lat, lng])) {
+    map.panTo([lat, lng]);
+  }
+}
+
+function removeEditDragMarker() {
+  if (_editDragMarker) {
+    if (map) map.removeLayer(_editDragMarker);
+    _editDragMarker = null;
+  }
+}

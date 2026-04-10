@@ -361,7 +361,7 @@ function nominatimSearch(q) {
 }
 
 // Offsets in minutes per stop type for auto-fill of departure plan time
-const DEP_OFFSETS = { 'Кафе': 60, 'Заправка': 20 };
+// DEP_OFFSETS defined in config.js
 
 // ── TYPE DROPDOWN (custom select) ─────────────────────────────────────────────
 var _typeKeys = Object.keys(TYPE_ICONS);
@@ -1031,7 +1031,9 @@ function saveStopTime(id, day) {
   cancelStopEdit(id);
   updateProgress();
   saveData();
-  autoFillTimes(day);
+  // Cascade: пересчитать все точки ниже через OSRM
+  if (typeof cascadeAutoFillFrom === 'function') cascadeAutoFillFrom(day, id);
+  else autoFillTimes(day);
   showToast('✅ Время обновлено');
   // Re-fetch weather for this stop with updated plan time
   fetchStopWeather(day, id);
@@ -1123,6 +1125,23 @@ const _editStopCoords = {};
 // Экранирование для HTML-атрибутов value="..." в шаблонах
 function _escHtml(s) { return (s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;'); }
 let _editStopSearchTimer = null;
+let _editDragGeoTimer = null;
+
+// Обратное геокодирование после перетаскивания маркера (Nominatim, 1 req/dragend с debounce 800ms)
+async function _reverseGeoForEditMarker(id, lat, lng) {
+  try {
+    var url = 'https://nominatim.openstreetmap.org/reverse?lat=' + lat + '&lon=' + lng + '&format=json&accept-language=ru';
+    var r = await fetch(url, { headers: { 'Accept-Language': 'ru' } });
+    var data = await r.json();
+    if (!data || data.error) return;
+    var name = data.name || (data.address && (data.address.road || data.address.village || data.address.town || data.address.city)) || '';
+    if (!name) return;
+    var nameEl = document.getElementById('ei-name-' + id);
+    if (nameEl) nameEl.value = name;
+    var searchEl = document.getElementById('ei-search-' + id);
+    if (searchEl) searchEl.value = data.display_name ? data.display_name.split(',').slice(0,2).join(',') : name;
+  } catch(e) { /* нет сети — тихо */ }
+}
 
 function editStop(id, day) {
   const s    = DAYS_DATA[day].stops.find(x => x.id === id);
@@ -1157,6 +1176,7 @@ function editStop(id, day) {
         <div class="search-results" id="ei-results-${id}"></div>
       </div>
     </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">💡 Или перетащите маркер на карте</div>
     <div id="ei-coords-${id}-display" style="font-size:10px;color:var(--green);margin-bottom:6px;display:${s.lat ? 'block' : 'none'};">
       📍 <span id="ei-coords-${id}-text">${s.lat ? s.lat.toFixed(5) + ', ' + s.lng.toFixed(5) : ''}</span>
     </div>
@@ -1206,6 +1226,27 @@ function editStop(id, day) {
     </div>`;
 
   setTimeout(() => document.getElementById('ei-search-' + id)?.focus(), 50);
+
+  // Ставим draggable маркер на карте для визуального перемещения точки
+  if (typeof setEditDragMarker === 'function') {
+    setEditDragMarker(id, s.lat, s.lng, s.icon, DAYS_DATA[day].color, function(lat, lng) {
+      _editStopCoords[id] = { lat: lat, lng: lng };
+      // Обновляем отображение координат в форме
+      var coordDisp = document.getElementById('ei-coords-' + id + '-display');
+      var coordText = document.getElementById('ei-coords-' + id + '-text');
+      var latInp    = document.getElementById('ei-lat-' + id);
+      var lngInp    = document.getElementById('ei-lng-' + id);
+      if (coordText) coordText.textContent = lat.toFixed(5) + ', ' + lng.toFixed(5);
+      if (coordDisp) coordDisp.style.display = 'block';
+      if (latInp)    latInp.value  = lat.toFixed(6);
+      if (lngInp)    lngInp.value  = lng.toFixed(6);
+      // Reverse geocoding для обновления названия (debounce через timeout)
+      clearTimeout(_editDragGeoTimer);
+      _editDragGeoTimer = setTimeout(function() {
+        _reverseGeoForEditMarker(id, lat, lng);
+      }, 800);
+    });
+  }
 }
 
 function editStopSearch(q, id) {
@@ -1248,6 +1289,8 @@ function editStopSearch(q, id) {
 }
 
 function cancelStopEdit(id) {
+  if (typeof removeEditDragMarker === 'function') removeEditDragMarker();
+  clearTimeout(_editDragGeoTimer);
   const main = document.getElementById('stop-main-' + id);
   const tg   = document.getElementById('stop-timegrid-' + id);
   const form = document.getElementById('edit-form-' + id);
@@ -1311,7 +1354,8 @@ function saveStopEdit(id, day) {
   redrawDay(day);
   updateProgress();
   saveData();
-  autoFillTimes(day);
+  if (typeof cascadeAutoFillFrom === 'function') cascadeAutoFillFrom(day, id);
+  else autoFillTimes(day);
   showToast('✅ Точка обновлена');
   // Re-fetch weather if time or coords changed
   fetchStopWeather(day, id);
@@ -1751,8 +1795,8 @@ document.addEventListener('click', e => {
 });
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
-var APP_VERSION = '2.7.0';
-var APP_BUILD   = 103;
+var APP_VERSION = '2.8.0';
+var APP_BUILD   = 1;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 

@@ -290,6 +290,7 @@ function commitImport() {
     renderTabs();
     document.getElementById('daySections').appendChild(renderDaySection(newD));
     renderStops(newD); updateDayRoute(newD); redrawDay(newD); switchDay(newD);
+    if (typeof autoFillTimes === 'function') autoFillTimes(newD);
 
   } else {
     var day=_importDay; if(!day||!DAYS_DATA[day]) day=currentDay;
@@ -302,6 +303,7 @@ function commitImport() {
       DAYS_DATA[day].stops.push({id:'d'+day+'s'+(ec+i+1)+'_'+Date.now(),num:ec+i+1,icon:TYPE_ICONS[t]||'📍',type:t,name:stopNames[i],lat:p.lat,lng:p.lng,arrP:'',depP:'',arrA:'',depA:'',notes:[]});
     });
     renderStops(day); updateDayRoute(day); redrawDay(day); switchDay(day);
+    if (typeof autoFillTimes === 'function') autoFillTimes(day);
   }
 
   saveData();
