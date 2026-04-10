@@ -251,10 +251,12 @@ function hexRgba(hex, a, darken = 1) {
   return `rgba(${r},${g},${b},${a})`;
 }
 
-function makeIcon(emoji, color, size = 34, active = false) {
+function makeIcon(emoji, color, size = 34, active = false, num = 0) {
   const bg = hexRgba(color, 0.7, 0.45);
   const ring = active
     ? `<div style="position:absolute;inset:-8px;border-radius:50%;border:1.5px solid ${hexRgba(color,0.5)};background:${hexRgba(color,0.1)};animation:pillPulse 1.6s ease-in-out infinite;"></div>` : '';
+  const badge = num > 0
+    ? `<div style="position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:#111;border:1.5px solid rgba(255,255,255,0.25);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;color:#fff;font-family:monospace;line-height:1;z-index:1;">${num}</div>` : '';
   const html = `<div style="position:relative;width:${size}px;height:${size}px;">
     ${ring}
     <div style="
@@ -265,6 +267,7 @@ function makeIcon(emoji, color, size = 34, active = false) {
       box-shadow:0 2px 12px rgba(0,0,0,0.8), 0 0 0 1px rgba(0,0,0,0.4);">
       <span style="transform:rotate(45deg);font-size:${Math.round(size*0.44)}px;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.9));">${emoji}</span>
     </div>
+    ${badge}
   </div>`;
   const pad = active ? 8 : 0;
   return L.divIcon({ html, className:'', iconSize:[size+pad*2,size+pad*2], iconAnchor:[size/2+pad,size+pad] });
@@ -339,7 +342,8 @@ function openPill(marker, s, d, color) {
   _activeMarker = marker;
 
   // активная иконка с кольцом
-  marker.setIcon(makeIcon(s.icon, color, 34, true));
+  const _numOpen = DAYS_DATA[d] ? DAYS_DATA[d].stops.findIndex(x => x.id === s.id) + 1 : 0;
+  marker.setIcon(makeIcon(s.icon, color, 34, true, _numOpen));
 
   const pill = _getOrCreatePill();
   pill.innerHTML = _pillContent(s, d);
@@ -353,7 +357,8 @@ function openPill(marker, s, d, color) {
 function closePill(resetIcon = true) {
   if (_activeStop && resetIcon) {
     const { s, d, color, marker } = _activeStop;
-    marker.setIcon(makeIcon(s.icon, color, 34, false));
+    const _numClose = DAYS_DATA[d] ? DAYS_DATA[d].stops.findIndex(x => x.id === s.id) + 1 : 0;
+    marker.setIcon(makeIcon(s.icon, color, 34, false, _numClose));
   }
   if (_pillEl) {
     _pillEl.classList.remove('pill-visible');
@@ -438,8 +443,8 @@ function drawDay(d) {
   }
 
   // Маркеры остановок
-  data.stops.forEach(s => {
-    const marker = L.marker([s.lat, s.lng], { icon: makeIcon(s.icon, color) });
+  data.stops.forEach((s, idx) => {
+    const marker = L.marker([s.lat, s.lng], { icon: makeIcon(s.icon, color, 34, false, idx + 1) });
     marker.on('click', e => {
       L.DomEvent.stopPropagation(e);
       // Suppress the map click that Firefox fires right after marker click
