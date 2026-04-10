@@ -1581,14 +1581,11 @@ function enterMapPickMode(afterId, day) {
     sidebar.classList.add('pick-mode-hidden');
   }
 
-  // Move banner/strip inside #map so they overlay only the map
+  // Move banner inside #map so it overlays only the map
   var mapEl  = document.getElementById('map');
   var banner = document.getElementById('mapPickBanner');
   if (banner && mapEl && banner.parentElement !== mapEl) mapEl.appendChild(banner);
   if (banner) banner.style.display = 'flex';
-  var strip = document.getElementById('mapPickStrip');
-  if (strip && mapEl && strip.parentElement !== mapEl) mapEl.appendChild(strip);
-  if (strip) strip.style.display = 'block';
 
   // Switch map cursor and register one-shot click
   if (typeof map !== 'undefined' && map) {
@@ -1618,8 +1615,6 @@ function exitMapPickMode() {
 
   var banner = document.getElementById('mapPickBanner');
   if (banner) banner.style.display = 'none';
-  var strip = document.getElementById('mapPickStrip');
-  if (strip) strip.style.display = 'none';
 
   if (typeof map !== 'undefined' && map) {
     map.getContainer().style.cursor = '';

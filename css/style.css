@@ -451,15 +451,6 @@ body.viewer-mode #undoBtn { display:none !important; }
   display:flex; align-items:center; justify-content:center;
   flex-shrink:0; padding:0; min-width:24px;
 }
-.map-pick-strip {
-  position:absolute; bottom:0; left:0; right:0; z-index:1100;
-  background:#0e2a1a; border-top:1px solid rgba(74,222,128,0.25);
-  padding:9px 12px; text-align:center;
-  font-size:11px; color:rgba(74,222,128,0.7);
-  font-family:'JetBrains Mono',monospace; cursor:pointer;
-  pointer-events:all;
-}
-@media (max-width: 700px) { .map-pick-strip { display:none !important; } }
 .pick-mode-hidden { pointer-events:none; opacity:0.25; transition:opacity 0.2s; }
 
 /* ── INSERT BEFORE/AFTER POPUP ──────────────────────── */
