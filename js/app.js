@@ -1567,11 +1567,16 @@ function enterMapPickMode(afterId, day) {
   var sidebar = document.getElementById('sidebar');
   var isMobileView = window.innerWidth <= 700;
   if (isMobileView && sidebar) {
+    // Убираем фокус чтобы клавиатура опустилась до скрытия сайдбара
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
     window._pickModeSidebarWasOpen = sidebar.classList.contains('open');
     sidebar.classList.remove('open');
     var btn = document.getElementById('toggleBtn');
     if (btn) btn.textContent = '☰';
-    if (typeof map !== 'undefined' && map) map.invalidateSize();
+    // Даём клавиатуре закрыться перед invalidateSize
+    setTimeout(function() {
+      if (typeof map !== 'undefined' && map) map.invalidateSize();
+    }, 350);
   } else if (sidebar) {
     sidebar.classList.add('pick-mode-hidden');
   }
