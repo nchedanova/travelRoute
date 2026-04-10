@@ -430,9 +430,57 @@ body.viewer-mode #undoBtn { display:none !important; }
 .stop-dropdown-divider { height:1px; background:var(--border); margin:2px 0; }
 .stop-dropdown-item.danger { color:var(--red); }
 .stop-dropdown-item.danger:hover { background:rgba(248,113,113,0.08); }
+.stop-dropdown-item.new-stop { color:var(--amber); }
+.stop-dropdown-item.new-stop:hover { background:rgba(245,166,35,0.08); }
 .stop-dropdown-item .di-icon { font-size:13px; width:16px; text-align:center; flex-shrink:0; }
 
-/* ── INLINE EDIT FORM ────────────────────────────────── */
+/* ── MAP PICK MODE ───────────────────────────────────── */
+.map-pick-banner {
+  position:absolute; top:0; left:0; right:0; z-index:1100;
+  background:#0e2a1a; border-bottom:1.5px solid var(--green);
+  padding:7px 12px; display:flex; align-items:center; gap:8px;
+  pointer-events:all;
+}
+.map-pick-banner-text { flex:1; font-size:11px; color:var(--green); font-family:'JetBrains Mono',monospace; }
+.map-pick-banner-cancel {
+  width:24px; height:24px; border-radius:50%;
+  background:#1a3a2a; border:0.5px solid rgba(74,222,128,0.35);
+  color:var(--green); font-size:12px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  flex-shrink:0; padding:0; min-width:24px;
+}
+.map-pick-strip {
+  position:absolute; bottom:0; left:0; right:0; z-index:1100;
+  background:#0e2a1a; border-top:1px solid rgba(74,222,128,0.25);
+  padding:9px 12px; text-align:center;
+  font-size:11px; color:rgba(74,222,128,0.7);
+  font-family:'JetBrains Mono',monospace; cursor:pointer;
+  pointer-events:all;
+}
+.pick-mode-hidden { pointer-events:none; opacity:0.25; transition:opacity 0.2s; }
+
+/* ── INSERT BEFORE/AFTER POPUP ──────────────────────── */
+.insert-popup-overlay {
+  background:rgba(0,0,0,0.55); border-radius:8px;
+  display:flex; align-items:center; justify-content:center;
+  padding:16px; margin-top:8px;
+}
+.insert-popup {
+  background:var(--surface2); border-radius:10px;
+  border:0.5px solid var(--border); padding:14px 16px; width:100%;
+}
+.insert-popup-title { font-size:12px; color:var(--text); font-weight:500; margin-bottom:3px; }
+.insert-popup-sub   { font-size:10px; color:var(--muted); margin-bottom:12px; }
+.insert-popup-btns  { display:flex; gap:8px; }
+.insert-btn {
+  flex:1; height:32px; border-radius:6px; font-size:11px;
+  font-weight:500; cursor:pointer; border:0.5px solid var(--border);
+  font-family:'JetBrains Mono',monospace;
+}
+.insert-btn-before { background:var(--surface); color:var(--muted); }
+.insert-btn-after  { background:rgba(245,166,35,0.1); border-color:var(--amber); color:var(--amber); }
+
+/* ── INLINE ADD FORM ────────────────────────────────── */
 .stop-edit-form {
   padding:10px 14px 12px;
 }

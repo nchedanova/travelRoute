@@ -436,6 +436,10 @@ function _selectTypeItem(inputId, type) {
     var stopId = inputId.replace('ei-type-', '');
     var iconEl = document.getElementById('ei-icon-' + stopId);
     if (iconEl) iconEl.value = TYPE_ICONS[type] || '📍';
+  } else if (inputId.startsWith('ia-type-')) {
+    var iaStopId = inputId.replace('ia-type-', '');
+    var iaIconEl = document.getElementById('ia-icon-' + iaStopId);
+    if (iaIconEl) iaIconEl.value = TYPE_ICONS[type] || '📍';
   }
 }
 
@@ -1304,6 +1308,336 @@ function cancelStopEdit(id) {
   if (card) card.draggable = true;
 }
 
+// ── INLINE ADD STOP ───────────────────────────────────────────────────────────
+var _inlineAddCoords = {};
+var _inlineAddSearchTimer = null;
+
+function openInlineAddStop(afterId, day) {
+  // Close any other open add/edit forms first
+  document.querySelectorAll('[id^="add-form-"]').forEach(function(f) {
+    if (f.id !== 'add-form-' + afterId) { f.style.display = 'none'; f.innerHTML = ''; }
+  });
+
+  var s     = DAYS_DATA[day].stops.find(function(x) { return x.id === afterId; });
+  var idx   = DAYS_DATA[day].stops.findIndex(function(x) { return x.id === afterId; });
+  var isFirst = idx === 0;
+  var newNum  = idx + 2; // будет вставлена после текущей → номер idx+2
+
+  _inlineAddCoords[afterId] = null;
+
+  var form = document.getElementById('add-form-' + afterId);
+  var dotsBtn = document.getElementById('dots-' + afterId);
+  if (!form) return;
+  if (dotsBtn) dotsBtn.style.display = 'none';
+
+  var saveLabel = isFirst
+    ? '✓ Сохранить'
+    : '✓ Сохранить → точка ' + newNum;
+
+  form.style.display = 'block';
+  form.innerHTML = `
+    <div class="edit-field" style="margin-bottom:8px;width:100%">
+      <div class="edit-label">Поиск нового места</div>
+      <div class="search-wrap" style="width:100%;position:relative;">
+        <input class="edit-input" style="width:100%;padding-right:28px;" id="ia-search-${afterId}"
+          type="text" placeholder="Название, адрес…"
+          oninput="inlineAddSearch(this.value, '${afterId}')" autocomplete="off">
+        <span style="position:absolute;right:7px;top:50%;transform:translateY(-50%);font-size:15px;cursor:pointer;line-height:1;"
+          onclick="enterMapPickMode('${afterId}', ${day})" title="Выбрать на карте">📍</span>
+        <div class="search-results" id="ia-results-${afterId}"></div>
+      </div>
+    </div>
+    <div id="ia-coords-${afterId}-display" style="font-size:10px;color:var(--green);margin-bottom:6px;display:none;">
+      📍 <span id="ia-coords-${afterId}-text"></span>
+    </div>
+    <div style="display:grid;grid-template-columns:48px 1fr;gap:8px;margin-bottom:8px;">
+      <div class="edit-field">
+        <div class="edit-label">Иконка</div>
+        <input class="edit-input" style="width:100%;text-align:center;font-size:16px;padding:0 4px" id="ia-icon-${afterId}" value="📍" maxlength="4">
+      </div>
+      <div class="edit-field">
+        <div class="edit-label">Название</div>
+        <input class="edit-input" style="width:100%" id="ia-name-${afterId}" placeholder="Название точки">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px;">
+      <div class="edit-field" style="min-width:0">
+        <div class="edit-label">Тип</div>
+        <div id="ia-type-container-${afterId}">${_buildTypeDropdownHTML('ia-type-' + afterId, 'Другое')}</div>
+      </div>
+      <div class="edit-field" style="min-width:0">
+        <div class="edit-label">Приб. план</div>
+        <input class="edit-input" style="width:100%" id="ia-arrP-${afterId}" maxlength="5"
+          oninput="applyMask(this)" onblur="padTime(this)" placeholder="--:--">
+      </div>
+      <div class="edit-field" style="min-width:0">
+        <div class="edit-label">Отпр. план</div>
+        <input class="edit-input" style="width:100%" id="ia-depP-${afterId}" maxlength="5"
+          oninput="applyMask(this)" onblur="padTime(this)" placeholder="--:--">
+      </div>
+    </div>
+    <div class="edit-row">
+      <div class="edit-field edit-field-grow">
+        <div class="edit-label">Широта (lat)</div>
+        <input class="edit-input edit-input-coord" id="ia-lat-${afterId}" type="text" inputmode="decimal"
+          placeholder="55.7965"
+          oninput="splitCoordsInput(this,'ia-lng-${afterId}','ia-coords-${afterId}');_inlineAddManualCoord('${afterId}')">
+      </div>
+      <div class="edit-field edit-field-grow">
+        <div class="edit-label">Долгота (lng)</div>
+        <input class="edit-input edit-input-coord" id="ia-lng-${afterId}" type="text" inputmode="decimal"
+          placeholder="37.9475"
+          oninput="_inlineAddManualCoord('${afterId}')">
+      </div>
+    </div>
+    <div style="font-size:9px;color:var(--green);margin:4px 0 8px;">⚡ Пустые времена — OSRM заполнит автоматически</div>
+    <div class="edit-actions-row">
+      <button class="edit-cancel-btn" onclick="cancelInlineAddStop('${afterId}')">✕ Отмена</button>
+      <button class="edit-save-btn" onclick="doInlineAddStop('${afterId}', ${day}, ${isFirst})">${saveLabel}</button>
+    </div>`;
+
+  setTimeout(function() { document.getElementById('ia-search-' + afterId)?.focus(); }, 50);
+}
+
+function _inlineAddManualCoord(afterId) {
+  var lat = parseFloat(document.getElementById('ia-lat-' + afterId)?.value);
+  var lng = parseFloat(document.getElementById('ia-lng-' + afterId)?.value);
+  if (!isNaN(lat) && !isNaN(lng)) {
+    _inlineAddCoords[afterId] = { lat: lat, lng: lng };
+    var disp = document.getElementById('ia-coords-' + afterId + '-display');
+    var txt  = document.getElementById('ia-coords-' + afterId + '-text');
+    if (disp) disp.style.display = 'block';
+    if (txt)  txt.textContent = lat.toFixed(5) + ', ' + lng.toFixed(5);
+  }
+}
+
+function inlineAddSearch(q, afterId) {
+  clearTimeout(_inlineAddSearchTimer);
+  var res = document.getElementById('ia-results-' + afterId);
+  if (!res) return;
+  if (!q || q.length < 3) { res.classList.remove('show'); return; }
+  res.classList.add('show');
+  res.innerHTML = '<div class="search-spinner">Поиск…</div>';
+  _inlineAddSearchTimer = setTimeout(async function() {
+    try {
+      var url  = 'https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(q) + '&format=json&limit=5&accept-language=ru';
+      var r    = await fetch(url, { headers: { 'Accept-Language': 'ru' } });
+      var data = await r.json();
+      if (!data.length) { res.innerHTML = '<div class="search-spinner">Ничего не найдено</div>'; return; }
+      res.innerHTML = '';
+      data.forEach(function(item) {
+        var el   = document.createElement('div');
+        el.className = 'search-result-item';
+        var main = item.name || item.display_name.split(',')[0];
+        var sub  = item.display_name.split(',').slice(1, 3).join(',').trim();
+        el.innerHTML = '<div>' + main + '</div><div class="result-sub">' + sub + '</div>';
+        el.onclick = function() {
+          var lat = parseFloat(item.lat), lng = parseFloat(item.lon);
+          _inlineAddCoords[afterId] = { lat: lat, lng: lng };
+          var nameEl = document.getElementById('ia-name-' + afterId);
+          if (nameEl && !nameEl.value) nameEl.value = main;
+          document.getElementById('ia-search-' + afterId).value = item.display_name;
+          document.getElementById('ia-coords-' + afterId + '-text').textContent = lat.toFixed(5) + ', ' + lng.toFixed(5);
+          document.getElementById('ia-coords-' + afterId + '-display').style.display = 'block';
+          var latInp = document.getElementById('ia-lat-' + afterId);
+          var lngInp = document.getElementById('ia-lng-' + afterId);
+          if (latInp) latInp.value = lat.toFixed(6);
+          if (lngInp) lngInp.value = lng.toFixed(6);
+          res.classList.remove('show');
+        };
+        res.appendChild(el);
+      });
+    } catch(err) { res.innerHTML = '<div class="search-spinner">Ошибка поиска</div>'; }
+  }, 500);
+}
+
+function cancelInlineAddStop(afterId) {
+  var form    = document.getElementById('add-form-' + afterId);
+  var dotsBtn = document.getElementById('dots-' + afterId);
+  if (form)    { form.style.display = 'none'; form.innerHTML = ''; }
+  if (dotsBtn) dotsBtn.style.display = '';
+  delete _inlineAddCoords[afterId];
+  exitMapPickMode();
+}
+
+function doInlineAddStop(afterId, day, isFirst) {
+  var name = document.getElementById('ia-name-' + afterId)?.value.trim();
+  if (!name) { document.getElementById('ia-name-' + afterId)?.focus(); return; }
+
+  var coords = _inlineAddCoords[afterId];
+  if (!coords) {
+    var manLat = parseFloat(document.getElementById('ia-lat-' + afterId)?.value);
+    var manLng = parseFloat(document.getElementById('ia-lng-' + afterId)?.value);
+    if (isNaN(manLat) || isNaN(manLng)) {
+      showToast('⚠️ Укажите координаты');
+      return;
+    }
+    coords = { lat: manLat, lng: manLng };
+  }
+
+  var icon  = document.getElementById('ia-icon-' + afterId)?.value.trim() || '📍';
+  var type  = document.getElementById('ia-type-' + afterId)?.value || 'Другое';
+  var arrP  = document.getElementById('ia-arrP-' + afterId)?.value.trim() || '';
+  var depP  = document.getElementById('ia-depP-' + afterId)?.value.trim() || '';
+  var stops = DAYS_DATA[day].stops;
+  var afterIdx = stops.findIndex(function(x) { return x.id === afterId; });
+  var id    = 'd' + day + 's' + Date.now();
+  var stop  = { id: id, num: 0, icon: icon, type: type, name: name,
+                lat: coords.lat, lng: coords.lng,
+                arrP: arrP, depP: depP, arrA: '', depA: '', notes: [] };
+
+  snapshotForUndo('Добавлена точка');
+
+  if (isFirst) {
+    // Показываем попап ДО / ПОСЛЕ
+    _pendingInlineStop = { stop: stop, afterId: afterId, day: day, afterIdx: afterIdx };
+    _showInsertPopup(afterId, day);
+    return;
+  }
+
+  // Все остальные точки — вставить ПОСЛЕ
+  stops.splice(afterIdx + 1, 0, stop);
+  _finalizeInlineAdd(afterId, day, id);
+}
+
+var _pendingInlineStop = null;
+
+function _showInsertPopup(afterId, day) {
+  var existing = document.getElementById('insert-popup-' + afterId);
+  if (existing) existing.remove();
+  var form = document.getElementById('add-form-' + afterId);
+  if (!form) return;
+  var popup = document.createElement('div');
+  popup.id = 'insert-popup-' + afterId;
+  popup.className = 'insert-popup-overlay';
+  popup.innerHTML =
+    '<div class="insert-popup">' +
+      '<div class="insert-popup-title">Куда вставить точку?</div>' +
+      '<div class="insert-popup-sub">Это первая точка маршрута</div>' +
+      '<div class="insert-popup-btns">' +
+        '<button class="insert-btn insert-btn-before" onclick="_doInsert(\'' + afterId + '\', ' + day + ', true)">↑ До неё</button>' +
+        '<button class="insert-btn insert-btn-after"  onclick="_doInsert(\'' + afterId + '\', ' + day + ', false)">↓ После неё</button>' +
+      '</div>' +
+    '</div>';
+  form.appendChild(popup);
+}
+
+function _doInsert(afterId, day, insertBefore) {
+  var p = _pendingInlineStop;
+  if (!p) return;
+  var stops = DAYS_DATA[day].stops;
+  if (insertBefore) {
+    stops.splice(p.afterIdx, 0, p.stop);
+  } else {
+    stops.splice(p.afterIdx + 1, 0, p.stop);
+  }
+  _pendingInlineStop = null;
+  _finalizeInlineAdd(afterId, day, p.stop.id);
+}
+
+function _finalizeInlineAdd(afterId, day, newId) {
+  cancelInlineAddStop(afterId);
+  renderStops(day);
+  redrawDay(day);
+  updateDayRoute(day);
+  updateProgress();
+  saveData();
+  showToast('✅ Точка добавлена');
+  // Cascade от точки ПЕРЕД вставленной (или от начала)
+  var stops  = DAYS_DATA[day].stops;
+  var newIdx = stops.findIndex(function(x) { return x.id === newId; });
+  var prevId = newIdx > 0 ? stops[newIdx - 1].id : null;
+  if (prevId && typeof cascadeAutoFillFrom === 'function') {
+    cascadeAutoFillFrom(day, prevId);
+  } else {
+    autoFillTimes(day);
+  }
+  setTimeout(function() { fetchStopWeather(day, newId); }, 500);
+}
+
+// ── MAP PICK MODE ─────────────────────────────────────────────────────────────
+var _mapPickAfterIdGlobal = null;
+var _mapPickDayGlobal     = null;
+
+function enterMapPickMode(afterId, day) {
+  _mapPickAfterIdGlobal = afterId;
+  _mapPickDayGlobal     = day;
+
+  // Hide sidebar content, show banner
+  var sidebar = document.querySelector('.sidebar');
+  if (sidebar) sidebar.classList.add('pick-mode-hidden');
+
+  // Move banner/strip inside #map so they overlay only the map
+  var mapEl = document.getElementById('map');
+  if (banner && mapEl && banner.parentElement !== mapEl) mapEl.appendChild(banner);
+  if (banner) banner.style.display = 'flex';
+  var strip = document.getElementById('mapPickStrip');
+  if (strip && mapEl && strip.parentElement !== mapEl) mapEl.appendChild(strip);
+  if (strip) strip.style.display = 'block';
+
+  // Switch map cursor and register one-shot click
+  if (typeof map !== 'undefined' && map) {
+    map.getContainer().style.cursor = 'crosshair';
+    map.doubleClickZoom.disable();
+    map.once('click', _onMapPickClick);
+  }
+}
+
+function exitMapPickMode() {
+  _mapPickAfterIdGlobal = null;
+  _mapPickDayGlobal     = null;
+
+  var sidebar = document.querySelector('.sidebar');
+  if (sidebar) sidebar.classList.remove('pick-mode-hidden');
+
+  var banner = document.getElementById('mapPickBanner');
+  if (banner) banner.style.display = 'none';
+  var strip = document.getElementById('mapPickStrip');
+  if (strip) strip.style.display = 'none';
+
+  if (typeof map !== 'undefined' && map) {
+    map.getContainer().style.cursor = '';
+    map.doubleClickZoom.enable();
+    map.off('click', _onMapPickClick);
+  }
+}
+
+function _onMapPickClick(e) {
+  L.DomEvent.stopPropagation(e);
+  var afterId = _mapPickAfterIdGlobal;
+  var day     = _mapPickDayGlobal;
+  exitMapPickMode();
+  if (!afterId) return;
+
+  var lat = e.latlng.lat, lng = e.latlng.lng;
+  _inlineAddCoords[afterId] = { lat: lat, lng: lng };
+
+  // Fill form fields
+  var coordDisp = document.getElementById('ia-coords-' + afterId + '-display');
+  var coordText = document.getElementById('ia-coords-' + afterId + '-text');
+  var latInp    = document.getElementById('ia-lat-' + afterId);
+  var lngInp    = document.getElementById('ia-lng-' + afterId);
+  if (coordText) coordText.textContent = lat.toFixed(5) + ', ' + lng.toFixed(5);
+  if (coordDisp) coordDisp.style.display = 'block';
+  if (latInp)    latInp.value  = lat.toFixed(6);
+  if (lngInp)    lngInp.value  = lng.toFixed(6);
+
+  // Reverse geocoding (debounced, single request)
+  clearTimeout(_editDragGeoTimer);
+  _editDragGeoTimer = setTimeout(function() {
+    fetch('https://nominatim.openstreetmap.org/reverse?lat=' + lat + '&lon=' + lng + '&format=json&accept-language=ru')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (!data || data.error) return;
+        var name = data.name || (data.address && (data.address.road || data.address.village || data.address.town || data.address.city)) || '';
+        var nameEl = document.getElementById('ia-name-' + afterId);
+        if (nameEl && !nameEl.value && name) nameEl.value = name;
+        var searchEl = document.getElementById('ia-search-' + afterId);
+        if (searchEl) searchEl.value = data.display_name ? data.display_name.split(',').slice(0, 2).join(',') : name;
+      }).catch(function() {});
+  }, 800);
+}
+
 function saveStopEdit(id, day) {
   const s = DAYS_DATA[day].stops.find(x => x.id === id);
   if (!s) return;
@@ -1796,7 +2130,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.8.0';
-var APP_BUILD   = 1;
+var APP_BUILD   = 2;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 
@@ -1805,7 +2139,8 @@ var APP_CHANGELOG = [
     '🗺️ Перетаскивание точки прямо на карте при редактировании',
     '⏱ OSRM авторасчёт времени после импорта из карт',
     '⛽ Авто-заполнение план.отправления для Заправки (+20м) и Кафе (+1ч)',
-    '🔁 Каскадный пересчёт времён всех точек ниже при ручном изменении'
+    '🔁 Каскадный пересчёт времён всех точек ниже при ручном изменении',
+    '➕ Добавление точки из меню ··· с вставкой в нужное место маршрута'
   ]},
   { ver: '2.7.0', date: '04.04.2026', items: [
     '📝 Несколько заметок к каждой точке маршрута',
@@ -1898,8 +2233,9 @@ function closeChangelog() {
   try { localStorage.setItem('changelog_seen', APP_VERSION); } catch(e) {}
 }
 
-// Show on load if new version
+// Show on load if new version — только для Админа и Демо
 setTimeout(function() {
+  if (!isAdmin()) return;
   try {
     var seen = localStorage.getItem('changelog_seen');
     if (seen !== APP_VERSION) showChangelog();

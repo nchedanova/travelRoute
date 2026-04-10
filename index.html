@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=1">
+<link rel="stylesheet" href="css/style.css?v=2">
 <script>
 (function(){
   var t=localStorage.getItem('travel_theme');
@@ -441,6 +441,16 @@
 
   <div id="map"></div>
 
+  <!-- Map pick mode banner -->
+  <div id="mapPickBanner" style="display:none;" class="map-pick-banner">
+    <span class="map-pick-banner-text">📍 Нажмите на карту чтобы выбрать место</span>
+    <button class="map-pick-banner-cancel" onclick="exitMapPickMode()">✕</button>
+  </div>
+  <!-- Map pick mode bottom strip (tap to cancel on mobile) -->
+  <div id="mapPickStrip" style="display:none;" class="map-pick-strip" onclick="exitMapPickMode()">
+    Нажмите сюда чтобы отменить выбор
+  </div>
+
   <!-- GPS: спидометр (владелец в режиме "Еду" + зрители) -->
   <div id="speedDisplay" class="speed-display" style="display:none">
     <span class="spd-val">—</span><span class="spd-unit">км/ч</span>
@@ -523,18 +533,18 @@
 
 <!-- Scripts: порядок важен — config и data первыми -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="js/config.js?v=1"></script>
-<script src="js/data.js?v=1"></script>
-<script src="js/storage.js?v=1"></script>
-<script src="js/offline.js?v=1"></script>
-<script src="js/map.js?v=1"></script>
-<script src="js/render.js?v=1"></script>
-<script src="js/app.js?v=1"></script>
-<script src="js/gps.js?v=1"></script>
-<script src="js/chat.js?v=1"></script>
-<script src="js/notes.js?v=1"></script>
-<script src="js/import.js?v=1"></script>
-<script src="js/gpx.js?v=1"></script>
+<script src="js/config.js?v=2"></script>
+<script src="js/data.js?v=2"></script>
+<script src="js/storage.js?v=2"></script>
+<script src="js/offline.js?v=2"></script>
+<script src="js/map.js?v=2"></script>
+<script src="js/render.js?v=2"></script>
+<script src="js/app.js?v=2"></script>
+<script src="js/gps.js?v=2"></script>
+<script src="js/chat.js?v=2"></script>
+<script src="js/notes.js?v=2"></script>
+<script src="js/import.js?v=2"></script>
+<script src="js/gpx.js?v=2"></script>
 <script>
   window._swReg         = null;
   window._swReg = null;

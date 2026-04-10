@@ -350,6 +350,8 @@ function makeStopCard(s, day) {
     ${isAdmin() ? `<button class="dots-btn" id="dots-${s.id}" onclick="toggleStopMenu('${s.id}', ${day}); event.stopPropagation();">···</button>` : ''}
     <div class="stop-dropdown" id="dd-${s.id}">
       ${isAdmin() ? `
+      <button class="stop-dropdown-item new-stop" onclick="closeStopMenus(); openInlineAddStop('${s.id}', ${day});"><span class="di-icon">＋</span> Добавить точку</button>
+      <div class="stop-dropdown-divider"></div>
       <button class="stop-dropdown-item" onclick="closeStopMenus(); editStop('${s.id}', ${day});"><span class="di-icon">✎</span> Редактировать</button>
       <button class="stop-dropdown-item" onclick="closeStopMenus(); editStopTime('${s.id}', ${day});"><span class="di-icon">⏱</span> Изменить время</button>
       <button class="stop-dropdown-item" onclick="closeStopMenus(); addStopNote('${s.id}', ${day});"><span class="di-icon">📝</span> Добавить заметку</button>
@@ -391,6 +393,7 @@ function makeStopCard(s, day) {
     </div>
     <div class="weather-strip" id="ws-${s.id}" style="display:none" onclick="event.stopPropagation();toggleWeatherStrip('${s.id}')"></div>
     <div class="stop-edit-form" id="edit-form-${s.id}" style="display:none;"></div>
+    <div class="stop-edit-form" id="add-form-${s.id}" style="display:none;"></div>
     ${(function(){
       var notes = s.notes || [];
       var _e = typeof _escN==='function' ? _escN : function(x){return x;};
@@ -559,12 +562,6 @@ function renderDaySection(d) {
       <div class="stat-box"><div class="stat-val" id="d${d}-delta-val">—</div><div class="stat-key">ОТКЛОНЕНИЕ</div></div>
     </div>
     <div id="d${d}-stops"></div>
-    ${isAdmin() ? `
-    <div style="display:flex;gap:8px;padding:8px 16px 4px;">
-      <button class="add-stop-btn" style="flex:1;" onclick="openAddStop(${d})">＋ ДОБАВИТЬ ТОЧКУ</button>
-      <button class="add-stop-btn" id="mapAddBtn" style="flex:1;"
-        onclick="toggleMapAddMode(${d})" title="Кликни на карте чтобы добавить точку">📍 НА КАРТЕ</button>
-    </div>` : ''}
   `;
   return sec;
 }
