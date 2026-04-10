@@ -1477,7 +1477,7 @@ function openInlineAddFirstStop(day) {
   if (!container) return;
   var fakeId = '__first__' + day;
   _inlineAddCoords[fakeId] = null;
-  container.innerHTML = '<div id="add-form-' + fakeId + '" style="display:block"></div>';
+  container.innerHTML = '<div id="add-form-' + fakeId + '" style="display:block;padding-top:12px;border-top:1px solid var(--border);margin-top:4px;"></div>';
   var form = document.getElementById('add-form-' + fakeId);
   form.innerHTML = `
     <div class="edit-field" style="margin-bottom:6px;width:100%">
@@ -2333,7 +2333,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.8.0';
-var APP_BUILD   = 8;
+var APP_BUILD   = 9;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 
