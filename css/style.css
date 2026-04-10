@@ -437,7 +437,7 @@ body.viewer-mode #undoBtn { display:none !important; }
 /* ── MAP PICK MODE ───────────────────────────────────── */
 .map-pick-banner {
   position:absolute; top:0; left:0; right:0; z-index:1100;
-  background:#0e2a1a; border-bottom:1.5px solid var(--green);
+  background:var(--surface2); border-bottom:1.5px solid var(--green);
   padding:7px 12px; display:flex; align-items:center; gap:8px;
   pointer-events:all;
 }
@@ -446,11 +446,15 @@ body.viewer-mode #undoBtn { display:none !important; }
 @media (max-width: 768px) { .map-pick-esc-hint { display:none; } }
 .map-pick-banner-cancel {
   width:24px; height:24px; border-radius:50%;
-  background:#1a3a2a; border:0.5px solid rgba(74,222,128,0.35);
+  background:var(--surface); border:0.5px solid rgba(74,222,128,0.35);
   color:var(--green); font-size:12px; cursor:pointer;
   display:flex; align-items:center; justify-content:center;
   flex-shrink:0; padding:0; min-width:24px;
 }
+/* Push Leaflet zoom control below the pick banner */
+.map-pick-banner ~ .leaflet-top.leaflet-right,
+.map-pick-banner ~ * .leaflet-top.leaflet-right { margin-top:36px; }
+.leaflet-top.leaflet-right { transition: margin-top 0.15s; }
 .pick-mode-hidden { pointer-events:none; opacity:0.25; transition:opacity 0.2s; }
 
 /* ── INSERT BEFORE/AFTER POPUP ──────────────────────── */
@@ -2589,6 +2593,8 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
   }
   .imp-btn-new, .imp-btn-current { min-height: 44px; font-size: 11px; }
   .modal-cancel { min-height: 40px; width: 100%; }
+  .modal-confirm { min-height: 40px; width: 100%; }
+  .modal-actions { flex-direction: row; }
   .import-actions-cancel { justify-content: stretch; }
   .import-actions-cancel .modal-cancel { width: 100%; }
 }

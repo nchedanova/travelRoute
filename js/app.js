@@ -1592,6 +1592,9 @@ function enterMapPickMode(afterId, day) {
     map.getContainer().style.cursor = 'crosshair';
     map.doubleClickZoom.disable();
     map.once('click', _onMapPickClick);
+    // Сдвигаем zoom-контрол чтобы не перекрывался баннером
+    var zoomCtrl = map.getContainer().querySelector('.leaflet-top.leaflet-right');
+    if (zoomCtrl) zoomCtrl.style.marginTop = '40px';
   }
 }
 
@@ -1620,6 +1623,8 @@ function exitMapPickMode() {
     map.getContainer().style.cursor = '';
     map.doubleClickZoom.enable();
     map.off('click', _onMapPickClick);
+    var zoomCtrl = map.getContainer().querySelector('.leaflet-top.leaflet-right');
+    if (zoomCtrl) zoomCtrl.style.marginTop = '';
   }
 }
 
