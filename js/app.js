@@ -1564,8 +1564,17 @@ function enterMapPickMode(afterId, day) {
   _mapPickDayGlobal     = day;
 
   // Hide sidebar content, show banner
-  var sidebar = document.querySelector('.sidebar');
-  if (sidebar) sidebar.classList.add('pick-mode-hidden');
+  var sidebar = document.getElementById('sidebar');
+  var isMobileView = window.innerWidth <= 700;
+  if (isMobileView && sidebar) {
+    window._pickModeSidebarWasOpen = sidebar.classList.contains('open');
+    sidebar.classList.remove('open');
+    var btn = document.getElementById('toggleBtn');
+    if (btn) btn.textContent = '☰';
+    if (typeof map !== 'undefined' && map) map.invalidateSize();
+  } else if (sidebar) {
+    sidebar.classList.add('pick-mode-hidden');
+  }
 
   // Move banner/strip inside #map so they overlay only the map
   var mapEl  = document.getElementById('map');
@@ -1588,8 +1597,19 @@ function exitMapPickMode() {
   _mapPickAfterIdGlobal = null;
   _mapPickDayGlobal     = null;
 
-  var sidebar = document.querySelector('.sidebar');
-  if (sidebar) sidebar.classList.remove('pick-mode-hidden');
+  var sidebar = document.getElementById('sidebar');
+  var isMobileView = window.innerWidth <= 700;
+  if (isMobileView && sidebar) {
+    if (window._pickModeSidebarWasOpen !== false) {
+      sidebar.classList.add('open');
+      var btn = document.getElementById('toggleBtn');
+      if (btn) btn.textContent = '✕';
+    }
+    if (typeof map !== 'undefined' && map) map.invalidateSize();
+  } else if (sidebar) {
+    sidebar.classList.remove('pick-mode-hidden');
+  }
+  window._pickModeSidebarWasOpen = undefined;
 
   var banner = document.getElementById('mapPickBanner');
   if (banner) banner.style.display = 'none';

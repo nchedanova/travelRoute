@@ -296,16 +296,28 @@ function updateTravelStats(d) {
     timeEl.textContent = '—';
   }
 
-  // ── Distance: sum of haversine segments ──────────────
-  const pts = [
-    { lat: data.start.lat, lng: data.start.lng },
-    ...data.stops.map(s => ({ lat: s.lat, lng: s.lng }))
-  ];
-  let km = 0;
-  for (let i = 1; i < pts.length; i++) {
-    if (pts[i-1].lat && pts[i].lat) km += haversineKm(pts[i-1].lat, pts[i-1].lng, pts[i].lat, pts[i].lng);
+  // ── Distance: фактическое по маршруту из OSRM кэша, fallback haversine ──
+  var km = (typeof getDayRouteKm === 'function') ? getDayRouteKm(d) : 0;
+  if (!km) {
+    const pts2 = [
+      { lat: data.start.lat, lng: data.start.lng },
+      ...data.stops.map(s => ({ lat: s.lat, lng: s.lng }))
+    ];
+    let hkm = 0;
+    for (let i = 1; i < pts2.length; i++) {
+      if (pts2[i-1].lat && pts2[i].lat) hkm += haversineKm(pts2[i-1].lat, pts2[i-1].lng, pts2[i].lat, pts2[i].lng);
+    }
+    km = hkm;
   }
-  const kmStr = km > 0 ? '~' + Math.round(km) + ' км' : '';
+  let kmStr = '';
+  if (km > 0) {
+    if (data.walkMode && km < 10) {
+      const m = Math.round(km * 1000);
+      kmStr = m >= 1000 ? (Math.round(km * 10) / 10) + ' км' : m + ' м';
+    } else {
+      kmStr = Math.round(km) + ' км';
+    }
+  }
   kmEl.textContent = kmStr ? 'В ПУТИ · ' + kmStr : 'В ПУТИ';
 }
 

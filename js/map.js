@@ -29,8 +29,7 @@ const _durationCache = (() => {
   catch(e) { return {}; }
 })();
 
-function getSegmentDuration(from, to, profile) {
-  profile = profile || 'driving';
+function getSegmentDuration(from, to, profile) {  profile = profile || 'driving';
   var key = profile + '|' + from.lat + ',' + from.lng + '|' + to.lat + ',' + to.lng;
   return _durationCache[key] != null ? _durationCache[key] : null;
 }
@@ -437,6 +436,7 @@ function drawDay(d) {
         if (segOutline && group.hasLayer(segOutline)) segOutline.setLatLngs(coords);
         refreshSegments();
         if (typeof autoFillTimes === 'function') autoFillTimes(d);
+        if (typeof updateTravelStats === 'function') updateTravelStats(d);
       }).catch(() => {});
     }
     // Кешированный случай: redrawDay вызовет refreshSegments() после drawDay — стили применятся там
@@ -569,6 +569,45 @@ function refreshSegments() {
       }
     });
   });
+}
+
+// ── ROUTE DISTANCE ────────────────────────────────────────────────────────────
+// Возвращает фактическое расстояние по маршруту в км для одного дня.
+// Берёт координаты из _routeCache (реальные дороги/тропы от OSRM).
+// Если сегмент ещё не загружен — fallback на haversine для этого сегмента.
+function getDayRouteKm(d) {
+  var data = DAYS_DATA[d];
+  if (!data) return 0;
+  var profile = data.walkMode ? 'foot' : 'driving';
+  var pts = [{ lat: data.start.lat, lng: data.start.lng }];
+  data.stops.forEach(function(s) { pts.push({ lat: s.lat, lng: s.lng }); });
+
+  var totalKm = 0;
+  for (var i = 0; i < pts.length - 1; i++) {
+    var from = pts[i], to = pts[i + 1];
+    if (!from.lat || !to.lat) continue;
+    var key = profile + '|' + from.lat + ',' + from.lng + '|' + to.lat + ',' + to.lng;
+    var cached = _routeCache[key];
+    if (cached && cached.length > 1) {
+      // Суммируем длину полилинии
+      for (var j = 1; j < cached.length; j++) {
+        totalKm += _haversineKmPts(cached[j-1][0], cached[j-1][1], cached[j][0], cached[j][1]);
+      }
+    } else {
+      // Сегмент ещё не загружен — haversine как приближение
+      totalKm += _haversineKmPts(from.lat, from.lng, to.lat, to.lng);
+    }
+  }
+  return totalKm;
+}
+
+function _haversineKmPts(lat1, lng1, lat2, lng2) {
+  var R = 6371;
+  var dLat = (lat2 - lat1) * Math.PI / 180;
+  var dLng = (lng2 - lng1) * Math.PI / 180;
+  var a = Math.sin(dLat/2)*Math.sin(dLat/2) +
+          Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)*Math.sin(dLng/2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
 // ── DRAGGABLE EDIT MARKER ──────────────────────────────────────────────────────
