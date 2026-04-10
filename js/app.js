@@ -30,6 +30,7 @@ function switchDay(d) {
   }
   // Обновить иконку GPS-маркера (🚗/🚶) при смене дня — без этого залипает
   if (typeof refreshGpsMarkerIcon === 'function') refreshGpsMarkerIcon();
+  if (typeof _routeHintShownIds !== 'undefined') _routeHintShownIds = {};
   if (prev !== d) _navPush();
 }
 
@@ -2184,11 +2185,15 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.8.0';
-var APP_BUILD   = 5;
+var APP_BUILD   = 6;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 
 var APP_CHANGELOG = [
+  { ver: '2.8.0 b6', date: '10.04.2026', items: [
+    '🔔 Подсказки по маршруту: за 1 км до Заправки, Кафе, Магазина, Другое — тост с прогресс-баром',
+    '🚗 Только для автомобильного режима, только когда активна кнопка «Еду»'
+  ]},
   { ver: '2.8.0 b5', date: '10.04.2026', items: [
     '📍 Кнопка выбора на карте прямо в поле поиска при редактировании точки',
     '✏️ Форма редактирования: координаты и подсказка объединены в одну строку',

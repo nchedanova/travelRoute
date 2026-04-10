@@ -389,6 +389,8 @@ function _highlightNearest(lat, lng) {
   const dayData = DAYS_DATA[currentDay];
   if (!dayData?.stops?.length) return;
 
+  _checkRouteHints(lat, lng);
+
   // Ищем первую непосещённую точку (без arrA) — это текущая цель
   var firstUnvisited = -1;
   for (var fi = 0; fi < dayData.stops.length; fi++) {
@@ -450,4 +452,72 @@ function refreshGpsMarkerIcon() {
     : '📍 Вы здесь';
   _gpsMarker.unbindTooltip();
   _gpsMarker.bindTooltip(label, { permanent: false, direction: 'top', offset: [0, -14] });
+}
+
+// ── ROUTE HINTS ────────────────────────────────────────────────────────────────
+var _routeHintTimer      = null;
+var _routeHintProgressTimer = null;
+var _routeHintShownIds   = {};
+var _HINT_TYPES          = { 'Заправка': '⛽', 'Кафе': '🍜', 'Магазин': '🛒', 'Другое': '📍' };
+var _HINT_DIST_KM        = 1.0;
+
+function _checkRouteHints(lat, lng) {
+  if (typeof currentDay === 'undefined' || typeof DAYS_DATA === 'undefined') return;
+  var dayData = DAYS_DATA[currentDay];
+  if (!dayData || !dayData.stops || !dayData.stops.length) return;
+  if (dayData.walkMode) return;
+  if (!document.body.classList.contains('driving-active')) return;
+
+  for (var i = 0; i < dayData.stops.length; i++) {
+    var s = dayData.stops[i];
+    if (!s.lat || !s.lng) continue;
+    if (!_HINT_TYPES[s.type]) continue;
+    if (s.arrA) continue;
+    if (_routeHintShownIds[s.id]) continue;
+    var dist = _haversineKmPts(lat, lng, s.lat, s.lng);
+    if (dist <= _HINT_DIST_KM && dist > 0.05) {
+      _routeHintShownIds[s.id] = true;
+      _showRouteHint(_HINT_TYPES[s.type] + ' ' + s.type + ' через 1 км');
+      break;
+    }
+  }
+}
+
+function _showRouteHint(msg) {
+  var el = document.getElementById('routeHint');
+  if (!el) return;
+
+  clearTimeout(_routeHintTimer);
+  clearInterval(_routeHintProgressTimer);
+
+  var mainToast = document.getElementById('toast');
+  el.classList.toggle('toast-also-shown', !!(mainToast && mainToast.classList.contains('show')));
+
+  el.innerHTML = '<span>' + msg + '</span>'
+    + '<div class="route-hint-progress" id="routeHintBar" style="width:100%"></div>';
+  el.classList.add('show');
+
+  var bar = document.getElementById('routeHintBar');
+  var duration = 5000;
+  var start = Date.now();
+  _routeHintProgressTimer = setInterval(function() {
+    var elapsed = Date.now() - start;
+    var pct = Math.max(0, 100 - (elapsed / duration * 100));
+    if (bar) bar.style.width = pct + '%';
+    if (elapsed >= duration) clearInterval(_routeHintProgressTimer);
+  }, 100);
+
+  _routeHintTimer = setTimeout(function() {
+    el.classList.remove('show');
+    clearInterval(_routeHintProgressTimer);
+  }, duration);
+}
+
+function _haversineKmPts(lat1, lng1, lat2, lng2) {
+  var R = 6371;
+  var dLat = (lat2 - lat1) * Math.PI / 180;
+  var dLng = (lng2 - lng1) * Math.PI / 180;
+  var a = Math.sin(dLat/2)*Math.sin(dLat/2) +
+          Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)*Math.sin(dLng/2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }

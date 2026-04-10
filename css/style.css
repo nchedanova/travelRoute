@@ -694,6 +694,19 @@ input.day-date-input {
 }
 .toast.show { opacity:1; transform:translateY(0); }
 
+.route-hint-toast {
+  bottom:20px; right:20px;
+  border-color:var(--accent); color:var(--accent);
+  display:flex; flex-direction:column; gap:4px; min-width:160px;
+}
+.route-hint-toast.toast-also-shown {
+  bottom:62px;
+}
+.route-hint-progress {
+  height:2px; background:var(--accent); border-radius:1px;
+  transition:width linear;
+}
+
 /* ── MOBILE ──────────────────────────────────────────── */
 @media (max-width:700px) {
   header { flex-wrap:nowrap; padding:8px 14px; gap:8px; }
