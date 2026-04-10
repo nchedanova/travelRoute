@@ -44,7 +44,27 @@
   --chat-mine-text: #f5f0e8;
 }
 
-/* ── THEME: DEEP VIOLET ──────────────────────────────────────────────────────*/
+/* ── THEME: TAIGA ────────────────────────────────────────────────────────────*/
+[data-theme="taiga"] {
+  --bg: #020c18;
+  --surface: #061928;
+  --surface2: #0a2438;
+  --border: #0f3550;
+  --amber: #3aa87a;
+  --amber-dim: #257a56;
+  --green: #4dbf95;
+  --text: #c8dde8;
+  --muted: #4a7a8a;
+  --red: #e07070;
+  --d2: #5ba8d0;
+  --accent: #3aa87a;
+  --accent-dim: #257a56;
+  --accent-bg: rgba(58,168,122,0.13);
+  --accent-text-on: #000;
+  --chat-mine-bg: #0a2a1a;
+  --chat-mine-border: #143d28;
+  --chat-mine-text: #c8dde8;
+}
 [data-theme="violet"] {
   --bg: #0a0a0d;
   --surface: #111116;

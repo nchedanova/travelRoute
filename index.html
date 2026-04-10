@@ -646,11 +646,21 @@
     </div>
     <div class="theme-check">✓</div>
   </div>
-</div>
+  <div class="theme-option" id="topt-taiga" onclick="setTheme('taiga')">
+    <div class="theme-swatch">
+      <div class="theme-swatch-bg" style="background:#020c18;"></div>
+      <div class="theme-swatch-dot" style="background:#3aa87a;"></div>
+    </div>
+    <div>
+      <div class="theme-name">Тайга</div>
+      <div class="theme-desc">Прусский синий, зелёный акцент</div>
+    </div>
+    <div class="theme-check">✓</div>
+  </div>
 
-<script>
+</div>
 (function() {
-  var THEMES = ['default','emerald','violet'];
+  var THEMES = ['default','emerald','violet','taiga'];
 
   function applyTheme(t) {
     if (!THEMES.includes(t)) t = 'default';
