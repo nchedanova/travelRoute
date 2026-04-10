@@ -196,7 +196,7 @@ header {
   letter-spacing:0.02em;
   margin-bottom:3px;
 }
-.day-route { font-size:10px; color:var(--muted); letter-spacing:0.04em; }
+.day-route { font-size:11px; color:var(--muted); letter-spacing:0.04em; }
 
 .depart-row {
   display:flex; align-items:center; gap:10px;
