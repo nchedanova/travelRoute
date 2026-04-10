@@ -459,6 +459,7 @@ body.viewer-mode #undoBtn { display:none !important; }
   font-family:'JetBrains Mono',monospace; cursor:pointer;
   pointer-events:all;
 }
+@media (max-width: 700px) { .map-pick-strip { display:none !important; } }
 .pick-mode-hidden { pointer-events:none; opacity:0.25; transition:opacity 0.2s; }
 
 /* ── INSERT BEFORE/AFTER POPUP ──────────────────────── */
