@@ -458,7 +458,7 @@ function refreshGpsMarkerIcon() {
 var _routeHintTimer      = null;
 var _routeHintProgressTimer = null;
 var _routeHintShownIds   = {};
-var _HINT_TYPES          = { 'Заправка': '⛽', 'Кафе': '🍜', 'Магазин': '🛒', 'Другое': '📍' };
+var _HINT_TYPES          = { 'Заправка': '⛽', 'Кафе': '🍜', 'Магазин': '🛒' };
 var _HINT_DIST_KM        = 1.0;
 
 function _checkRouteHints(lat, lng) {

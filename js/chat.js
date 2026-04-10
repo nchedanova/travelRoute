@@ -651,7 +651,7 @@ async function _sendPendingImages() {
   try {
     const urls = [];
     for (const p of _pendingImages) {
-      urls.push(await _compressToBase64(p.blob, 1200, 0.7));
+      urls.push(await _compressToBase64(p.blob, 1600, 0.85));
     }
     _clearPending();
     document.getElementById('msg-' + pendingKey)?.remove();
@@ -696,11 +696,10 @@ function _compressToBase64(file, maxDim, quality) {
       const dataUrl = canvas.toDataURL('image/jpeg', quality);
       // Проверка размера (~100KB лимит для Realtime DB)
       const sizeKB = Math.round(dataUrl.length * 0.75 / 1024);
-      if (sizeKB > 300) {
-        // Пережимаем сильнее
-        canvas.width = Math.round(w * 0.7); canvas.height = Math.round(h * 0.7);
+      if (sizeKB > 400) {
+        canvas.width = Math.round(w * 0.75); canvas.height = Math.round(h * 0.75);
         canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', 0.5));
+        resolve(canvas.toDataURL('image/jpeg', 0.7));
       } else {
         resolve(dataUrl);
       }
