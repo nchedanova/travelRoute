@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=3">
+<link rel="stylesheet" href="css/style.css?v=4">
 <script>
 (function(){
   var t=localStorage.getItem('travel_theme');
@@ -529,18 +529,18 @@
 
 <!-- Scripts: порядок важен — config и data первыми -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="js/config.js?v=3"></script>
-<script src="js/data.js?v=3"></script>
-<script src="js/storage.js?v=3"></script>
-<script src="js/offline.js?v=3"></script>
-<script src="js/map.js?v=3"></script>
-<script src="js/render.js?v=3"></script>
-<script src="js/app.js?v=3"></script>
-<script src="js/gps.js?v=3"></script>
-<script src="js/chat.js?v=3"></script>
-<script src="js/notes.js?v=3"></script>
-<script src="js/import.js?v=3"></script>
-<script src="js/gpx.js?v=3"></script>
+<script src="js/config.js?v=4"></script>
+<script src="js/data.js?v=4"></script>
+<script src="js/storage.js?v=4"></script>
+<script src="js/offline.js?v=4"></script>
+<script src="js/map.js?v=4"></script>
+<script src="js/render.js?v=4"></script>
+<script src="js/app.js?v=4"></script>
+<script src="js/gps.js?v=4"></script>
+<script src="js/chat.js?v=4"></script>
+<script src="js/notes.js?v=4"></script>
+<script src="js/import.js?v=4"></script>
+<script src="js/gpx.js?v=4"></script>
 <script>
   window._swReg         = null;
   window._swReg = null;
@@ -646,14 +646,26 @@
     </div>
     <div class="theme-check">✓</div>
   </div>
+  <div class="theme-option" id="topt-crystal" onclick="setTheme('crystal')">
+    <div class="theme-swatch">
+      <div class="theme-swatch-bg" style="background:#0a0a0a;"></div>
+      <div class="theme-swatch-dot" style="background:#AFEEEE;"></div>
+    </div>
+    <div>
+      <div class="theme-name">Crystal</div>
+      <div class="theme-desc">Чёрный, бирюзовый акцент</div>
+    </div>
+    <div class="theme-check">✓</div>
+  </div>
+
   <div class="theme-option" id="topt-taiga" onclick="setTheme('taiga')">
     <div class="theme-swatch">
-      <div class="theme-swatch-bg" style="background:#020c18;"></div>
+      <div class="theme-swatch-bg" style="background:#010810;"></div>
       <div class="theme-swatch-dot" style="background:#3aa87a;"></div>
     </div>
     <div>
-      <div class="theme-name">Тайга</div>
-      <div class="theme-desc">Прусский синий, зелёный акцент</div>
+      <div class="theme-name">Deep Forest</div>
+      <div class="theme-desc">Синий фон, зелёный акцент</div>
     </div>
     <div class="theme-check">✓</div>
   </div>
@@ -661,7 +673,7 @@
 </div>
 <script>
 (function() {
-  var THEMES = ['default','emerald','violet','taiga'];
+  var THEMES = ['default','emerald','violet','crystal','taiga'];
 
   function applyTheme(t) {
     if (!THEMES.includes(t)) t = 'default';

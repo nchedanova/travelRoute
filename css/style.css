@@ -44,26 +44,48 @@
   --chat-mine-text: #f5f0e8;
 }
 
-/* ── THEME: TAIGA ────────────────────────────────────────────────────────────*/
+/* ── THEME: CRYSTAL ──────────────────────────────────────────────────────────*/
+[data-theme="crystal"] {
+  --bg: #0a0a0a;
+  --surface: #141414;
+  --surface2: #1c1c1c;
+  --border: #242424;
+  --amber: #AFEEEE;
+  --amber-dim: #7abcbc;
+  --green: #AFEEEE;
+  --text: #f0f0f0;
+  --muted: #777777;
+  --red: #e07070;
+  --d2: #AFEEEE;
+  --accent: #AFEEEE;
+  --accent-dim: #7abcbc;
+  --accent-bg: rgba(175,238,238,0.08);
+  --accent-text-on: #000;
+  --chat-mine-bg: #151e1e;
+  --chat-mine-border: #202e2e;
+  --chat-mine-text: #f0f0f0;
+}
+
+/* ── THEME: PRUSSIAN ─────────────────────────────────────────────────────────*/
 [data-theme="taiga"] {
-  --bg: #020c18;
-  --surface: #061928;
-  --surface2: #0a2438;
-  --border: #0f3550;
+  --bg: #010810;
+  --surface: #03111f;
+  --surface2: #071c30;
+  --border: #0a2840;
   --amber: #3aa87a;
   --amber-dim: #257a56;
   --green: #4dbf95;
-  --text: #c8dde8;
-  --muted: #4a7a8a;
+  --text: #ddeef5;
+  --muted: #6ab0c0;
   --red: #e07070;
   --d2: #5ba8d0;
   --accent: #3aa87a;
   --accent-dim: #257a56;
   --accent-bg: rgba(58,168,122,0.13);
   --accent-text-on: #000;
-  --chat-mine-bg: #0a2a1a;
-  --chat-mine-border: #143d28;
-  --chat-mine-text: #c8dde8;
+  --chat-mine-bg: #062018;
+  --chat-mine-border: #0e3828;
+  --chat-mine-text: #ddeef5;
 }
 [data-theme="violet"] {
   --bg: #0a0a0d;
