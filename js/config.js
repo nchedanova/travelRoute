@@ -1,5 +1,20 @@
 // ── CONSTANTS ─────────────────────────────────────────────────────────────────
-const DAY_COLORS   = ['#f5a623','#00CED1','#a78bfa','#34d399','#FA8072','#CED23A','#00BFFF','#CC5500'];
+const DAY_COLORS   = ['#f5a623','#00CED1','#a78bfa','#34d399','#FA8072','#CED23A','#00BFFF','#CC5500'  // Замены удалённых монохромных эмодзи — цветные аналоги
+  ['🏠','отель гостиница номер hotel room'],
+  ['🏡','дача загород cottage дом home house'],
+  ['⛺','палатка кемпинг camping tent'],
+  ['🌋','вулкан гора volcano mountain'],
+  ['🌊','море океан пляж пустыня остров ocean sea beach island'],
+  ['🗼','башня tower стадион arena'],
+  ['🏯','замок castle крепость'],
+  ['💒','церковь храм church wedding'],
+  ['🕌','мечеть церковь mosque church temple храм'],
+  ['🎠','карусель парк carousel amusement'],
+  ['⛺','палатка tent природа природный'],
+  ['🌦','гроза дождь storm rain thunder'],
+  ['🛕','индуистский храм temple'],
+  ['🎪','цирк аттракцион carnival'],
+];
 
 const TYPE_ICONS = {
   'Заправка': '⛽',
@@ -107,11 +122,10 @@ if (document.body) {
 }
 
 // ── EMOJI SEARCH DICTIONARY ───────────────────────────────────────────────────
-// Только эмодзи до Unicode 12.1 — стабильно рендерятся на Windows/Android/iOS
-// Формат: [эмодзи, 'ключевые слова через пробел']
+// Только заведомо цветные эмодзи (Segoe UI Emoji Windows 10/11 + iOS + Android)
 const EMOJI_DICT = [
   // Транспорт
-  ['🚗','машина авто автомобиль car'],
+  ['🚗','машина авто автомобиль гоночная race car стоянка парковка'],
   ['🚙','внедорожник джип suv кроссовер'],
   ['🛻','пикап pickup truck'],
   ['🚐','микроавтобус минивэн van'],
@@ -122,9 +136,7 @@ const EMOJI_DICT = [
   ['🚕','такси taxi'],
   ['🚚','грузовик truck delivery'],
   ['🚛','фура тягач semi'],
-  ['🏎','гоночная машина спорткар race'],
-  ['🛵','мопед скутер moped'],
-  ['🏍','мотоцикл motorcycle moto'],
+  ['🛵','мопед скутер мотоцикл moped motorcycle'],
   ['🚲','велосипед bike bicycle'],
   ['🛴','самокат scooter kick'],
   ['✈️','самолет авиа рейс flight plane'],
@@ -139,11 +151,9 @@ const EMOJI_DICT = [
   ['🔋','батарея зарядка battery'],
   ['🔧','ремонт сервис repair service wrench'],
   ['🔩','гайка болт nut bolt'],
-  ['🛢','бочка нефть oil barrel'],
   ['🚿','мойка душ автомойка wash shower'],
   ['💧','вода water мойка'],
   ['🧹','уборка cleaning sweep'],
-  ['🚗','парковка стоянка parking'],
   ['🚧','ремонт дорог roadwork construction'],
   // Еда и кафе
   ['🍜','лапша рамен noodles ramen кафе'],
@@ -182,28 +192,23 @@ const EMOJI_DICT = [
   ['🏬','торговый центр mall'],
   ['🛍','покупки shopping bags'],
   ['💊','аптека таблетки pharmacy pills'],
-  ['🍞','хлеб хлебный bakery bread'],
+  ['🍞','хлеб bakery bread'],
   ['🥛','молоко dairy milk'],
   // Отель и жильё
   ['🏨','отель hotel гостиница'],
-  ['🛎','сервис отель service bell'],
-  ['🛏','кровать bed номер room'],
-  ['🔑','ключ key замок lock'],
-  ['🛁','ванная bath ванна'],
-  ['🛋','диван гостиная couch'],
-  ['🏡','дача загородный дом cottage'],
+  ['🔑','ключ key замок lock номер room'],
   ['🏠','дом home house'],
-  ['🏘','посёлок деревня village'],
+  ['🏡','дача загородный дом cottage'],
   ['⛺','палатка camping tent'],
   ['🌙','ночлег ночь night sleep'],
   ['⭐','звезда star рейтинг rating'],
-  // Парк природа деревья
+  // Парк и природа
   ['🌳','дерево парк сквер tree park'],
-  ['🌲','ель сосна хвойный ёлка forest pine'],
-  ['🌴','пальма тропики palm tropical'],
-  ['🌿','трава зелень газон nature green'],
-  ['🍃','листья природа leaves'],
-  ['🌱','росток рассада sprout'],
+  ['🌲','ель сосна хвойный forest pine парк'],
+  ['🌴','пальма тропики пляж beach palm tropical парк'],
+  ['🌿','трава зелень газон nature green парк'],
+  ['🍃','листья природа парк leaves'],
+  ['🌱','росток природа sprout парк'],
   ['🍀','клевер удача clover'],
   ['🍁','клён осень maple autumn'],
   ['🌾','поле пшеница field grain'],
@@ -211,36 +216,27 @@ const EMOJI_DICT = [
   ['🌸','цветущий сакура blossom'],
   ['💐','цветы flowers'],
   ['🍄','гриб mushroom лес'],
-  ['🏕','кемпинг лагерь camping'],
-  // Горы и природа
-  ['🏔','гора mountain'],
-  ['⛰','холм гора hill'],
-  ['🌋','вулкан volcano'],
-  ['🏖','пляж beach море sea'],
-  ['🌊','море волна ocean wave'],
-  ['🏜','пустыня desert'],
-  ['🏝','остров island'],
-  ['🏞','парк нацпарк nature park заповедник'],
+  ['🌊','море волна пляж beach ocean wave'],
+  ['🌋','вулкан гора volcano mountain'],
+  ['⛺','кемпинг лагерь camping природа'],
   // Спорт и активности
-  ['🏄','сёрфинг surf пляж'],
+  ['🏄','сёрфинг surf пляж море beach'],
   ['🎣','рыбалка fishing'],
-  ['⛷','лыжи skiing ski'],
-  ['🏂','сноуборд snowboard'],
+  ['🏂','сноуборд лыжи snowboard skiing зима'],
+  ['⛄','зима снег winter snow лыжи skiing'],
   ['🧗','скалолазание climbing'],
   ['🚵','велоспорт горный велосипед mtb'],
   ['🏊','бассейн плавание swimming'],
   ['⛳','гольф golf'],
-  // Культура и туризм
-  ['🏛','музей колонны temple museum'],
-  ['⛪','церковь church храм'],
-  ['🕌','мечеть mosque'],
-  ['🏯','замок castle'],
+  // Культура и достопримечательности
+  ['🏯','замок castle крепость'],
   ['🗼','башня tower'],
   ['🗽','статуя monument'],
-  ['🎡','колесо обозрения ferris wheel'],
+  ['🕌','мечеть церковь mosque church temple храм'],
+  ['🎠','карусель парк аттракцион carousel'],
+  ['🎡','колесо обозрения ferris wheel парк'],
   ['🎢','аттракцион roller coaster'],
-  ['🎪','цирк circus'],
-  ['🏟','стадион stadium'],
+  ['🎪','цирк circus carnival'],
   ['🎭','театр theatre drama'],
   ['🎨','галерея art gallery'],
   ['🎬','кино cinema film'],
@@ -248,16 +244,16 @@ const EMOJI_DICT = [
   // Сервисы и инфраструктура
   ['🏥','больница hospital'],
   ['🏦','банк bank'],
+  ['📮','почта post office letter'],
   ['🏧','банкомат atm'],
-  ['🏤','почта post office'],
   ['🚏','остановка bus stop'],
   ['🚦','светофор traffic light'],
   ['🌉','мост bridge'],
-  ['🛣','трасса highway road'],
   ['💈','барбершоп стрижка barbershop'],
   ['🔦','фонарь фонарик flashlight torch'],
-  // Общее
-  ['🗺','карта map маршрут route'],
+  // Навигация и путешествия
+  ['🌍','карта map маршрут route глобус'],
+  ['🌐','маршрут route карта map глобус'],
   ['📍','место точка pin location'],
   ['📸','фото photo camera'],
   ['🔭','обзорная площадка telescope viewpoint'],
@@ -267,15 +263,10 @@ const EMOJI_DICT = [
   ['🎯','цель target'],
   ['🚩','флаг точка flag'],
   ['🏁','финиш finish'],
-  ['⚠️','осторожно warning опасность'],
-  ['ℹ️','информация info'],
   // Погода
-  ['☀️','солнце sun тепло'],
-  ['⛅','облачно clouds'],
-  ['🌧','дождь rain'],
-  ['⛈','гроза storm'],
-  ['❄️','снег snow winter'],
-  ['🌫','туман fog'],
+  ['☀️','солнце sun тепло warm'],
+  ['🌦','дождь rain гроза storm'],
+  ['❄️','снег snow winter зима'],
   ['🌈','радуга rainbow'],
 ];
 function searchEmoji(query) {
@@ -283,7 +274,9 @@ function searchEmoji(query) {
   var q = query.toLowerCase().trim();
   var results = [];
   for (var i = 0; i < EMOJI_DICT.length; i++) {
-    if (EMOJI_DICT[i][1].indexOf(q) !== -1) {
+    var words = EMOJI_DICT[i][1].split(' ');
+    var match = words.some(function(w) { return w === q || w.indexOf(q) === 0; });
+    if (match) {
       results.push(EMOJI_DICT[i][0]);
       if (results.length >= 8) break;
     }
