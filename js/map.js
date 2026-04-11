@@ -473,6 +473,11 @@ function redrawDay(d) {
 function switchMapDay(d) {
   var viewer = typeof isViewer === 'function' && isViewer();
   dayKeys().forEach(n => {
+    // Архивные дни никогда не показываются на карте
+    if (DAYS_DATA[n]?.archived) {
+      layers[n] && map.hasLayer(layers[n]) && map.removeLayer(layers[n]);
+      return;
+    }
     // Читатель не видит скрытые дни на карте
     if (n === d && !(viewer && DAYS_DATA[n]?.hidden)) {
       layers[n] && layers[n].addTo(map);

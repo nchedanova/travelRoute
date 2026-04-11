@@ -945,6 +945,8 @@ function restoreDay(d) {
   if (!isAdmin()) return;
   snapshotForUndo('Восстановление из архива');
   delete DAYS_DATA[d].archived;
+  if (!layers[d]) { layers[d] = L.layerGroup(); segmentLayers[d] = []; }
+  redrawDay(d);
   renderTabs();
   renderAllDays();
   renderArchiveBtn();
@@ -2610,7 +2612,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.8.0';
-var APP_BUILD   = 15;
+var APP_BUILD   = 16;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 

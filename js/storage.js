@@ -177,7 +177,7 @@ async function loadState() {
     dayKeys().forEach(function(d) {
       layers[d] = L.layerGroup();
       segmentLayers[d] = [];
-      redrawDay(d);
+      if (!DAYS_DATA[d].archived) redrawDay(d);
     });
   }
 
