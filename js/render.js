@@ -665,7 +665,7 @@ function renderTabs() {
     const btn  = document.createElement('button');
     btn.className  = 'day-tab' + (d === currentDay ? ' active' : '') + (data.hidden ? ' day-hidden' : '');
     btn.dataset.day = d;
-    btn.textContent = data.dateISO ? fmtDateShort(data.dateISO) : ('День ' + d);
+    btn.textContent = data.dateISO ? fmtDateShort(data.dateISO) : (typeof _dayLabel === 'function' ? _dayLabel(d) : 'День ' + d);
     btn.onclick = () => switchDay(d);
     btn.style.setProperty('--dc', data.color);
     if (d === currentDay && !data.hidden) {

@@ -967,7 +967,7 @@ function renderArchiveBtn() {
   }
   dropdown.innerHTML = archived.map(function(d) {
     var data = DAYS_DATA[d];
-    var date = data.dateISO || ('День ' + d);
+    var date = data.dateISO || _dayLabel(d);
     var title = data.date || '';
     return '<div class="archive-item">'
       + '<div class="archive-item-info">'
@@ -1162,11 +1162,25 @@ function addNewDay() {
   showToast('📅 День добавлен');
 }
 
+
+// Порядковый номер дня среди активных (не архивных) для отображения
+function _dayDisplayNum(d) {
+  var activeKeys = dayKeys().filter(function(k) { return !DAYS_DATA[k].archived; }).sort(function(a,b){return a-b;});
+  var idx = activeKeys.indexOf(d);
+  return idx >= 0 ? (idx + 1) : null;
+}
+function _dayLabel(d) {
+  var data = DAYS_DATA[d];
+  if (data && data.dateISO) return data.dateISO;
+  var num = _dayDisplayNum(d);
+  return num ? ('День ' + num) : ('День ' + d);
+}
+
 let deleteDayTarget = null;
 function confirmDeleteDay(d) {
   if (dayKeys().length <= 1) { showToast('Нельзя удалить последний день'); return; }
   deleteDayTarget = d;
-  var label = DAYS_DATA[d].dateISO ? fmtDateFull(DAYS_DATA[d].dateISO) : ('День ' + d);
+  var label = DAYS_DATA[d].dateISO ? fmtDateFull(DAYS_DATA[d].dateISO) : _dayLabel(d);
   document.getElementById('deleteDayModalBody').textContent =
     label + (DAYS_DATA[d].date ? ' · ' + DAYS_DATA[d].date : '') + ' и все его точки будут удалены.';
   document.getElementById('deleteDayModal').classList.add('show');
@@ -2594,7 +2608,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.8.0';
-var APP_BUILD   = 13;
+var APP_BUILD   = 14;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 
