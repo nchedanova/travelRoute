@@ -499,7 +499,7 @@ function openIconPicker(inputId, typeInputId) {
     + '<span style="font-size:9px;color:var(--muted);white-space:nowrap;letter-spacing:0.04em">Свой или поиск:</span>'
     + '<input id="ipCustomInput" class="edit-input" type="text" maxlength="40" placeholder="🚗 или автомойка"'
     + ' style="flex:1;height:26px;font-size:13px;padding:0 6px;min-width:0"'
-    + ' autocomplete="off" oninput="_ipCustomInput(this,\'' + inputId + '\')"'
+    + ' autocomplete="new-password" oninput="_ipCustomInput(this,\'' + inputId + '\')"'
     + ' onmousedown="event.stopPropagation()">'
     + '</div>'
     + '<div id="ipSearchResults" style="display:none;flex-wrap:wrap;gap:1px;padding:2px 2px 0"></div>';
@@ -1256,7 +1256,8 @@ function editDepartTime(day, el) {
     newEl.onclick    = () => editDepartTime(day, newEl);
     inp.replaceWith(newEl);
 
-    // Always save the new departP value
+    // Save only if changed
+    if (val === current) { return; }
     DAYS_DATA[day].departP = val;
 
     // Cascade time shift to stops only if both old and new times are valid and differ

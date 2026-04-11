@@ -34,19 +34,20 @@ function applyMask(el) {
   }
   // Synchronous call works in both Chrome and Firefox
   try { el.setSelectionRange(newPos, newPos); } catch(e) {}
-  if (formatted.length === 5) updateProgress();
+  if (formatted.length === 5 && formatted !== el.dataset.prevVal) { el.dataset.prevVal = formatted; updateProgress(); }
 }
 
 function padTime(el) {
+  const prev = el.dataset.prevVal ?? el.defaultValue ?? '';
   const val = el.value.trim();
-  if (!val) { saveData(); return; }
+  if (!val) { if (val !== prev) saveData(); return; }
   const digits = val.replace(/[^0-9]/g, '');
   let padded = val;
   if (digits.length === 3) padded = '0' + digits[0] + ':' + digits.slice(1);
   if (/^\d:\d\d$/.test(val)) padded = '0' + val;
   el.value = padded;
   el.classList.toggle('empty', !padded);
-  saveData();
+  if (padded !== prev) saveData();
 }
 
 function fillOnTime(el) {
@@ -339,7 +340,7 @@ function makeStopCard(s, day) {
           <input class="time-in ${s.depA ? '' : 'empty'}" id="dep-${s.id}"
             type="text" inputmode="numeric" maxlength="5" value="${s.depA || ''}" placeholder="${s.depP || '--:--'}"
             autocomplete="off"
-            ${isAdmin() ? `oninput="applyMask(this)" onblur="padTime(this)" ondblclick="fillOnTime(this)"` : `readonly style="pointer-events:none;border-style:solid;"`}>
+            ${isAdmin() ? `onfocus="this.dataset.prevVal=this.value" oninput="applyMask(this)" onblur="padTime(this)" ondblclick="fillOnTime(this)"` : `readonly style="pointer-events:none;border-style:solid;"`}>
         </div>
       </div>
     </div>`;
@@ -396,7 +397,7 @@ function makeStopCard(s, day) {
             <input class="time-in ${s.arrA ? '' : 'empty'}" id="arr-${s.id}"
               type="text" inputmode="numeric" maxlength="5" value="${s.arrA || ''}" placeholder="${s.arrP || '--:--'}"
               autocomplete="off"
-              ${isAdmin() ? `oninput="applyMask(this)" onblur="padTime(this)" ondblclick="fillOnTime(this)"` : `readonly style="pointer-events:none;border-style:solid;"`}>
+              ${isAdmin() ? `onfocus="this.dataset.prevVal=this.value" oninput="applyMask(this)" onblur="padTime(this)" ondblclick="fillOnTime(this)"` : `readonly style="pointer-events:none;border-style:solid;"`}>
           </div>
         </div>
       </div>
@@ -565,7 +566,7 @@ function renderDaySection(d) {
           <input class="time-in ${data.departA ? '' : 'empty'}" id="d${d}-depart"
             type="text" inputmode="numeric" maxlength="5" value="${data.departA || ''}" placeholder="--:--"
             autocomplete="off"
-            ${isAdmin() ? `oninput="applyMask(this)" onblur="padTime(this)" ondblclick="fillOnTime(this)"` : `readonly style="pointer-events:none;border-style:solid;"`}>
+            ${isAdmin() ? `onfocus="this.dataset.prevVal=this.value" oninput="applyMask(this)" onblur="padTime(this)" ondblclick="fillOnTime(this)"` : `readonly style="pointer-events:none;border-style:solid;"`}>
         </div>
       </div>
     </div>
