@@ -451,22 +451,18 @@ document.addEventListener('click', function(e) {
 
 // ── ICON PICKER ───────────────────────────────────────────────────────────────
 function openIconPicker(inputId, typeInputId) {
+  var existing = document.getElementById('iconPickerInline');
+  if (existing && existing.dataset.forInput === inputId) {
+    _closeIconPicker(); return;
+  }
+  _closeIconPicker();
+
   var inputEl = document.getElementById(inputId);
   if (!inputEl) return;
 
-  var picker = document.getElementById('iconPickerGlobal');
-  if (!picker) return;
-
-  // If already open for same input — close
-  if (picker.style.display === 'grid' && picker.dataset.forInput === inputId) {
-    _closeIconPicker();
-    return;
-  }
-
-  var type = typeInputId ? (document.getElementById(typeInputId) && document.getElementById(typeInputId).value) : null;
+  var type = typeInputId ? (document.getElementById(typeInputId) || {}).value : null;
   var icons;
   if (!type) {
-    // Start point — all icons, hotel/home first
     var startFirst = (ICON_SETS['Отель'] || []).concat(ICON_SETS['Жильё'] || []);
     var rest = [];
     Object.keys(ICON_SETS).forEach(function(k) {
@@ -479,43 +475,21 @@ function openIconPicker(inputId, typeInputId) {
   }
 
   var current = inputEl.value;
+  var picker = document.createElement('div');
+  picker.id = 'iconPickerInline';
+  picker.className = 'icon-picker-stop';
+  picker.dataset.forInput = inputId;
   picker.innerHTML = icons.map(function(ic) {
     var sel = ic === current ? ' ip-sel' : '';
     return '<button class="icon-pick-stop-btn' + sel + '" onmousedown="event.preventDefault()" onclick="selectIconFromPicker(\'' + inputId + '\',\'' + ic + '\')">' + ic + '</button>';
   }).join('');
 
-  picker.dataset.forInput = inputId;
-  // Width = ширина строки поиска (ia-search-X / ei-search-X / edit-start-search / new-stop-name)
-  var searchId = inputId
-    .replace('ia-icon-',    'ia-search-')
-    .replace('ei-icon-',    'ei-search-')
-    .replace('edit-start-icon', 'edit-start-search')
-    .replace('new-stop-icon',   'new-stop-name');
-  var searchEl = document.getElementById(searchId);
-  var pickerWidth = searchEl
-    ? searchEl.getBoundingClientRect().width
-    : (inputEl.closest('.stop-edit-form, .modal-body, .modal') || {}).offsetWidth || 240;
-  // Рассчитать количество колонок кратно 34px (размер кнопки) — без горизонтального скролла
-  var cols = Math.max(1, Math.floor((pickerWidth - 10) / 34));
-  picker.style.gridTemplateColumns = 'repeat(' + cols + ', 34px)';
-  picker.style.width = pickerWidth + 'px';
+  var iconRow = inputEl.parentElement.parentElement;
+  iconRow.insertAdjacentElement('afterend', picker);
 
-  // Show off-screen first to measure height
-  picker.style.visibility = 'hidden';
-  picker.style.display = 'grid';
-
-  var rect = searchEl
-    ? searchEl.getBoundingClientRect()
-    : inputEl.getBoundingClientRect();
-  var ph = picker.offsetHeight || 75;
-  var spaceBelow = window.innerHeight - rect.bottom - 8;
-  if (spaceBelow < ph && rect.top > ph + 8) {
-    picker.style.top = (rect.top - ph - 4) + 'px';
-  } else {
-    picker.style.top = (rect.bottom + 4) + 'px';
-  }
-  picker.style.left = rect.left + 'px';
-  picker.style.visibility = '';
+  var formWidth = iconRow.parentElement ? iconRow.parentElement.clientWidth : 240;
+  var cols = Math.max(1, Math.floor((formWidth - 10) / 34));
+  picker.style.cssText = 'display:grid;grid-template-columns:repeat(' + cols + ',34px);width:100%;margin-bottom:8px;';
 
   setTimeout(function() {
     document.addEventListener('click', _iconPickerOutsideClick);
@@ -529,15 +503,16 @@ function selectIconFromPicker(inputId, icon) {
 }
 
 function _closeIconPicker() {
-  var picker = document.getElementById('iconPickerGlobal');
-  if (picker) { picker.style.display = 'none'; picker.dataset.forInput = ''; }
+  var existing = document.getElementById('iconPickerInline');
+  if (existing) existing.remove();
   document.removeEventListener('click', _iconPickerOutsideClick);
 }
 
 function _iconPickerOutsideClick(e) {
-  var picker = document.getElementById('iconPickerGlobal');
-  if (!picker || picker.style.display === 'none') return;
+  var picker = document.getElementById('iconPickerInline');
+  if (!picker) return;
   if (picker.contains(e.target)) return;
+  if (e.target.id === picker.dataset.forInput) return;
   _closeIconPicker();
 }
 
