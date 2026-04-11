@@ -34,7 +34,7 @@ function applyMask(el) {
   }
   // Synchronous call works in both Chrome and Firefox
   try { el.setSelectionRange(newPos, newPos); } catch(e) {}
-  if (formatted.length === 5 && formatted !== el.dataset.prevVal) { el.dataset.prevVal = formatted; updateProgress(); }
+  if (formatted.length === 5) updateProgress();
 }
 
 function padTime(el) {
