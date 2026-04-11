@@ -460,6 +460,9 @@ function openIconPicker(inputId, typeInputId) {
   var inputEl = document.getElementById(inputId);
   if (!inputEl) return;
 
+  var formEl = inputEl.closest('.stop-edit-form') || inputEl.closest('.modal');
+  if (!formEl) return;
+
   var type = typeInputId ? (document.getElementById(typeInputId) || {}).value : null;
   var icons;
   if (!type) {
@@ -468,8 +471,7 @@ function openIconPicker(inputId, typeInputId) {
     Object.keys(ICON_SETS).forEach(function(k) {
       if (k !== 'Отель' && k !== 'Жильё') rest = rest.concat(ICON_SETS[k]);
     });
-    var all = startFirst.concat(rest);
-    icons = all.filter(function(v, i, a) { return a.indexOf(v) === i; });
+    icons = startFirst.concat(rest).filter(function(v, i, a) { return a.indexOf(v) === i; });
   } else {
     icons = ICON_SETS[type] || ICON_SETS['Другое'];
   }
@@ -484,12 +486,28 @@ function openIconPicker(inputId, typeInputId) {
     return '<button class="icon-pick-stop-btn' + sel + '" onmousedown="event.preventDefault()" onclick="selectIconFromPicker(\'' + inputId + '\',\'' + ic + '\')">' + ic + '</button>';
   }).join('');
 
-  var iconRow = inputEl.parentElement.parentElement;
-  iconRow.insertAdjacentElement('afterend', picker);
+  // Позиция: bottom иконки относительно formEl
+  var inputRect = inputEl.getBoundingClientRect();
+  var formRect  = formEl.getBoundingClientRect();
+  picker.style.top = (inputRect.bottom - formRect.top + 4) + 'px';
 
-  var formWidth = iconRow.parentElement ? iconRow.parentElement.clientWidth : 240;
-  var cols = Math.max(1, Math.floor((formWidth - 10) / 34));
-  picker.style.cssText = 'display:grid;grid-template-columns:repeat(' + cols + ',34px);width:100%;margin-bottom:8px;';
+  // Left/right: выровнять по референсному инпуту (поиск / имя)
+  var refId = inputId
+    .replace('ia-icon-', 'ia-search-')
+    .replace('ei-icon-', 'ei-search-')
+    .replace('edit-start-icon', 'edit-start-search')
+    .replace('new-stop-icon', 'new-stop-name');
+  var refEl  = document.getElementById(refId) || inputEl;
+  var refRect = refEl.getBoundingClientRect();
+  picker.style.left  = (refRect.left  - formRect.left)  + 'px';
+  picker.style.right = (formRect.right - refRect.right) + 'px';
+
+  // Колонки: ширина референса минус padding пикера минус скроллбар
+  var cols = Math.max(1, Math.floor((refRect.width - 10 - 4) / 34));
+  picker.style.gridTemplateColumns = 'repeat(' + cols + ',34px)';
+  picker.style.display = 'grid';
+
+  formEl.appendChild(picker);
 
   setTimeout(function() {
     document.addEventListener('click', _iconPickerOutsideClick);
