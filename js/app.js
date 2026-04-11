@@ -486,15 +486,19 @@ function openIconPicker(inputId, typeInputId) {
     return '<button class="icon-pick-stop-btn' + sel + '" onmousedown="event.preventDefault()" onclick="selectIconFromPicker(\'' + inputId + '\',\'' + ic + '\')">' + ic + '</button>';
   }).join('');
 
-  // Строка «свой эмодзи» — последний элемент, занимает всю ширину
+  // Строка «свой / поиск» — занимает всю ширину
   var customRow = document.createElement('div');
   customRow.className = 'ip-custom-row';
-  customRow.style.cssText = 'grid-column:1/-1;display:flex;align-items:center;gap:4px;padding:3px 2px 1px;border-top:1px solid var(--border);margin-top:2px';
-  customRow.innerHTML = '<span style="font-size:9px;color:var(--muted);white-space:nowrap;letter-spacing:0.04em">Свой:</span>'
-    + '<input id="ipCustomInput" class="edit-input" type="text" maxlength="2" placeholder="✨"'
-    + ' style="flex:1;height:26px;font-size:16px;text-align:center;padding:0 4px;min-width:0"'
-    + ' oninput="(function(el){var v=el.value.trim();if(v)selectIconFromPicker(\'' + inputId + '\',v);})(this)"'
-    + ' onmousedown="event.stopPropagation()">';
+  customRow.style.cssText = 'grid-column:1/-1;border-top:1px solid var(--border);margin-top:3px;padding-top:3px;';
+  customRow.innerHTML =
+    '<div style="display:flex;align-items:center;gap:4px;padding:0 2px">'
+    + '<span style="font-size:9px;color:var(--muted);white-space:nowrap;letter-spacing:0.04em">Свой или поиск:</span>'
+    + '<input id="ipCustomInput" class="edit-input" type="text" maxlength="40" placeholder="🚗 или автомойка"'
+    + ' style="flex:1;height:26px;font-size:13px;padding:0 6px;min-width:0"'
+    + ' oninput="_ipCustomInput(this,\'' + inputId + '\')"'
+    + ' onmousedown="event.stopPropagation()">'
+    + '</div>'
+    + '<div id="ipSearchResults" style="display:none;flex-wrap:wrap;gap:1px;padding:2px 2px 0"></div>';
   picker.appendChild(customRow);
 
   // Позиция: bottom иконки относительно formEl
@@ -523,6 +527,33 @@ function openIconPicker(inputId, typeInputId) {
   setTimeout(function() {
     document.addEventListener('click', _iconPickerOutsideClick);
   }, 0);
+}
+
+function _ipCustomInput(el, inputId) {
+  var val = el.value.trim();
+  if (!val) {
+    var sr = document.getElementById('ipSearchResults');
+    if (sr) sr.style.display = 'none';
+    return;
+  }
+  // Определяем: эмодзи (unicode >= U+1F300) или текстовый запрос
+  var isEmoji = /\p{Emoji}/u.test(val) && !/^[a-zA-Zа-яА-Я0-9\s]+$/.test(val);
+  if (isEmoji) {
+    selectIconFromPicker(inputId, val);
+    return;
+  }
+  // Текстовый поиск по словарю
+  var results = typeof searchEmoji === 'function' ? searchEmoji(val) : [];
+  var sr = document.getElementById('ipSearchResults');
+  if (!sr) return;
+  if (!results.length) {
+    sr.style.display = 'none';
+    return;
+  }
+  sr.style.display = 'flex';
+  sr.innerHTML = results.map(function(ic) {
+    return '<button class="icon-pick-stop-btn" onmousedown="event.preventDefault()" onclick="selectIconFromPicker(\'' + inputId + '\',\'' + ic + '\')">' + ic + '</button>';
+  }).join('');
 }
 
 function selectIconFromPicker(inputId, icon) {
