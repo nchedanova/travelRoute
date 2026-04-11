@@ -987,11 +987,16 @@ function toggleArchive() {
   closeDayMenus();
   if (isOpen) { dd.classList.remove('show'); document.removeEventListener('click', _archiveOutsideClick); return; }
   renderArchiveBtn();
-  // Position below button
+  // Position below button, clamped to screen
   var rect = btn.getBoundingClientRect();
-  dd.style.top  = (rect.bottom + 4) + 'px';
-  dd.style.right = (window.innerWidth - rect.right) + 'px';
+  var ddW = 240; // min-width
+  dd.style.top = (rect.bottom + 4) + 'px';
   dd.style.left = 'auto';
+  // Align right edge to button right, but don't go off left edge
+  var rightOffset = window.innerWidth - rect.right;
+  if (rightOffset < 0) rightOffset = 4;
+  if (window.innerWidth - rightOffset < ddW) rightOffset = Math.max(4, window.innerWidth - ddW - 4);
+  dd.style.right = rightOffset + 'px';
   dd.classList.add('show');
   setTimeout(function() {
     document.addEventListener('click', _archiveOutsideClick);

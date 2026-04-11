@@ -2980,7 +2980,7 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
   border: 1px solid var(--border);
   border-radius: 8px;
   min-width: 220px;
-  max-width: 280px;
+  max-width: min(280px, calc(100vw - 8px));
   padding: 4px 0;
   box-shadow: 0 4px 20px rgba(0,0,0,0.5);
 }
