@@ -159,18 +159,18 @@
         <div class="modal-label">Поиск места</div>
         <div class="search-wrap">
           <input class="modal-input" id="nominatim-input" type="text" placeholder="Название, адрес…"
-            oninput="nominatimSearch(this.value)" autocomplete="off">
+            oninput="nominatimSearch(this.value)" autocomplete="nope">
           <div class="search-results" id="nominatim-results"></div>
         </div>
       </div>
       <div class="modal-field">
         <div class="modal-label">Название точки</div>
-        <input class="modal-input" id="new-stop-name" type="text" autocomplete="off" placeholder="Газпромнефть у Ефремова">
+        <input class="modal-input" id="new-stop-name" type="text" autocomplete="nope" placeholder="Газпромнефть у Ефремова">
       </div>
       <div class="modal-row">
         <div class="modal-field">
           <div class="modal-label">Иконка</div>
-          <input class="modal-input" id="new-stop-icon" type="text" autocomplete="off" placeholder="⛽" style="font-size:18px;text-align:center;cursor:pointer" readonly onclick="openIconPicker('new-stop-icon','new-stop-type')">
+          <input class="modal-input" id="new-stop-icon" type="text" autocomplete="nope" placeholder="⛽" style="font-size:18px;text-align:center;cursor:pointer" readonly onclick="openIconPicker('new-stop-icon','new-stop-type')">
         </div>
         <div class="modal-field">
           <div class="modal-label">Тип</div>
@@ -195,11 +195,11 @@
       <div class="modal-row" style="margin-bottom:14px;">
         <div class="modal-field" style="margin-bottom:0">
           <div class="modal-label">Широта (lat)</div>
-          <input class="modal-input" id="new-stop-lat" type="text" autocomplete="off" inputmode="decimal" placeholder="55.7965" oninput="splitCoordsInput(this,'new-stop-lng','new-stop-coords')">
+          <input class="modal-input" id="new-stop-lat" type="text" autocomplete="nope" inputmode="decimal" placeholder="55.7965" oninput="splitCoordsInput(this,'new-stop-lng','new-stop-coords')">
         </div>
         <div class="modal-field" style="margin-bottom:0">
           <div class="modal-label">Долгота (lng)</div>
-          <input class="modal-input" id="new-stop-lng" type="text" autocomplete="off" inputmode="decimal" placeholder="37.9475" oninput="onManualCoordInput('new-stop-lat','new-stop-lng','new-stop-coords')">
+          <input class="modal-input" id="new-stop-lng" type="text" autocomplete="nope" inputmode="decimal" placeholder="37.9475" oninput="onManualCoordInput('new-stop-lat','new-stop-lng','new-stop-coords')">
         </div>
       </div>
       <div class="modal-actions">
@@ -230,7 +230,7 @@
         <div class="modal-label">Поиск места</div>
         <div class="search-wrap" style="position:relative;">
           <input class="modal-input" id="edit-start-search" type="text" placeholder="Название, адрес…"
-            oninput="startNominatimSearch(this.value)" autocomplete="off" style="padding-right:28px;">
+            oninput="startNominatimSearch(this.value)" autocomplete="nope" style="padding-right:28px;">
           <span style="position:absolute;right:9px;top:50%;transform:translateY(-50%);font-size:15px;cursor:pointer;line-height:1;"
             onclick="enterMapPickModeForEditStart()" title="Выбрать на карте">📍</span>
           <div class="search-results" id="edit-start-results"></div>
@@ -241,12 +241,12 @@
       </div>
       <div class="modal-field">
         <div class="modal-label">Название</div>
-        <input class="modal-input" id="edit-start-name" type="text" autocomplete="off" placeholder="Балашиха">
+        <input class="modal-input" id="edit-start-name" type="text" autocomplete="nope" placeholder="Балашиха">
       </div>
       <div class="modal-row">
         <div class="modal-field">
           <div class="modal-label">Иконка</div>
-          <input class="modal-input" id="edit-start-icon" type="text" autocomplete="off" placeholder="🏠" style="font-size:18px;text-align:center;cursor:pointer" readonly onclick="openIconPicker('edit-start-icon',null)">
+          <input class="modal-input" id="edit-start-icon" type="text" autocomplete="nope" placeholder="🏠" style="font-size:18px;text-align:center;cursor:pointer" readonly onclick="openIconPicker('edit-start-icon',null)">
         </div>
         <div class="modal-field">
           <div class="modal-label">Отпр. план</div>
@@ -257,11 +257,11 @@
       <div class="modal-row">
         <div class="modal-field">
           <div class="modal-label">Широта (lat)</div>
-          <input class="modal-input" id="edit-start-lat" type="text" autocomplete="off" inputmode="decimal" placeholder="55.7965" oninput="splitCoordsInput(this,'edit-start-lng','edit-start-coords');_onEditStartManualCoord()">
+          <input class="modal-input" id="edit-start-lat" type="text" autocomplete="nope" inputmode="decimal" placeholder="55.7965" oninput="splitCoordsInput(this,'edit-start-lng','edit-start-coords');_onEditStartManualCoord()">
         </div>
         <div class="modal-field">
           <div class="modal-label">Долгота (lng)</div>
-          <input class="modal-input" id="edit-start-lng" type="text" autocomplete="off" inputmode="decimal" placeholder="37.9475" oninput="_onEditStartManualCoord()">
+          <input class="modal-input" id="edit-start-lng" type="text" autocomplete="nope" inputmode="decimal" placeholder="37.9475" oninput="_onEditStartManualCoord()">
         </div>
       </div>
       <div class="modal-actions">
@@ -361,15 +361,15 @@
       </div>
       <div class="modal-field">
         <div class="modal-label">GitHub Personal Access Token (scope: gist) — только для владельца</div>
-        <input class="modal-input" id="cs-token" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off">
+        <input class="modal-input" id="cs-token" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="nope">
       </div>
       <div class="modal-field">
         <div class="modal-label">Gist ID (из URL gist.github.com после последнего /)</div>
-        <input class="modal-input" id="cs-gist" type="text" placeholder="a1b2c3d4e5f67890abcd1234" autocomplete="off">
+        <input class="modal-input" id="cs-gist" type="text" placeholder="a1b2c3d4e5f67890abcd1234" autocomplete="nope">
       </div>
       <div class="modal-field">
         <div class="modal-label">Firebase API Key — для GPS, чата и заметок</div>
-        <input class="modal-input" id="cs-firebase-key" type="password" placeholder="AIzaSy…" autocomplete="off">
+        <input class="modal-input" id="cs-firebase-key" type="password" placeholder="AIzaSy…" autocomplete="nope">
       </div>
 
       <div id="cs-status" style="font-size:10px;min-height:16px;margin-bottom:10px;"></div>
@@ -422,7 +422,7 @@
       <div id="anonNameStep" style="display:none;">
         <div class="modal-title">Как тебя зовут?</div>
         <div class="modal-body" style="margin-bottom:12px;font-size:12px;color:var(--muted);">Имя будет видно в чате и заметках.</div>
-        <input class="modal-input" id="nicknameInput" type="text" placeholder="Например, Саша" maxlength="24" onkeydown="nicknameKeydown(event)" autocomplete="off">
+        <input class="modal-input" id="nicknameInput" type="text" placeholder="Например, Саша" maxlength="24" onkeydown="nicknameKeydown(event)" autocomplete="nope">
         <div class="modal-actions" style="margin-top:14px;display:flex;gap:8px;">
           <button class="modal-cancel" onclick="showAuthChoiceStep()" style="flex:0 0 auto;">← Назад</button>
           <button class="modal-confirm" style="border-color:var(--green);color:var(--green);background:rgba(74,222,128,0.1);flex:1;" onclick="saveNickname()">Готово</button>
