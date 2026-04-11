@@ -523,6 +523,7 @@ body.viewer-mode #undoBtn { display:none !important; }
 /* ── INLINE ADD FORM ────────────────────────────────── */
 .stop-edit-form {
   padding:16px 14px 12px;
+  position: relative;
 }
 .edit-row { display:flex; gap:8px; margin-bottom:8px; align-items:flex-start; min-width:0; }
 .edit-field { display:flex; flex-direction:column; gap:3px; min-width:0; }
@@ -1671,10 +1672,14 @@ input.day-date-input {
 
 /* ── ICON PICKER (stop forms) ── */
 .icon-picker-stop {
+  position: absolute;
+  left: 0;
+  right: 0;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 5px;
+  z-index: 200;
   display: none;
   gap: 1px;
   max-height: 75px;
