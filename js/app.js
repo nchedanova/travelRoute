@@ -1208,6 +1208,8 @@ function saveStopTime(id, day) {
   const depPEl = document.getElementById('planned-dep-' + id);
   if (arrPEl) arrPEl.textContent = s.arrP || '—';
   if (depPEl) depPEl.textContent = s.depP || '—';
+  const depBlkST = document.getElementById('dep-block-' + id);
+  if (depBlkST) depBlkST.style.display = (s.depP || s.depA) ? '' : 'none';
   const arrIn = document.getElementById('arr-' + id);
   const depIn = document.getElementById('dep-' + id);
   if (arrIn) arrIn.placeholder = s.arrP || '--:--';
@@ -2048,6 +2050,8 @@ function saveStopEdit(id, day) {
   if (typeEl) typeEl.textContent = s.type;
   if (arrPEl) arrPEl.textContent = s.arrP || '—';
   if (depPEl) depPEl.textContent = s.depP || '—';
+  const depBlkEl = document.getElementById('dep-block-' + id);
+  if (depBlkEl) depBlkEl.style.display = (s.depP || s.depA) ? '' : 'none';
 
   // Also update actual input placeholders
   const arrIn = document.getElementById('arr-' + id);
