@@ -486,6 +486,17 @@ function openIconPicker(inputId, typeInputId) {
     return '<button class="icon-pick-stop-btn' + sel + '" onmousedown="event.preventDefault()" onclick="selectIconFromPicker(\'' + inputId + '\',\'' + ic + '\')">' + ic + '</button>';
   }).join('');
 
+  // Строка «свой эмодзи» — последний элемент, занимает всю ширину
+  var customRow = document.createElement('div');
+  customRow.className = 'ip-custom-row';
+  customRow.style.cssText = 'grid-column:1/-1;display:flex;align-items:center;gap:4px;padding:3px 2px 1px;border-top:1px solid var(--border);margin-top:2px';
+  customRow.innerHTML = '<span style="font-size:9px;color:var(--muted);white-space:nowrap;letter-spacing:0.04em">Свой:</span>'
+    + '<input id="ipCustomInput" class="edit-input" type="text" maxlength="2" placeholder="✨"'
+    + ' style="flex:1;height:26px;font-size:16px;text-align:center;padding:0 4px;min-width:0"'
+    + ' oninput="(function(el){var v=el.value.trim();if(v)selectIconFromPicker(\'' + inputId + '\',v);})(this)"'
+    + ' onmousedown="event.stopPropagation()">';
+  picker.appendChild(customRow);
+
   // Позиция: bottom иконки относительно formEl
   var inputRect = inputEl.getBoundingClientRect();
   var formRect  = formEl.getBoundingClientRect();
@@ -1142,7 +1153,7 @@ function saveStopTime(id, day) {
   saveData();
   // Cascade: пересчитать все точки ниже через OSRM
   if (typeof cascadeAutoFillFrom === 'function') cascadeAutoFillFrom(day, id);
-  else autoFillTimes(day);
+  autoFillTimes(day); // всегда: заполнить arrP самой точки если она последняя/единственная
   showToast('✅ Время обновлено');
   // Re-fetch weather for this stop with updated plan time
   fetchStopWeather(day, id);
@@ -1977,7 +1988,7 @@ function saveStopEdit(id, day) {
   updateProgress();
   saveData();
   if (typeof cascadeAutoFillFrom === 'function') cascadeAutoFillFrom(day, id);
-  else autoFillTimes(day);
+  autoFillTimes(day); // всегда: заполнить arrP самой точки если она последняя/единственная
   showToast('✅ Точка обновлена');
   // Re-fetch weather if time or coords changed
   fetchStopWeather(day, id);
