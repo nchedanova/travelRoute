@@ -713,7 +713,8 @@ input.day-date-input {
   .logo { font-size:14px; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .logo span { display:none; }
   .sidebar-toggle { display:none; }
-  .header-right { gap:6px; }
+  .header-right { gap:6px; scrollbar-width:none; }
+  .header-right::-webkit-scrollbar { display:none; }
   .day-tabs { display:flex; flex-wrap:nowrap; gap:5px; min-width:min-content; }
   .day-tab { flex:0 0 auto; padding:5px 10px; font-size:12px; white-space:nowrap; }
   .day-tab-add { flex:0 0 auto; white-space:nowrap; }
@@ -1203,7 +1204,7 @@ input.day-date-input {
 .chat-msg.mine  { align-self: flex-end; align-items: flex-end; }
 .chat-msg.theirs { align-self: flex-start; align-items: flex-start; }
 .chat-author {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--muted);
   margin-bottom: 2px;
   padding-left: 2px;
@@ -1667,6 +1668,47 @@ input.day-date-input {
   text-align: center;
 }
 .emoji-pick-btn:hover { background: var(--surface2); }
+
+/* ── ICON PICKER (stop forms) ── */
+.icon-picker-stop {
+  position: fixed;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 5px;
+  z-index: 9999;
+  display: none;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 1px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  min-width: 207px;
+  max-width: 207px;
+  max-height: 75px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.icon-picker-stop::-webkit-scrollbar { width: 4px; }
+.icon-picker-stop::-webkit-scrollbar-track { background: transparent; }
+.icon-picker-stop::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.icon-picker-stop::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+.icon-pick-stop-btn {
+  background: none;
+  border: none;
+  font-size: 19px;
+  cursor: pointer;
+  padding: 0;
+  border-radius: 5px;
+  line-height: 1;
+  text-align: center;
+  height: 32px;
+  width: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.icon-pick-stop-btn:hover { background: var(--surface2); }
+.icon-pick-stop-btn.ip-sel { background: var(--accent-bg); }
 
 /* ── EMOJI BUTTON ── */
 .chat-emoji-btn {

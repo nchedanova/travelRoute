@@ -24,10 +24,10 @@ function setModeBadge() {
     badge.textContent = '⊘ офлайн';
     badge.className = 'mode-badge';
   } else if (CLOUD_CONFIG.canWrite) {
-    badge.textContent = '✏ админ';
+    badge.textContent = 'админ';
     badge.className = 'mode-badge admin';
   } else {
-    badge.textContent = '👁 чтение';
+    badge.textContent = 'чтение';
     badge.className = 'mode-badge viewer';
   }
 }

@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=9">
+<link rel="stylesheet" href="css/style.css?v=10">
 <script>
 (function(){
   var t=localStorage.getItem('travel_theme');
@@ -83,7 +83,7 @@
         </div>
         <div id="noteEditBanner" class="chat-edit-banner" style="display:none">
           <div class="edit-banner-inner">
-            <span class="edit-banner-label">✎ Редактирование заметки</span>
+            <span class="edit-banner-label">✏️ Редактирование заметки</span>
             <span class="edit-banner-preview" id="noteEditPreview"></span>
           </div>
           <button class="edit-banner-cancel" onclick="cancelEditNote()" title="Отмена">×</button>
@@ -102,10 +102,10 @@
     <div class="chat-panel">
       <div class="chat-header-bar">
         <span id="chatNameDisplay" class="chat-name-display"></span>
-        <button class="chat-change-name-btn" onclick="changeChatName()" title="Изменить имя">✎</button>
+        <button class="chat-change-name-btn" onclick="changeChatName()" title="Изменить имя">✏️</button>
         <button class="chat-google-btn" id="chatGoogleBtn" onclick="signInWithGoogle()" title="Войти через Google" style="display:none">G</button>
         <button class="chat-sound-btn" id="chatSoundBtn" onclick="toggleChatSound()" title="Звук уведомлений">🔔</button>
-        <button class="chat-clear-btn" id="chatClearBtn" onclick="openClearChatConfirm()" title="Очистить чат" style="display:none">🗑</button>
+        <button class="chat-clear-btn" id="chatClearBtn" onclick="openClearChatConfirm()" title="Очистить чат" style="display:none">🗑️</button>
       </div>
       <div class="chat-room-tabs" id="chatRoomTabs" style="display:none"></div>
       <div id="chatMessages" class="chat-messages"></div>
@@ -116,10 +116,11 @@
       </div>
       <!-- Emoji picker -->
       <div id="emojiPicker" class="emoji-picker" style="display:none"></div>
+      <div id="iconPickerGlobal" class="icon-picker-stop"></div>
       <!-- Edit banner -->
       <div id="chatEditBanner" class="chat-edit-banner" style="display:none">
         <div class="edit-banner-inner">
-          <span class="edit-banner-label">✎ Редактирование</span>
+          <span class="edit-banner-label">✏️ Редактирование</span>
           <span class="edit-banner-preview"></span>
         </div>
         <button class="edit-banner-cancel" onclick="cancelEdit()" title="Отмена">×</button>
@@ -167,7 +168,7 @@
       <div class="modal-row">
         <div class="modal-field">
           <div class="modal-label">Иконка</div>
-          <input class="modal-input" id="new-stop-icon" type="text" placeholder="⛽" style="font-size:18px;text-align:center;">
+          <input class="modal-input" id="new-stop-icon" type="text" placeholder="⛽" style="font-size:18px;text-align:center;cursor:pointer" readonly onclick="openIconPicker('new-stop-icon','new-stop-type')">
         </div>
         <div class="modal-field">
           <div class="modal-label">Тип</div>
@@ -243,7 +244,7 @@
       <div class="modal-row">
         <div class="modal-field">
           <div class="modal-label">Иконка</div>
-          <input class="modal-input" id="edit-start-icon" type="text" placeholder="🏠" style="font-size:18px;text-align:center;">
+          <input class="modal-input" id="edit-start-icon" type="text" placeholder="🏠" style="font-size:18px;text-align:center;cursor:pointer" readonly onclick="openIconPicker('edit-start-icon',null)">
         </div>
         <div class="modal-field">
           <div class="modal-label">Отпр. план</div>
@@ -343,7 +344,7 @@
       </div>
       <div class="nav-admin-grid admin-only-el">
         <button class="nav-link-btn" onclick="prefetchRouteTiles(currentDay)">📥 Скачать карту</button>
-        <button class="nav-link-btn" onclick="clearTileCache()">🗑 Удалить кэш</button>
+        <button class="nav-link-btn" onclick="clearTileCache()">🗑️ Удалить кэш</button>
         <button id="copy-coords-btn" class="nav-link-btn" onclick="copyShareText()">📋 Координаты</button>
       </div>
     </div>
@@ -530,18 +531,18 @@
 
 <!-- Scripts: порядок важен — config и data первыми -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="js/config.js?v=9"></script>
-<script src="js/data.js?v=9"></script>
-<script src="js/storage.js?v=9"></script>
-<script src="js/offline.js?v=9"></script>
-<script src="js/map.js?v=9"></script>
-<script src="js/render.js?v=9"></script>
-<script src="js/app.js?v=9"></script>
-<script src="js/gps.js?v=9"></script>
-<script src="js/chat.js?v=9"></script>
-<script src="js/notes.js?v=9"></script>
-<script src="js/import.js?v=9"></script>
-<script src="js/gpx.js?v=9"></script>
+<script src="js/config.js?v=10"></script>
+<script src="js/data.js?v=10"></script>
+<script src="js/storage.js?v=10"></script>
+<script src="js/offline.js?v=10"></script>
+<script src="js/map.js?v=10"></script>
+<script src="js/render.js?v=10"></script>
+<script src="js/app.js?v=10"></script>
+<script src="js/gps.js?v=10"></script>
+<script src="js/chat.js?v=10"></script>
+<script src="js/notes.js?v=10"></script>
+<script src="js/import.js?v=10"></script>
+<script src="js/gpx.js?v=10"></script>
 <script>
   window._swReg         = null;
   window._swReg = null;
@@ -714,7 +715,7 @@
 <!-- Clear Chat Confirmation Modal -->
 <div class="modal-overlay" id="clearChatModal" onclick="if(event.target===this)closeClearChatConfirm()">
   <div class="modal" style="max-width:320px;text-align:center;">
-    <div class="modal-title">🗑 Очистить чат?</div>
+    <div class="modal-title">🗑️ Очистить чат?</div>
     <div class="modal-body" style="margin-bottom:16px;font-size:13px;color:var(--muted);">
       Все сообщения будут удалены безвозвратно.<br>Это действие нельзя отменить.
     </div>

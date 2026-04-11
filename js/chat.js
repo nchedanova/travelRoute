@@ -751,7 +751,7 @@ function confirmClearChat() {
   _chatRef.remove().then(() => {
     const list = document.getElementById('chatMessages');
     if (list) list.innerHTML = '';
-    showToast && showToast('🗑 Чат очищен');
+    showToast && showToast('🗑️ Чат очищен');
   }).catch(e => {
     console.error('[chat] clearChat error:', e);
     showToast && showToast('⚠ Ошибка очистки чата');
@@ -1300,7 +1300,7 @@ function renderChatHeader() {
   var _isGoogle = isGoogleUser();
   if (el) {
     var gBadge = _isGoogle ? ' <span class="google-badge" title="Google">G</span>' : '';
-    el.innerHTML = getChatName() ? _esc(getChatName()) + ' ' + getRoleBadge() + gBadge : '';
+    el.innerHTML = getChatName() ? _esc(getChatName()) + ' ' + gBadge : '';
   }
   // Google sign-in button — hide if already signed in with Google
   var gBtn = document.getElementById('chatGoogleBtn');
@@ -1381,7 +1381,7 @@ function deleteDmRoom(roomKey) {
   // If currently in this DM, switch to group
   if (_currentRoom === roomKey) switchChatRoom('group');
   else _renderRoomTabs();
-  showToast('🗑 Чат удалён');
+  showToast('🗑️ Чат удалён');
 }
 
 function switchChatRoom(roomId) {

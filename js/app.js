@@ -119,7 +119,7 @@ function doReset() {
   updateDayRoute(day);
   saveData();
   updateProgress();
-  showToast('🗑 Данные сброшены');
+  showToast('🗑️ Данные сброшены');
 }
 
 // ── DRAG AND DROP ─────────────────────────────────────────────────────────────
@@ -194,7 +194,7 @@ function doDeleteStop() {
   updateDayRoute(day);
   updateProgress();
   saveData();
-  showToast('🗑 Точка удалена');
+  showToast('🗑️ Точка удалена');
 }
 
 // ── ADD STOP / NOMINATIM ──────────────────────────────────────────────────────
@@ -449,6 +449,78 @@ document.addEventListener('click', function(e) {
   if (!e.target.closest('.type-dropdown')) _closeAllTypeDropdowns();
 });
 
+// ── ICON PICKER ───────────────────────────────────────────────────────────────
+function openIconPicker(inputId, typeInputId) {
+  var inputEl = document.getElementById(inputId);
+  if (!inputEl) return;
+
+  var picker = document.getElementById('iconPickerGlobal');
+  if (!picker) return;
+
+  // If already open for same input — close
+  if (picker.style.display === 'grid' && picker.dataset.forInput === inputId) {
+    _closeIconPicker();
+    return;
+  }
+
+  var type = typeInputId ? (document.getElementById(typeInputId) && document.getElementById(typeInputId).value) : null;
+  var icons;
+  if (!type) {
+    // Start point — all icons, hotel/home first
+    var startFirst = (ICON_SETS['Отель'] || []).concat(ICON_SETS['Жильё'] || []);
+    var rest = [];
+    Object.keys(ICON_SETS).forEach(function(k) {
+      if (k !== 'Отель' && k !== 'Жильё') rest = rest.concat(ICON_SETS[k]);
+    });
+    var all = startFirst.concat(rest);
+    icons = all.filter(function(v, i, a) { return a.indexOf(v) === i; });
+  } else {
+    icons = ICON_SETS[type] || ICON_SETS['Другое'];
+  }
+
+  var current = inputEl.value;
+  picker.innerHTML = icons.map(function(ic) {
+    var sel = ic === current ? ' ip-sel' : '';
+    return '<button class="icon-pick-stop-btn' + sel + '" onmousedown="event.preventDefault()" onclick="selectIconFromPicker(\'' + inputId + '\',\'' + ic + '\')">' + ic + '</button>';
+  }).join('');
+
+  picker.dataset.forInput = inputId;
+  picker.style.display = 'grid';
+
+  var rect = inputEl.getBoundingClientRect();
+  var ph = picker.offsetHeight || 75;
+  var spaceBelow = window.innerHeight - rect.bottom - 8;
+  if (spaceBelow < ph && rect.top > ph + 8) {
+    picker.style.top = (rect.top - ph - 4) + 'px';
+  } else {
+    picker.style.top = (rect.bottom + 4) + 'px';
+  }
+  picker.style.left = Math.min(rect.left, window.innerWidth - 215) + 'px';
+
+  setTimeout(function() {
+    document.addEventListener('click', _iconPickerOutsideClick);
+  }, 0);
+}
+
+function selectIconFromPicker(inputId, icon) {
+  var el = document.getElementById(inputId);
+  if (el) el.value = icon;
+  _closeIconPicker();
+}
+
+function _closeIconPicker() {
+  var picker = document.getElementById('iconPickerGlobal');
+  if (picker) { picker.style.display = 'none'; picker.dataset.forInput = ''; }
+  document.removeEventListener('click', _iconPickerOutsideClick);
+}
+
+function _iconPickerOutsideClick(e) {
+  var picker = document.getElementById('iconPickerGlobal');
+  if (!picker || picker.style.display === 'none') return;
+  if (picker.contains(e.target)) return;
+  _closeIconPicker();
+}
+
 function prefillStopIcon(type) {
   const iconEl    = document.getElementById('new-stop-icon');
   const knownIcons = Object.values(TYPE_ICONS);
@@ -648,7 +720,7 @@ function editDayDate(day, wrapEl) {
     newWrap.className = 'day-date-wrap';
     newWrap.title = 'Нажмите для изменения даты';
     newWrap.onclick = function() { editDayDate(day, newWrap); };
-    newWrap.innerHTML = '<span class="day-date-text">' + (val || 'Дата') + '</span><span class="day-date-edit-icon">✎</span>';
+    newWrap.innerHTML = '<span class="day-date-text">' + (val || 'Дата') + '</span><span class="day-date-edit-icon">✏️</span>';
     inp.replaceWith(newWrap);
     renderTabs();
     saveData();
@@ -679,9 +751,9 @@ function editDesc(day, wrapEl) {
     newWrap.title = 'Нажмите для изменения описания';
     newWrap.onclick = function() { editDesc(day, newWrap); };
     if (val) {
-      newWrap.innerHTML = '<span class="day-desc-text">' + val + '</span><span class="day-date-edit-icon">✎</span>';
+      newWrap.innerHTML = '<span class="day-desc-text">' + val + '</span><span class="day-date-edit-icon">✏️</span>';
     } else {
-      newWrap.innerHTML = '<span class="day-desc-text" style="color:var(--muted);font-style:italic">описание</span><span class="day-date-edit-icon">✎</span>';
+      newWrap.innerHTML = '<span class="day-desc-text" style="color:var(--muted);font-style:italic">описание</span><span class="day-date-edit-icon">✏️</span>';
     }
     inp.replaceWith(newWrap);
     saveData();
@@ -941,7 +1013,7 @@ function doDeleteDay() {
   dayKeys().forEach(dk => redrawDay(dk));
   switchDay(newCurrent);
   saveData();
-  showToast('🗑 День удалён');
+  showToast('🗑️ День удалён');
 }
 
 // ── UNDO ──────────────────────────────────────────────────────────────────────
@@ -1209,7 +1281,7 @@ function editStop(id, day) {
     <div style="display:grid;grid-template-columns:48px 1fr;gap:8px;margin-bottom:8px;">
       <div class="edit-field">
         <div class="edit-label">Иконка</div>
-        <input class="edit-input" style="width:100%;text-align:center;font-size:16px;padding:0 4px" id="ei-icon-${id}" value="${_escHtml(s.icon)}" maxlength="4">
+        <input class="edit-input" style="width:100%;text-align:center;font-size:16px;padding:0 4px;cursor:pointer" id="ei-icon-${id}" value="${_escHtml(s.icon)}" maxlength="4" readonly onclick="openIconPicker('ei-icon-${id}','ei-type-${id}')">
       </div>
       <div class="edit-field">
         <div class="edit-label">Название</div>
@@ -1374,7 +1446,7 @@ function openInlineAddStop(afterId, day) {
     <div style="display:grid;grid-template-columns:48px 1fr;gap:8px;margin-bottom:8px;">
       <div class="edit-field">
         <div class="edit-label">Иконка</div>
-        <input class="edit-input" style="width:100%;text-align:center;font-size:16px;padding:0 4px" id="ia-icon-${afterId}" value="📍" maxlength="4">
+        <input class="edit-input" style="width:100%;text-align:center;font-size:16px;padding:0 4px;cursor:pointer" id="ia-icon-${afterId}" value="📍" maxlength="4" readonly onclick="openIconPicker('ia-icon-${afterId}','ia-type-${afterId}')">
       </div>
       <div class="edit-field">
         <div class="edit-label">Название</div>
@@ -1498,7 +1570,7 @@ function openInlineAddFirstStop(day) {
     <div style="display:grid;grid-template-columns:48px 1fr;gap:8px;margin-bottom:8px;">
       <div class="edit-field">
         <div class="edit-label">Иконка</div>
-        <input class="edit-input" style="width:100%;text-align:center;font-size:16px;padding:0 4px" id="ia-icon-${fakeId}" value="📍" maxlength="4">
+        <input class="edit-input" style="width:100%;text-align:center;font-size:16px;padding:0 4px;cursor:pointer" id="ia-icon-${fakeId}" value="📍" maxlength="4" readonly onclick="openIconPicker('ia-icon-${fakeId}','ia-type-${fakeId}')">
       </div>
       <div class="edit-field">
         <div class="edit-label">Название</div>
@@ -2333,7 +2405,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.8.0';
-var APP_BUILD   = 9;
+var APP_BUILD   = 10;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 
@@ -2404,7 +2476,7 @@ var APP_CHANGELOG = [
     '☁️ Погода синхронизируется через Firebase — один нажал, все видят',
     '🔑 Авторизация через Google — одно имя на всех устройствах',
     '🗺️ Оптимизация скачивания карты — в 3-5× меньше тайлов',
-    '🗑 Кнопка «Удалить кэш карты» в навигаторе',
+    '🗑️ Кнопка «Удалить кэш карты» в навигаторе',
     '👁 Читатель: скрыты ненужные кнопки'
   ]},
   { ver: '2.2.0', date: '22.03.2026', items: [

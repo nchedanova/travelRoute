@@ -364,7 +364,7 @@ function makeStopCard(s, day) {
       ${isAdmin() ? `
       <button class="stop-dropdown-item new-stop" onclick="closeStopMenus(); openInlineAddStop('${s.id}', ${day});"><span class="di-icon">＋</span> Добавить точку</button>
       <div class="stop-dropdown-divider"></div>
-      <button class="stop-dropdown-item" onclick="closeStopMenus(); editStop('${s.id}', ${day});"><span class="di-icon">✎</span> Редактировать</button>
+      <button class="stop-dropdown-item" onclick="closeStopMenus(); editStop('${s.id}', ${day});"><span class="di-icon">✏️</span> Редактировать</button>
       <button class="stop-dropdown-item" onclick="closeStopMenus(); editStopTime('${s.id}', ${day});"><span class="di-icon">⏱</span> Изменить время</button>
       <button class="stop-dropdown-item" onclick="closeStopMenus(); addStopNote('${s.id}', ${day});"><span class="di-icon">📝</span> Добавить заметку</button>
       <div class="stop-dropdown-divider"></div>
@@ -506,12 +506,12 @@ function renderDaySection(d) {
         <div class="day-label" style="color:${data.color};">
           <span class="day-date-wrap" ${isAdmin() ? `onclick="editDayDate(${d}, this)" title="Нажмите для изменения даты"` : ''}>
             <span class="day-date-text">${data.dateISO || 'Дата'}</span>
-            ${isAdmin() ? `<span class="day-date-edit-icon">✎</span>` : ''}
+            ${isAdmin() ? `<span class="day-date-edit-icon">✏️</span>` : ''}
           </span>
           ${data.date ? ` · <span class="day-desc-wrap" ${isAdmin() ? `onclick="editDesc(${d}, this)" title="Нажмите для изменения описания"` : ''}>
             <span class="day-desc-text">${data.date}</span>
-            ${isAdmin() ? `<span class="day-date-edit-icon">✎</span>` : ''}
-          </span>` : (isAdmin() ? ` · <span class="day-desc-wrap" onclick="editDesc(${d}, this)" title="Добавить описание"><span class="day-desc-text" style="color:var(--muted);font-style:italic">описание</span><span class="day-date-edit-icon">✎</span></span>` : '')}
+            ${isAdmin() ? `<span class="day-date-edit-icon">✏️</span>` : ''}
+          </span>` : (isAdmin() ? ` · <span class="day-desc-wrap" onclick="editDesc(${d}, this)" title="Добавить описание"><span class="day-desc-text" style="color:var(--muted);font-style:italic">описание</span><span class="day-date-edit-icon">✏️</span></span>` : '')}
         </div>
         <div class="day-route" id="d${d}-route"></div>
       </div>
@@ -551,7 +551,7 @@ function renderDaySection(d) {
       <div class="depart-label" style="${isAdmin() ? 'cursor:pointer' : ''}"
            ${isAdmin() ? `onclick="openEditStart(${d})" title="Изменить точку старта"` : ''}>
         <span id="d${d}-start-name">${data.start.icon} ${data.start.name}</span>
-        ${isAdmin() ? `<span style="font-size:9px;color:var(--border)">✎</span>` : ''}
+        ${isAdmin() ? `<span style="font-size:9px;color:var(--border)">✏️</span>` : ''}
       </div>
       <span class="weather-badge" id="wb-d${d}-start" style="display:none" onclick="event.stopPropagation();toggleWeatherStrip('d${d}-start')"></span>
       <div class="depart-times">

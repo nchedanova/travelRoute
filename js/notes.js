@@ -100,7 +100,7 @@ function _renderNotesList() {
       <div class="note-meta">
         <span class="note-type-badge">${t.emoji} ${t.label}</span>
         <span class="note-date">${date}</span>
-        <button class="note-action-btn" onclick="startEditNote('${entry.key}')" title="Редактировать">✎</button>
+        <button class="note-action-btn" onclick="startEditNote('${entry.key}')" title="Редактировать">✏️</button>
         <button class="note-action-btn danger" onclick="deleteNote('${entry.key}')" title="Удалить">×</button>
       </div>
       ${itemsHtml}
@@ -318,7 +318,7 @@ function deleteStopNote(stopId, day, idx) {
   delete _pendingStopImages[_pendingKey(stopId, idx)];
   saveData();
   renderStops(day);
-  showToast('🗑 Заметка удалена');
+  showToast('🗑️ Заметка удалена');
 }
 
 // ── COMMIT (save) ──
