@@ -365,7 +365,7 @@ function makeStopCard(s, day) {
       <button class="stop-dropdown-item new-stop" onclick="closeStopMenus(); openInlineAddStop('${s.id}', ${day});"><span class="di-icon">＋</span> Добавить точку</button>
       <div class="stop-dropdown-divider"></div>
       <button class="stop-dropdown-item" onclick="closeStopMenus(); editStop('${s.id}', ${day});"><span class="di-icon">✏️</span> Редактировать</button>
-      <button class="stop-dropdown-item" onclick="closeStopMenus(); editStopTime('${s.id}', ${day});"><span class="di-icon">⏱</span> Изменить время</button>
+      <button class="stop-dropdown-item" onclick="closeStopMenus(); editStopTime('${s.id}', ${day});"><span class="di-icon">🕒</span> Изменить время</button>
       <button class="stop-dropdown-item" onclick="closeStopMenus(); addStopNote('${s.id}', ${day});"><span class="di-icon">📝</span> Добавить заметку</button>
       <div class="stop-dropdown-divider"></div>
       <button class="stop-dropdown-item danger" onclick="closeStopMenus(); deleteStop(${day}, '${s.id}');"><span class="di-icon">×</span> Удалить точку</button>` : ''}
