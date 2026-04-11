@@ -485,11 +485,28 @@ function openIconPicker(inputId, typeInputId) {
   }).join('');
 
   picker.dataset.forInput = inputId;
+  // Width = ширина строки поиска (ia-search-X / ei-search-X / edit-start-search / new-stop-name)
+  var searchId = inputId
+    .replace('ia-icon-',    'ia-search-')
+    .replace('ei-icon-',    'ei-search-')
+    .replace('edit-start-icon', 'edit-start-search')
+    .replace('new-stop-icon',   'new-stop-name');
+  var searchEl = document.getElementById(searchId);
+  var pickerWidth = searchEl
+    ? searchEl.getBoundingClientRect().width
+    : (inputEl.closest('.stop-edit-form, .modal-body, .modal') || {}).offsetWidth || 240;
+  // Рассчитать количество колонок кратно 34px (размер кнопки) — без горизонтального скролла
+  var cols = Math.max(1, Math.floor((pickerWidth - 10) / 34));
+  picker.style.gridTemplateColumns = 'repeat(' + cols + ', 34px)';
+  picker.style.width = pickerWidth + 'px';
+
   // Show off-screen first to measure height
   picker.style.visibility = 'hidden';
   picker.style.display = 'grid';
 
-  var rect = inputEl.getBoundingClientRect();
+  var rect = searchEl
+    ? searchEl.getBoundingClientRect()
+    : inputEl.getBoundingClientRect();
   var ph = picker.offsetHeight || 75;
   var spaceBelow = window.innerHeight - rect.bottom - 8;
   if (spaceBelow < ph && rect.top > ph + 8) {
@@ -497,7 +514,7 @@ function openIconPicker(inputId, typeInputId) {
   } else {
     picker.style.top = (rect.bottom + 4) + 'px';
   }
-  picker.style.left = Math.min(rect.left, window.innerWidth - 215) + 'px';
+  picker.style.left = rect.left + 'px';
   picker.style.visibility = '';
 
   setTimeout(function() {
