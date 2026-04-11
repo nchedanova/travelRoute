@@ -6,8 +6,8 @@ let currentDay = 1;
 var _blurJustCommitted = false;
 document.addEventListener('click', function(e) {
   if (!_blurJustCommitted) return;
-  // Never suppress clicks on buttons/inputs — user is interacting intentionally
-  var t = e.target.closest('button,input,a,[onclick]');
+  // Allow clicks only on real interactive controls (button, input, a, select)
+  var t = e.target.closest('button,input,a,select');
   if (t) return;
   e.stopImmediatePropagation(); e.preventDefault();
 }, true);
