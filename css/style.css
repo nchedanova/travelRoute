@@ -1682,7 +1682,7 @@ input.day-date-input {
   z-index: 200;
   display: none;
   gap: 1px;
-  max-height: 75px;
+  max-height: 110px;
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: thin;
