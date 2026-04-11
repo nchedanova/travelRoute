@@ -499,7 +499,7 @@ function openIconPicker(inputId, typeInputId) {
     + '<span style="font-size:9px;color:var(--muted);white-space:nowrap;letter-spacing:0.04em">Свой или поиск:</span>'
     + '<input id="ipCustomInput" class="edit-input" type="text" maxlength="40" placeholder="🚗 или автомойка"'
     + ' style="flex:1;height:26px;font-size:13px;padding:0 6px;min-width:0"'
-    + ' oninput="_ipCustomInput(this,\'' + inputId + '\')"'
+    + ' autocomplete="off" oninput="_ipCustomInput(this,\'' + inputId + '\')"'
     + ' onmousedown="event.stopPropagation()">'
     + '</div>'
     + '<div id="ipSearchResults" style="display:none;flex-wrap:wrap;gap:1px;padding:2px 2px 0"></div>';
@@ -1341,7 +1341,7 @@ function editStop(id, day) {
       <div class="edit-label">Поиск нового места</div>
       <div class="search-wrap" style="width:100%;position:relative;">
         <input class="edit-input" style="width:100%;padding-right:28px;" id="ei-search-${id}"
-          type="text" placeholder="Название, адрес…"
+          type="text" autocomplete="off" placeholder="Название, адрес…"
           oninput="editStopSearch(this.value, '${id}')" autocomplete="off">
         <span style="position:absolute;right:7px;top:50%;transform:translateY(-50%);font-size:15px;cursor:pointer;line-height:1;"
           onclick="enterMapPickModeForEdit('${id}', ${day})" title="Выбрать на карте">📍</span>
@@ -1359,7 +1359,7 @@ function editStop(id, day) {
       </div>
       <div class="edit-field">
         <div class="edit-label">Название</div>
-        <input class="edit-input" style="width:100%" id="ei-name-${id}" value="${_escHtml(s.name)}">
+        <input class="edit-input" style="width:100%" id="ei-name-${id}" value="${_escHtml(s.name)}" autocomplete="off">
       </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px;">
@@ -1369,12 +1369,12 @@ function editStop(id, day) {
       </div>
       <div class="edit-field" style="min-width:0">
         <div class="edit-label">Приб. план</div>
-        <input class="edit-input" style="width:100%" id="ei-arrP-${id}" value="${s.arrP}" maxlength="5"
+        <input class="edit-input" style="width:100%" id="ei-arrP-${id}" value="${s.arrP}" maxlength="5" autocomplete="off"
           oninput="applyMask(this)" onblur="padTime(this)" placeholder="--:--">
       </div>
       <div class="edit-field" style="min-width:0">
         <div class="edit-label">Отпр. план</div>
-        <input class="edit-input" style="width:100%" id="ei-depP-${id}" value="${s.depP}" maxlength="5"
+        <input class="edit-input" style="width:100%" id="ei-depP-${id}" value="${s.depP}" maxlength="5" autocomplete="off"
           oninput="applyMask(this)" onblur="padTime(this)" placeholder="--:--">
       </div>
     </div>
@@ -1508,7 +1508,7 @@ function openInlineAddStop(afterId, day) {
       <div class="edit-label">Поиск нового места</div>
       <div class="search-wrap" style="width:100%;position:relative;">
         <input class="edit-input" style="width:100%;padding-right:28px;" id="ia-search-${afterId}"
-          type="text" placeholder="Название, адрес…"
+          type="text" autocomplete="off" placeholder="Название, адрес…"
           oninput="inlineAddSearch(this.value, '${afterId}')" autocomplete="off">
         <span style="position:absolute;right:7px;top:50%;transform:translateY(-50%);font-size:15px;cursor:pointer;line-height:1;"
           onclick="enterMapPickMode('${afterId}', ${day})" title="Выбрать на карте">📍</span>
@@ -1525,7 +1525,7 @@ function openInlineAddStop(afterId, day) {
       </div>
       <div class="edit-field">
         <div class="edit-label">Название</div>
-        <input class="edit-input" style="width:100%" id="ia-name-${afterId}" placeholder="Название точки">
+        <input class="edit-input" style="width:100%" id="ia-name-${afterId}" placeholder="Название точки" autocomplete="off">
       </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px;">
@@ -1535,7 +1535,7 @@ function openInlineAddStop(afterId, day) {
       </div>
       <div class="edit-field" style="min-width:0">
         <div class="edit-label">Приб. план</div>
-        <input class="edit-input" style="width:100%" id="ia-arrP-${afterId}" maxlength="5"
+        <input class="edit-input" style="width:100%" id="ia-arrP-${afterId}" maxlength="5" autocomplete="off"
           oninput="applyMask(this)" onblur="padTime(this)" placeholder="--:--">
       </div>
       <div class="edit-field" style="min-width:0">
@@ -1650,7 +1650,7 @@ function openInlineAddFirstStop(day) {
       </div>
       <div class="edit-field">
         <div class="edit-label">Название</div>
-        <input class="edit-input" style="width:100%" id="ia-name-${fakeId}" placeholder="Название точки">
+        <input class="edit-input" style="width:100%" id="ia-name-${fakeId}" placeholder="Название точки" autocomplete="off">
       </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px;">
