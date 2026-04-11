@@ -485,6 +485,8 @@ function openIconPicker(inputId, typeInputId) {
   }).join('');
 
   picker.dataset.forInput = inputId;
+  // Show off-screen first to measure height
+  picker.style.visibility = 'hidden';
   picker.style.display = 'grid';
 
   var rect = inputEl.getBoundingClientRect();
@@ -496,6 +498,7 @@ function openIconPicker(inputId, typeInputId) {
     picker.style.top = (rect.bottom + 4) + 'px';
   }
   picker.style.left = Math.min(rect.left, window.innerWidth - 215) + 'px';
+  picker.style.visibility = '';
 
   setTimeout(function() {
     document.addEventListener('click', _iconPickerOutsideClick);
