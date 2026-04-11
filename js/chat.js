@@ -971,6 +971,9 @@ function _chatEmojiInput(el) {
   sr.innerHTML = results.map(function(e) {
     return '<button class="emoji-pick-btn" onmousedown="event.preventDefault()" onclick="insertEmoji(\'' + e + '\');closeEmojiPicker()">' + e + '</button>';
   }).join('');
+  // Доскроллить пикер к результатам
+  var picker = document.getElementById('emojiPicker');
+  if (picker) picker.scrollTop = picker.scrollHeight;
 }
 function closeEmojiPicker() { const p = document.getElementById('emojiPicker'); if (p) p.style.display = 'none'; }
 function insertEmoji(e) {
@@ -1585,4 +1588,3 @@ function _startDmRoomListener(roomId) {
     }
   });
 }
-
