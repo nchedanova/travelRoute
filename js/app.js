@@ -5,7 +5,11 @@ let currentDay = 1;
 // Prevents accidental tap on underlying element right after time input commits
 var _blurJustCommitted = false;
 document.addEventListener('click', function(e) {
-  if (_blurJustCommitted) { e.stopImmediatePropagation(); e.preventDefault(); }
+  if (!_blurJustCommitted) return;
+  // Never suppress clicks on buttons/inputs — user is interacting intentionally
+  var t = e.target.closest('button,input,a,[onclick]');
+  if (t) return;
+  e.stopImmediatePropagation(); e.preventDefault();
 }, true);
 function _markBlurCommit() {
   _blurJustCommitted = true;
