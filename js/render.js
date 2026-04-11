@@ -521,6 +521,7 @@ function renderDaySection(d) {
         <div class="day-overflow-menu" id="dayMenu${d}">
           ${isAdmin() ? `
           <button onclick="reverseDay(${d});closeDayMenus()">↩ Обратный маршрут</button>
+          <button onclick="archiveDay(${d});closeDayMenus()">📦 В архив</button>
           <button onclick="confirmDeleteDay(${d});closeDayMenus()" style="color:var(--red)">✕ Удалить день</button>
           <button onclick="confirmReset(${d});closeDayMenus()">⟳ Сбросить факт</button>` : ''}
           <button onclick="fetchDayWeather(${d});closeDayMenus()">🌤 Погода</button>
@@ -590,6 +591,7 @@ function renderAllDays() {
   container.innerHTML = '';
   var admin = typeof isAdmin === 'function' && isAdmin();
   dayKeys().forEach(d => {
+    if (DAYS_DATA[d].archived) return;
     if (!admin && DAYS_DATA[d].hidden) return;
     container.appendChild(renderDaySection(d));
     renderStops(d);
@@ -654,7 +656,8 @@ function renderTabs() {
   var admin = typeof isAdmin === 'function' && isAdmin();
   dayKeys().forEach(d => {
     const data = DAYS_DATA[d];
-    // Читатель не видит скрытые дни
+    // Читатель не видит скрытые дни; архивные не показываются вообще
+    if (data.archived) return;
     if (!admin && data.hidden) return;
     const btn  = document.createElement('button');
     btn.className  = 'day-tab' + (d === currentDay ? ' active' : '') + (data.hidden ? ' day-hidden' : '');

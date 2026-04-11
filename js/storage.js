@@ -190,6 +190,7 @@ async function loadState() {
       _didRedraw = true;
       renderTabs();
       renderAllDays();
+      if (typeof renderArchiveBtn === 'function') renderArchiveBtn();
       updateProgress();
       switchDay(_pickVisibleDay(currentDay));
       _lastGeoHash = _buildGeoHash();
@@ -205,6 +206,7 @@ async function loadState() {
       _fullRedraw();
       renderTabs();
       renderAllDays();
+      if (typeof renderArchiveBtn === 'function') renderArchiveBtn();
       updateProgress();
       switchDay(_pickVisibleDay(currentDay));
     }
@@ -252,6 +254,7 @@ async function loadState() {
     // Обновляем UI после загрузки облачных данных
     renderTabs();
     renderAllDays();
+    if (typeof renderArchiveBtn === 'function') renderArchiveBtn();
     updateProgress();
     var validDay = _pickVisibleDay(currentDay);
     if (validDay !== currentDay) currentDay = validDay;
@@ -435,6 +438,7 @@ async function pollCloud() {
     if (shouldRenderUI) {
       renderTabs();
       renderAllDays();
+      if (typeof renderArchiveBtn === 'function') renderArchiveBtn();
     }
     updateProgress();
     // Переключаем карту на текущий день только если изменилась геометрия —

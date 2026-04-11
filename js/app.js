@@ -921,6 +921,85 @@ function swapDays(fromDay, toDay) {
   showToast('📅 Дни переставлены');
 }
 
+// ── ARCHIVE ────────────────────────────────────────────────────────────────────
+function archiveDay(d) {
+  if (!isAdmin()) return;
+  var keys = dayKeys().filter(function(k) { return !DAYS_DATA[k].archived; });
+  if (keys.length <= 1) { showToast('Нельзя архивировать последний активный день'); return; }
+  snapshotForUndo('Архивирование дня');
+  DAYS_DATA[d].archived = true;
+  // Если текущий день архивируется — переключиться
+  if (currentDay === d) {
+    var next = keys.find(function(k) { return k !== d; });
+    if (next) switchDay(next);
+  }
+  renderTabs();
+  renderAllDays();
+  renderArchiveBtn();
+  saveData();
+  showToast('📦 День убран в архив');
+}
+
+function restoreDay(d) {
+  if (!isAdmin()) return;
+  snapshotForUndo('Восстановление из архива');
+  delete DAYS_DATA[d].archived;
+  renderTabs();
+  renderAllDays();
+  renderArchiveBtn();
+  toggleArchive(); // close dropdown
+  saveData();
+  showToast('↩ День восстановлен');
+}
+
+function renderArchiveBtn() {
+  var wrap = document.getElementById('archiveWrap');
+  var countEl = document.getElementById('archiveCount');
+  var dropdown = document.getElementById('archiveDropdown');
+  if (!wrap || !isAdmin()) return;
+  var archived = dayKeys().filter(function(d) { return DAYS_DATA[d].archived; });
+  wrap.style.display = archived.length ? '' : 'none';
+  if (countEl) countEl.textContent = archived.length;
+  if (!dropdown) return;
+  if (!archived.length) {
+    dropdown.innerHTML = '<div class="archive-empty">Архив пуст</div>';
+    return;
+  }
+  dropdown.innerHTML = archived.map(function(d) {
+    var data = DAYS_DATA[d];
+    var date = data.dateISO || ('День ' + d);
+    var title = data.date || '';
+    return '<div class="archive-item">'
+      + '<div class="archive-item-info">'
+      + '<div class="archive-item-date">' + date + '</div>'
+      + (title ? '<div class="archive-item-title">' + _escHtml(title) + '</div>' : '')
+      + '</div>'
+      + '<button class="archive-restore-btn" onmousedown="event.preventDefault()" onclick="restoreDay(' + d + ')" title="Восстановить">↩</button>'
+      + '</div>';
+  }).join('');
+}
+
+function toggleArchive() {
+  var dd = document.getElementById('archiveDropdown');
+  if (!dd) return;
+  var isOpen = dd.classList.contains('show');
+  // Close other menus
+  closeDayMenus();
+  if (isOpen) { dd.classList.remove('show'); return; }
+  renderArchiveBtn();
+  dd.classList.add('show');
+  setTimeout(function() {
+    document.addEventListener('click', _archiveOutsideClick);
+  }, 0);
+}
+
+function _archiveOutsideClick(e) {
+  if (e.target.closest('#archiveWrap')) return;
+  var dd = document.getElementById('archiveDropdown');
+  if (dd) dd.classList.remove('show');
+  document.removeEventListener('click', _archiveOutsideClick);
+}
+
 // ── REVERSE DAY ROUTE ─────────────────────────────────────────────────────────
 function reverseDay(d) {
   var day = DAYS_DATA[d];
