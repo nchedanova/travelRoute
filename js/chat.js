@@ -942,10 +942,35 @@ function toggleEmojiPicker() {
   if (!p) return;
   if (p.style.display !== 'none') { p.style.display = 'none'; return; }
   if (!p.dataset.built) {
-    p.innerHTML = EMOJI_LIST.map(e => `<button class="emoji-pick-btn" onclick="insertEmoji('${e}')">${e}</button>`).join('');
+    p.innerHTML = EMOJI_LIST.map(e => `<button class="emoji-pick-btn" onmousedown="event.preventDefault()" onclick="insertEmoji('${e}')">${e}</button>`).join('');
+    const customRow = document.createElement('div');
+    customRow.className = 'emoji-pick-custom-row';
+    customRow.innerHTML =
+      '<input class="ep-search-inp" type="text" maxlength="40" placeholder="🚗 или поиск: пицца, море…"'
+      + ' oninput="_chatEmojiInput(this)" onmousedown="event.stopPropagation()">'
+      + '<div class="emoji-pick-results" id="epSearchResults"></div>';
+    p.appendChild(customRow);
     p.dataset.built = '1';
   }
+  const inp = p.querySelector('.ep-search-inp');
+  if (inp) inp.value = '';
+  const sr = document.getElementById('epSearchResults');
+  if (sr) sr.style.display = 'none';
   p.style.display = 'grid';
+}
+function _chatEmojiInput(el) {
+  var val = el.value.trim();
+  var sr = document.getElementById('epSearchResults');
+  if (!sr) return;
+  if (!val) { sr.style.display = 'none'; return; }
+  var isEmoji = /\p{Emoji}/u.test(val) && !/^[a-zA-Z\u0400-\u04FF0-9\s]+$/.test(val);
+  if (isEmoji) { insertEmoji(val); closeEmojiPicker(); return; }
+  var results = typeof searchEmoji === 'function' ? searchEmoji(val) : [];
+  if (!results.length) { sr.style.display = 'none'; return; }
+  sr.style.display = 'flex';
+  sr.innerHTML = results.map(function(e) {
+    return '<button class="emoji-pick-btn" onmousedown="event.preventDefault()" onclick="insertEmoji(\'' + e + '\');closeEmojiPicker()">' + e + '</button>';
+  }).join('');
 }
 function closeEmojiPicker() { const p = document.getElementById('emojiPicker'); if (p) p.style.display = 'none'; }
 function insertEmoji(e) {
