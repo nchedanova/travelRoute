@@ -2703,6 +2703,13 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 }
 .day-overflow-import {
   color: var(--amber) !important;
+  display: flex !important;
+  align-items: center !important;
+  height: 30px !important;
+  padding: 0 !important;
+  justify-content: center;
+  font-size: 12px !important;
+  width: 100%;
 }
 
 /* Mobile: bottom sheet */
