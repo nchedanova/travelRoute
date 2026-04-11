@@ -327,7 +327,7 @@ function _buildGeoHash() {
       if (!day) return '';
       var pts = day.start.lat + ',' + day.start.lng;
       day.stops.forEach(function(s) { pts += '|' + s.lat + ',' + s.lng; });
-      return d + ':' + (day.walkMode ? '1' : '0') + ':' + pts;
+      return d + ':' + (day.walkMode ? '1' : '0') + ':' + (day.archived ? 'A' : '') + ':' + pts;
     });
     return strHash(parts.join(';'));
   } catch(e) { return null; }
@@ -427,7 +427,7 @@ async function pollCloud() {
       dayKeys().forEach(d => {
         layers[d] = L.layerGroup();
         segmentLayers[d] = [];
-        redrawDay(d);
+        if (!DAYS_DATA[d].archived) redrawDay(d);
       });
     }
     // Если геометрия та же — слои не трогаем, линии по дорогам остаются
@@ -449,7 +449,7 @@ async function pollCloud() {
     // иначе fitBounds прыгает на маршрут каждые 10 сек пока читатель смотрит на карту
     var validDay = _pickVisibleDay(currentDay);
     if (validDay !== currentDay) currentDay = validDay;
-    if (geoChanged) switchMapDay(currentDay);
+    if (geoChanged || validDay !== currentDay) switchMapDay(validDay || currentDay);
     const t = new Date().toLocaleTimeString('ru', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
     setSyncStatus(`🔄 обновлено ${t}`, 'var(--green)');
     setTimeout(() => setSyncStatus(
