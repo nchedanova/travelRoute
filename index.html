@@ -162,12 +162,12 @@
       </div>
       <div class="modal-field">
         <div class="modal-label">Название точки</div>
-        <input class="modal-input" id="new-stop-name" type="text" placeholder="Газпромнефть у Ефремова">
+        <input class="modal-input" id="new-stop-name" type="text" autocomplete="off" placeholder="Газпромнефть у Ефремова">
       </div>
       <div class="modal-row">
         <div class="modal-field">
           <div class="modal-label">Иконка</div>
-          <input class="modal-input" id="new-stop-icon" type="text" placeholder="⛽" style="font-size:18px;text-align:center;cursor:pointer" readonly onclick="openIconPicker('new-stop-icon','new-stop-type')">
+          <input class="modal-input" id="new-stop-icon" type="text" autocomplete="off" placeholder="⛽" style="font-size:18px;text-align:center;cursor:pointer" readonly onclick="openIconPicker('new-stop-icon','new-stop-type')">
         </div>
         <div class="modal-field">
           <div class="modal-label">Тип</div>
@@ -177,12 +177,12 @@
       <div class="modal-row">
         <div class="modal-field">
           <div class="modal-label">Приб. план</div>
-          <input class="modal-input" id="new-stop-arrP" type="text" placeholder="--:--" maxlength="5"
+          <input class="modal-input" id="new-stop-arrP" type="text" autocomplete="off" placeholder="--:--" maxlength="5"
             oninput="applyMask(this);prefillDepTime()" onblur="padTime(this)">
         </div>
         <div class="modal-field">
           <div class="modal-label">Отпр. план <span style="opacity:0.5">(опц.)</span></div>
-          <input class="modal-input" id="new-stop-depP" type="text" placeholder="--:--" maxlength="5"
+          <input class="modal-input" id="new-stop-depP" type="text" autocomplete="off" placeholder="--:--" maxlength="5"
             oninput="applyMask(this)" onblur="padTime(this)">
         </div>
       </div>
@@ -192,11 +192,11 @@
       <div class="modal-row" style="margin-bottom:14px;">
         <div class="modal-field" style="margin-bottom:0">
           <div class="modal-label">Широта (lat)</div>
-          <input class="modal-input" id="new-stop-lat" type="text" inputmode="decimal" placeholder="55.7965" oninput="splitCoordsInput(this,'new-stop-lng','new-stop-coords')">
+          <input class="modal-input" id="new-stop-lat" type="text" autocomplete="off" inputmode="decimal" placeholder="55.7965" oninput="splitCoordsInput(this,'new-stop-lng','new-stop-coords')">
         </div>
         <div class="modal-field" style="margin-bottom:0">
           <div class="modal-label">Долгота (lng)</div>
-          <input class="modal-input" id="new-stop-lng" type="text" inputmode="decimal" placeholder="37.9475" oninput="onManualCoordInput('new-stop-lat','new-stop-lng','new-stop-coords')">
+          <input class="modal-input" id="new-stop-lng" type="text" autocomplete="off" inputmode="decimal" placeholder="37.9475" oninput="onManualCoordInput('new-stop-lat','new-stop-lng','new-stop-coords')">
         </div>
       </div>
       <div class="modal-actions">
@@ -238,27 +238,27 @@
       </div>
       <div class="modal-field">
         <div class="modal-label">Название</div>
-        <input class="modal-input" id="edit-start-name" type="text" placeholder="Балашиха">
+        <input class="modal-input" id="edit-start-name" type="text" autocomplete="off" placeholder="Балашиха">
       </div>
       <div class="modal-row">
         <div class="modal-field">
           <div class="modal-label">Иконка</div>
-          <input class="modal-input" id="edit-start-icon" type="text" placeholder="🏠" style="font-size:18px;text-align:center;cursor:pointer" readonly onclick="openIconPicker('edit-start-icon',null)">
+          <input class="modal-input" id="edit-start-icon" type="text" autocomplete="off" placeholder="🏠" style="font-size:18px;text-align:center;cursor:pointer" readonly onclick="openIconPicker('edit-start-icon',null)">
         </div>
         <div class="modal-field">
           <div class="modal-label">Отпр. план</div>
-          <input class="modal-input" id="edit-start-departP" type="text" placeholder="--:--" maxlength="5"
+          <input class="modal-input" id="edit-start-departP" type="text" autocomplete="off" placeholder="--:--" maxlength="5"
             oninput="applyMask(this)" onblur="padTime(this)">
         </div>
       </div>
       <div class="modal-row">
         <div class="modal-field">
           <div class="modal-label">Широта (lat)</div>
-          <input class="modal-input" id="edit-start-lat" type="text" inputmode="decimal" placeholder="55.7965" oninput="splitCoordsInput(this,'edit-start-lng','edit-start-coords');_onEditStartManualCoord()">
+          <input class="modal-input" id="edit-start-lat" type="text" autocomplete="off" inputmode="decimal" placeholder="55.7965" oninput="splitCoordsInput(this,'edit-start-lng','edit-start-coords');_onEditStartManualCoord()">
         </div>
         <div class="modal-field">
           <div class="modal-label">Долгота (lng)</div>
-          <input class="modal-input" id="edit-start-lng" type="text" inputmode="decimal" placeholder="37.9475" oninput="_onEditStartManualCoord()">
+          <input class="modal-input" id="edit-start-lng" type="text" autocomplete="off" inputmode="decimal" placeholder="37.9475" oninput="_onEditStartManualCoord()">
         </div>
       </div>
       <div class="modal-actions">
