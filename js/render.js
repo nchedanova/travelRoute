@@ -130,7 +130,7 @@ function autoFillTimes(day) {
           s.depP = _fmtTime(arrMins + offset);
           changed = true;
           var depPlanEl = document.getElementById('planned-dep-' + s.id);
-          if (depPlanEl) depPlanEl.textContent = s.depP;
+          if (depPlanEl) { depPlanEl.textContent = s.depP; var depBlk = document.getElementById('dep-block-' + s.id); if (depBlk) depBlk.style.opacity = ''; }
           var depInp = document.getElementById('dep-' + s.id);
           if (depInp && !depInp.value) depInp.placeholder = s.depP;
         }
@@ -170,7 +170,7 @@ function cascadeAutoFillFrom(day, stopId) {
       var planEl = document.getElementById('planned-arr-' + s.id);
       if (planEl) planEl.textContent = '—';
       var depPlanEl = document.getElementById('planned-dep-' + s.id);
-      if (depPlanEl && !s.depP) depPlanEl.textContent = '—';
+      if (depPlanEl && !s.depP) { depPlanEl.textContent = '—'; var depBlk = document.getElementById('dep-block-' + s.id); if (depBlk) depBlk.style.opacity = '0.45'; }
     });
     autoFillTimes(day);
   }
@@ -323,14 +323,13 @@ function updateTravelStats(d) {
 
 // ── STOP CARD ─────────────────────────────────────────────────────────────────
 function makeStopCard(s, day) {
-  const hasDepart = s.depP !== undefined && s.depP !== '';
-  const depBlock  = hasDepart ? `
-    <div class="time-block">
+  const depBlock  = `
+    <div class="time-block" id="dep-block-${s.id}"${!s.depP ? ' style="opacity:0.45"' : ''}>
       <div class="time-block-label">Отправление</div>
       <div class="time-inputs">
         <div class="time-input-wrap">
           <div class="time-mini-label">план</div>
-          <div class="planned-time" id="planned-dep-${s.id}">${s.depP}</div>
+          <div class="planned-time" id="planned-dep-${s.id}">${s.depP || '—'}</div>
         </div>
         <div class="delta-wrap">
           <span class="delta-badge hidden" id="delta-dep-${s.id}">→</span>
@@ -343,7 +342,7 @@ function makeStopCard(s, day) {
             ${isAdmin() ? `oninput="applyMask(this)" onblur="padTime(this)" ondblclick="fillOnTime(this)"` : `readonly style="pointer-events:none;border-style:solid;"`}>
         </div>
       </div>
-    </div>` : `<div></div>`;
+    </div>`;
 
   const div = document.createElement('div');
   div.className  = 'stop-card';
