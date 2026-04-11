@@ -340,7 +340,7 @@ function makeStopCard(s, day) {
           <div class="time-mini-label">факт</div>
           <input class="time-in ${s.depA ? '' : 'empty'}" id="dep-${s.id}"
             type="text" inputmode="numeric" maxlength="5" value="${s.depA || ''}" placeholder="${s.depP || '--:--'}"
-            autocomplete="off"
+            autocomplete="nope"
             ${isAdmin() ? `onfocus="this.dataset.prevVal=this.value" oninput="applyMask(this)" onblur="padTime(this)" ondblclick="fillOnTime(this)"` : `readonly style="pointer-events:none;border-style:solid;"`}>
         </div>
       </div>
@@ -397,7 +397,7 @@ function makeStopCard(s, day) {
             <div class="time-mini-label">факт</div>
             <input class="time-in ${s.arrA ? '' : 'empty'}" id="arr-${s.id}"
               type="text" inputmode="numeric" maxlength="5" value="${s.arrA || ''}" placeholder="${s.arrP || '--:--'}"
-              autocomplete="off"
+              autocomplete="nope"
               ${isAdmin() ? `onfocus="this.dataset.prevVal=this.value" oninput="applyMask(this)" onblur="padTime(this)" ondblclick="fillOnTime(this)"` : `readonly style="pointer-events:none;border-style:solid;"`}>
           </div>
         </div>
@@ -569,7 +569,7 @@ function renderDaySection(d) {
           <div class="time-label">факт</div>
           <input class="time-in ${data.departA ? '' : 'empty'}" id="d${d}-depart"
             type="text" inputmode="numeric" maxlength="5" value="${data.departA || ''}" placeholder="--:--"
-            autocomplete="off"
+            autocomplete="nope"
             ${isAdmin() ? `onfocus="this.dataset.prevVal=this.value" oninput="applyMask(this)" onblur="padTime(this)" ondblclick="fillOnTime(this)"` : `readonly style="pointer-events:none;border-style:solid;"`}>
         </div>
       </div>
