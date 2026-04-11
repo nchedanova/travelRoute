@@ -981,12 +981,17 @@ function renderArchiveBtn() {
 
 function toggleArchive() {
   var dd = document.getElementById('archiveDropdown');
-  if (!dd) return;
+  var btn = document.getElementById('archiveBtn');
+  if (!dd || !btn) return;
   var isOpen = dd.classList.contains('show');
-  // Close other menus
   closeDayMenus();
-  if (isOpen) { dd.classList.remove('show'); return; }
+  if (isOpen) { dd.classList.remove('show'); document.removeEventListener('click', _archiveOutsideClick); return; }
   renderArchiveBtn();
+  // Position below button
+  var rect = btn.getBoundingClientRect();
+  dd.style.top  = (rect.bottom + 4) + 'px';
+  dd.style.right = (window.innerWidth - rect.right) + 'px';
+  dd.style.left = 'auto';
   dd.classList.add('show');
   setTimeout(function() {
     document.addEventListener('click', _archiveOutsideClick);

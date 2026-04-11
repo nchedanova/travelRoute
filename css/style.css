@@ -2942,7 +2942,7 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
   gap: 4px;
   transition: color 0.15s, border-color 0.15s;
 }
-.archive-btn:hover { color: var(--accent); border-color: var(--accent); }
+.archive-btn:hover { color: var(--text); border-color: var(--text); }
 .archive-btn .arc-count {
   background: var(--accent-bg);
   color: var(--accent);

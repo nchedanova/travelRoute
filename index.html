@@ -38,7 +38,6 @@
     <div class="day-tabs" id="dayTabs"></div>
     <div class="archive-wrap admin-only" id="archiveWrap" style="display:none">
       <button class="archive-btn" id="archiveBtn" onclick="toggleArchive()" title="Архив дней">📦 <span id="archiveCount" class="arc-count">0</span></button>
-      <div class="archive-dropdown" id="archiveDropdown"></div>
     </div>
     <button class="undo-btn" id="undoBtn" onclick="undoAction()" disabled title="Отменить последнее действие">↩ отмена</button>
     <span id="syncStatus" title="Статус облачного сохранения" style="font-size:10px;color:var(--muted);white-space:nowrap;flex-shrink:0;cursor:default;">☁ —</span>
@@ -729,6 +728,6 @@
   </div>
 </div>
 
-
+  <div id="archiveDropdown" class="archive-dropdown"></div>
 </body>
 </html>
