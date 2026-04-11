@@ -1657,6 +1657,23 @@ input.day-date-input {
 .emoji-picker::-webkit-scrollbar-track { background: transparent; }
 .emoji-picker::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 .emoji-picker::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+.emoji-pick-custom-row {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+  padding-top: 4px;
+}
+.emoji-pick-custom-row .ep-search-inp {
+  width: 100%; height: 26px; font-size: 12px;
+  padding: 0 8px; border-radius: 5px;
+  background: var(--bg); border: 1px solid var(--border);
+  color: var(--text); font-family: 'JetBrains Mono', monospace;
+  outline: none;
+}
+.emoji-pick-custom-row .ep-search-inp:focus { border-color: var(--accent); }
+.emoji-pick-results {
+  display: none; flex-wrap: wrap; gap: 1px; padding-top: 3px;
+}
 .emoji-pick-btn {
   background: none;
   border: none;
