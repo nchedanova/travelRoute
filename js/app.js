@@ -1,5 +1,6 @@
 // ── UI STATE ──────────────────────────────────────────────────────────────────
 let currentDay = 1;
+let _currentSidebarTab = 'route';
 
 // ── BLUR-THEN-CLICK GUARD ────────────────────────────────────────────────────
 // Prevents accidental tap on underlying element right after time input commits
@@ -1141,7 +1142,8 @@ function setDayVisibility(day, visible) {
 function addNewDay() {
   const keys     = dayKeys();
   const newD     = Math.max(...keys) + 1;
-  const colorIdx = keys.length % DAY_COLORS.length;
+  const activeKeys = keys.filter(function(k) { return !DAYS_DATA[k].archived; });
+  const colorIdx = activeKeys.length % DAY_COLORS.length;
 
   DAYS_DATA[newD] = {
     color: DAY_COLORS[colorIdx],
@@ -2543,7 +2545,7 @@ setTimeout(() => {
 // Автооткрытие модала убрано — владелец настраивает через кнопку ⚙
 
 // ── SIDEBAR TABS ───────────────────────────────────────────────────────────────
-let _currentSidebarTab = 'route';
+// (declaration moved to top — see UI STATE section)
 
 // Открыть сайдбар на таб чата из кнопки в шапке
 function openChatFromHeader() {
@@ -2608,7 +2610,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.8.0';
-var APP_BUILD   = 14;
+var APP_BUILD   = 15;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 

@@ -645,11 +645,14 @@ function fmtDateDMY(d) {
 }
 
 function renderTabs() {
-  // Пересчитать цвета по позиции: каждый следующий день — другой цвет
+  // Пересчитать цвета по позиции среди активных дней (архивные не в счёт)
   var _colorsChanged = false;
-  dayKeys().forEach(function(d, i) {
-    var newColor = DAY_COLORS[i % DAY_COLORS.length];
+  var activeIdx = 0;
+  dayKeys().forEach(function(d) {
+    var newColor = DAY_COLORS[activeIdx % DAY_COLORS.length];
+    if (DAYS_DATA[d].archived) return; // архивные не меняют цвет и не занимают индекс
     if (DAYS_DATA[d].color !== newColor) { DAYS_DATA[d].color = newColor; _colorsChanged = true; }
+    activeIdx++;
   });
   if (_colorsChanged && typeof redrawDay === 'function') {
     dayKeys().forEach(function(d) { redrawDay(d); });
