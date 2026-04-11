@@ -257,8 +257,12 @@ async function loadState() {
     if (typeof renderArchiveBtn === 'function') renderArchiveBtn();
     updateProgress();
     var validDay = _pickVisibleDay(currentDay);
-    if (validDay !== currentDay) currentDay = validDay;
-    switchMapDay(currentDay);
+    if (validDay !== currentDay) {
+      currentDay = validDay;
+      switchDay(currentDay);
+    } else {
+      switchMapDay(currentDay);
+    }
     setSyncStatus('☁ загружено', 'var(--green)');
     setTimeout(() => setSyncStatus(
       CLOUD_CONFIG.canWrite ? '☁ ок' : '👁 только чтение',
@@ -360,8 +364,8 @@ function strHash(s) {
 
 // Выбрать currentDay с учётом скрытых дней для читателя
 function _pickVisibleDay(preferred) {
-  var keys = dayKeys();
-  if (!keys.length) return 1;
+  var keys = dayKeys().filter(function(k) { return !DAYS_DATA[k].archived; });
+  if (!keys.length) keys = dayKeys(); // fallback if all archived somehow
   var viewer = typeof isViewer === 'function' && isViewer();
   if (keys.includes(preferred) && (!viewer || !DAYS_DATA[preferred]?.hidden)) return preferred;
   for (var i = 0; i < keys.length; i++) {
