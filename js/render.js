@@ -519,12 +519,14 @@ function renderDaySection(d) {
       <div class="day-overflow-wrap" style="position:relative">
         <button class="nav-day-btn" onclick="toggleDayMenu(${d})" title="Ещё">···</button>
         <div class="day-overflow-menu" id="dayMenu${d}">
+          <button class="dom-item" onclick="fetchDayWeather(${d});closeDayMenus()"><span class="dom-ic">🌤️</span>Погода</button>
           ${isAdmin() ? `
-          <button onclick="reverseDay(${d});closeDayMenus()">↩ Обратный маршрут</button>
-          <button onclick="archiveDay(${d});closeDayMenus()">📦 В архив</button>
-          <button onclick="confirmDeleteDay(${d});closeDayMenus()" style="color:var(--red)">✕ Удалить день</button>
-          <button onclick="confirmReset(${d});closeDayMenus()">⟳ Сбросить факт</button>` : ''}
-          <button onclick="fetchDayWeather(${d});closeDayMenus()">🌤 Погода</button>
+          <div class="day-overflow-divider"></div>
+          <button class="dom-item" onclick="reverseDay(${d});closeDayMenus()"><span class="dom-ic">🔄</span>Обратный маршрут</button>
+          <button class="dom-item" onclick="archiveDay(${d});closeDayMenus()"><span class="dom-ic">📦</span>В архив</button>
+          <div class="day-overflow-divider"></div>
+          <button class="dom-item" onclick="confirmReset(${d});closeDayMenus()"><span class="dom-ic" style="font-size:14px">↺</span>Сбросить факт</button>
+          <button class="dom-item dom-red" onclick="confirmDeleteDay(${d});closeDayMenus()"><span class="dom-ic">🗑️</span>Удалить день</button>` : ''}
           ${isAdmin() ? `<div class="day-overflow-divider"></div>
           <div class="day-mode-row">
             <div class="day-mode-group" id="dayVisRow${d}">

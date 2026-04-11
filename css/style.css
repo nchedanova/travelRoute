@@ -248,7 +248,7 @@ header {
 .nav-link-title { font-size:11px; color:var(--text); margin-bottom:2px; }
 .nav-link-sub { font-size:9px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .nav-link-btn {
-  font-family:'JetBrains Mono',monospace; font-size:11px;
+  font-family:'JetBrains Mono',monospace; font-size:12px;
   background:transparent; border:1px solid var(--border);
   color:var(--muted); border-radius:4px; padding:5px 10px;
   cursor:pointer; transition:all 0.15s; flex-shrink:0; white-space:nowrap;
@@ -357,7 +357,7 @@ body.viewer-mode #undoBtn { display:none !important; }
 .undo-btn {
   background:transparent; border:1px solid var(--border);
   border-radius:4px; color:var(--muted);
-  font-family:'JetBrains Mono',monospace; font-size:11px;
+  font-family:'JetBrains Mono',monospace; font-size:12px;
   padding:5px 10px; cursor:pointer; transition:all 0.2s;
   white-space:nowrap; flex-shrink:0;
 }
@@ -652,11 +652,25 @@ input.day-date-input {
 }
 .day-overflow-menu.show { display:block; }
 .day-overflow-menu button:not(.day-mode-pill) {
-  display:block; width:100%; text-align:left; padding:8px 14px;
+  display:flex; align-items:center; width:100%; text-align:left; padding:0;
   background:none; border:none; color:var(--text);
-  font-family:'JetBrains Mono',monospace; font-size:11px;
+  font-family:'JetBrains Mono',monospace; font-size:12px;
   cursor:pointer; transition:background 0.1s;
 }
+.dom-item {
+  display:flex !important; align-items:center;
+  width:100%; text-align:left; padding:0 !important;
+  background:none; border:none; color:var(--text);
+  font-family:'JetBrains Mono',monospace; font-size:12px;
+  cursor:pointer; transition:background 0.1s;
+  height:30px;
+}
+.dom-ic {
+  width:34px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  font-size:15px; line-height:1;
+}
+.dom-red { color:var(--red) !important; }
 @media (hover: hover) {
   .day-overflow-menu button:not(.day-mode-pill):hover { background:var(--surface); }
 }
@@ -2852,7 +2866,7 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 }
 .day-mode-group { flex: 1; }
 .day-mode-label {
-  font-size: 8px;
+  font-size: 9px;
   color: var(--muted);
   letter-spacing: 0.06em;
   margin-bottom: 4px;
@@ -2942,7 +2956,7 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
   gap: 4px;
   transition: color 0.15s, border-color 0.15s;
 }
-.archive-btn:hover { color: var(--text); border-color: var(--text); }
+.archive-btn:hover { color: var(--accent); border-color: var(--accent); }
 .archive-btn .arc-count {
   background: var(--accent-bg);
   color: var(--accent);
