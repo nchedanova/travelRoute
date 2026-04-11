@@ -1647,7 +1647,14 @@ input.day-date-input {
   z-index: 400;
   grid-template-columns: repeat(10, 1fr);
   gap: 2px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
 }
+.emoji-picker::-webkit-scrollbar { width: 4px; }
+.emoji-picker::-webkit-scrollbar-track { background: transparent; }
+.emoji-picker::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.emoji-picker::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 .emoji-pick-btn {
   background: none;
   border: none;
