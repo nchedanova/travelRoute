@@ -13,7 +13,7 @@ document.addEventListener('click', function(e) {
 }, true);
 function _markBlurCommit() {
   _blurJustCommitted = true;
-  setTimeout(function() { _blurJustCommitted = false; }, 300);
+  setTimeout(function() { _blurJustCommitted = false; }, 500);
 }
 
 function switchDay(d) {
@@ -514,7 +514,7 @@ function openIconPicker(inputId, typeInputId) {
     + '<span style="font-size:9px;color:var(--muted);white-space:nowrap;letter-spacing:0.04em">Свой или поиск:</span>'
     + '<input id="ipCustomInput" class="edit-input" type="text" maxlength="40" placeholder="🚗 или автомойка"'
     + ' style="flex:1;height:26px;font-size:13px;padding:0 6px;min-width:0"'
-    + ' autocomplete="new-password" oninput="_ipCustomInput(this,\'' + inputId + '\')"'
+    + ' autocomplete="nope" oninput="_ipCustomInput(this,\'' + inputId + '\')"'
     + ' onmousedown="event.stopPropagation()">'
     + '</div>'
     + '<div id="ipSearchResults" style="display:none;flex-wrap:wrap;gap:1px;padding:2px 2px 0"></div>';
@@ -1363,8 +1363,8 @@ function editDepartTime(day, el) {
     inp.replaceWith(newEl);
 
     // Save only if changed
-    if (val === current) { return; }
     _markBlurCommit();
+    if (val === current) { return; }
     DAYS_DATA[day].departP = val;
 
     // Cascade time shift to stops only if both old and new times are valid and differ
@@ -2594,7 +2594,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.8.0';
-var APP_BUILD   = 12;
+var APP_BUILD   = 13;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 

@@ -946,7 +946,7 @@ function toggleEmojiPicker() {
     const customRow = document.createElement('div');
     customRow.className = 'emoji-pick-custom-row';
     customRow.innerHTML =
-      '<input class="ep-search-inp" type="text" autocomplete="new-password" maxlength="40" placeholder="🚗 или поиск: пицца, море…"'
+      '<input class="ep-search-inp" type="text" autocomplete="nope" maxlength="40" placeholder="🚗 или поиск: пицца, море…"'
       + ' oninput="_chatEmojiInput(this)" onmousedown="event.stopPropagation()">'
       + '<div class="emoji-pick-results" id="epSearchResults"></div>';
     p.appendChild(customRow);

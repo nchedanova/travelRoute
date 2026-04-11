@@ -40,14 +40,15 @@ function applyMask(el) {
 function padTime(el) {
   const prev = el.dataset.prevVal ?? el.defaultValue ?? '';
   const val = el.value.trim();
-  if (!val) { if (val !== prev) { if (typeof _markBlurCommit === 'function') _markBlurCommit(); saveData(); } return; }
+  if (typeof _markBlurCommit === 'function') _markBlurCommit();
+  if (!val) { if (val !== prev) saveData(); return; }
   const digits = val.replace(/[^0-9]/g, '');
   let padded = val;
   if (digits.length === 3) padded = '0' + digits[0] + ':' + digits.slice(1);
   if (/^\d:\d\d$/.test(val)) padded = '0' + val;
   el.value = padded;
   el.classList.toggle('empty', !padded);
-  if (padded !== prev) { if (typeof _markBlurCommit === 'function') _markBlurCommit(); saveData(); }
+  if (padded !== prev) saveData();
 }
 
 function fillOnTime(el) {

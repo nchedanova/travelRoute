@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=12">
+<link rel="stylesheet" href="css/style.css?v=13">
 <script>
 (function(){
   var t=localStorage.getItem('travel_theme');
@@ -180,12 +180,12 @@
       <div class="modal-row">
         <div class="modal-field">
           <div class="modal-label">Приб. план</div>
-          <input class="modal-input" id="new-stop-arrP" type="text" autocomplete="off" placeholder="--:--" maxlength="5"
+          <input class="modal-input" id="new-stop-arrP" type="text" autocomplete="nope" placeholder="--:--" maxlength="5"
             oninput="applyMask(this);prefillDepTime()" onblur="padTime(this)">
         </div>
         <div class="modal-field">
           <div class="modal-label">Отпр. план <span style="opacity:0.5">(опц.)</span></div>
-          <input class="modal-input" id="new-stop-depP" type="text" autocomplete="off" placeholder="--:--" maxlength="5"
+          <input class="modal-input" id="new-stop-depP" type="text" autocomplete="nope" placeholder="--:--" maxlength="5"
             oninput="applyMask(this)" onblur="padTime(this)">
         </div>
       </div>
@@ -250,7 +250,7 @@
         </div>
         <div class="modal-field">
           <div class="modal-label">Отпр. план</div>
-          <input class="modal-input" id="edit-start-departP" type="text" autocomplete="off" placeholder="--:--" maxlength="5"
+          <input class="modal-input" id="edit-start-departP" type="text" autocomplete="nope" placeholder="--:--" maxlength="5"
             oninput="applyMask(this)" onblur="padTime(this)">
         </div>
       </div>
@@ -533,18 +533,18 @@
 
 <!-- Scripts: порядок важен — config и data первыми -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="js/config.js?v=12"></script>
-<script src="js/data.js?v=12"></script>
-<script src="js/storage.js?v=12"></script>
-<script src="js/offline.js?v=12"></script>
-<script src="js/map.js?v=12"></script>
-<script src="js/render.js?v=12"></script>
-<script src="js/app.js?v=12"></script>
-<script src="js/gps.js?v=12"></script>
-<script src="js/chat.js?v=12"></script>
-<script src="js/notes.js?v=12"></script>
-<script src="js/import.js?v=12"></script>
-<script src="js/gpx.js?v=12"></script>
+<script src="js/config.js?v=13"></script>
+<script src="js/data.js?v=13"></script>
+<script src="js/storage.js?v=13"></script>
+<script src="js/offline.js?v=13"></script>
+<script src="js/map.js?v=13"></script>
+<script src="js/render.js?v=13"></script>
+<script src="js/app.js?v=13"></script>
+<script src="js/gps.js?v=13"></script>
+<script src="js/chat.js?v=13"></script>
+<script src="js/notes.js?v=13"></script>
+<script src="js/import.js?v=13"></script>
+<script src="js/gpx.js?v=13"></script>
 <script>
   window._swReg         = null;
   window._swReg = null;
