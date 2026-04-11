@@ -1,6 +1,17 @@
 // ── UI STATE ──────────────────────────────────────────────────────────────────
 let currentDay = 1;
 
+// ── BLUR-THEN-CLICK GUARD ────────────────────────────────────────────────────
+// Prevents accidental tap on underlying element right after time input commits
+var _blurJustCommitted = false;
+document.addEventListener('click', function(e) {
+  if (_blurJustCommitted) { e.stopImmediatePropagation(); e.preventDefault(); }
+}, true);
+function _markBlurCommit() {
+  _blurJustCommitted = true;
+  setTimeout(function() { _blurJustCommitted = false; }, 300);
+}
+
 function switchDay(d) {
   var prev = currentDay;
   currentDay = d;
@@ -1258,6 +1269,7 @@ function editDepartTime(day, el) {
 
     // Save only if changed
     if (val === current) { return; }
+    _markBlurCommit();
     DAYS_DATA[day].departP = val;
 
     // Cascade time shift to stops only if both old and new times are valid and differ

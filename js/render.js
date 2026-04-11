@@ -40,14 +40,14 @@ function applyMask(el) {
 function padTime(el) {
   const prev = el.dataset.prevVal ?? el.defaultValue ?? '';
   const val = el.value.trim();
-  if (!val) { if (val !== prev) saveData(); return; }
+  if (!val) { if (val !== prev) { if (typeof _markBlurCommit === 'function') _markBlurCommit(); saveData(); } return; }
   const digits = val.replace(/[^0-9]/g, '');
   let padded = val;
   if (digits.length === 3) padded = '0' + digits[0] + ':' + digits.slice(1);
   if (/^\d:\d\d$/.test(val)) padded = '0' + val;
   el.value = padded;
   el.classList.toggle('empty', !padded);
-  if (padded !== prev) saveData();
+  if (padded !== prev) { if (typeof _markBlurCommit === 'function') _markBlurCommit(); saveData(); }
 }
 
 function fillOnTime(el) {
@@ -131,7 +131,7 @@ function autoFillTimes(day) {
           s.depP = _fmtTime(arrMins + offset);
           changed = true;
           var depPlanEl = document.getElementById('planned-dep-' + s.id);
-          if (depPlanEl) { depPlanEl.textContent = s.depP; var depBlk = document.getElementById('dep-block-' + s.id); if (depBlk) depBlk.style.opacity = ''; }
+          if (depPlanEl) { depPlanEl.textContent = s.depP; var depBlk = document.getElementById('dep-block-' + s.id); if (depBlk) depBlk.style.display = ''; }
           var depInp = document.getElementById('dep-' + s.id);
           if (depInp && !depInp.value) depInp.placeholder = s.depP;
         }
@@ -171,7 +171,7 @@ function cascadeAutoFillFrom(day, stopId) {
       var planEl = document.getElementById('planned-arr-' + s.id);
       if (planEl) planEl.textContent = '—';
       var depPlanEl = document.getElementById('planned-dep-' + s.id);
-      if (depPlanEl && !s.depP) { depPlanEl.textContent = '—'; var depBlk = document.getElementById('dep-block-' + s.id); if (depBlk) depBlk.style.opacity = '0.45'; }
+      if (depPlanEl && !s.depP) { depPlanEl.textContent = '—'; var depBlk = document.getElementById('dep-block-' + s.id); if (depBlk && !s.depA) depBlk.style.display = 'none'; }
     });
     autoFillTimes(day);
   }
@@ -325,7 +325,7 @@ function updateTravelStats(d) {
 // ── STOP CARD ─────────────────────────────────────────────────────────────────
 function makeStopCard(s, day) {
   const depBlock  = `
-    <div class="time-block" id="dep-block-${s.id}"${!s.depP ? ' style="opacity:0.45"' : ''}>
+    <div class="time-block" id="dep-block-${s.id}"${(!s.depP && !s.depA) ? ' style="display:none"' : ''}>
       <div class="time-block-label">Отправление</div>
       <div class="time-inputs">
         <div class="time-input-wrap">
