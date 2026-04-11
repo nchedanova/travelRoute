@@ -525,6 +525,18 @@ function openIconPicker(inputId, typeInputId) {
   var cols = Math.max(1, Math.floor((refRect.width - 10 - 4) / 34));
   picker.style.gridTemplateColumns = 'repeat(' + cols + ',34px)';
   picker.style.display = 'grid';
+  // Динамическая высота: если ≤2 строк — без скролла, иначе ограничиваем 2 строками
+  var rows = Math.ceil(icons.length / cols);
+  var btnRow = 33; // 32px кнопка + 1px gap
+  var pickerPad = 10; // 5px top + 5px bottom
+  var customRowH = 42; // строка поиска
+  if (rows <= 2) {
+    picker.style.maxHeight = 'none';
+    picker.style.overflowY = 'visible';
+  } else {
+    picker.style.maxHeight = (2 * btnRow + pickerPad + customRowH) + 'px';
+    picker.style.overflowY = 'auto';
+  }
 
   formEl.appendChild(picker);
 
@@ -558,6 +570,9 @@ function _ipCustomInput(el, inputId) {
   sr.innerHTML = results.map(function(ic) {
     return '<button class="icon-pick-stop-btn" onmousedown="event.preventDefault()" onclick="selectIconFromPicker(\'' + inputId + '\',\'' + ic + '\')">' + ic + '</button>';
   }).join('');
+  // Доскроллить пикер к результатам
+  var picker2 = document.getElementById('iconPickerInline');
+  if (picker2) picker2.scrollTop = picker2.scrollHeight;
 }
 
 function selectIconFromPicker(inputId, icon) {
