@@ -1182,7 +1182,8 @@ function _dayLabel(d) {
 
 let deleteDayTarget = null;
 function confirmDeleteDay(d) {
-  if (dayKeys().length <= 1) { showToast('Нельзя удалить последний день'); return; }
+  var activeKeys = dayKeys().filter(function(k) { return !DAYS_DATA[k].archived; });
+  if (activeKeys.length <= 1) { showToast('Нельзя удалить последний активный день'); return; }
   deleteDayTarget = d;
   var label = DAYS_DATA[d].dateISO ? fmtDateFull(DAYS_DATA[d].dateISO) : _dayLabel(d);
   document.getElementById('deleteDayModalBody').textContent =
@@ -1203,10 +1204,11 @@ function doDeleteDay() {
   segmentLayers[d] = [];
   delete DAYS_DATA[d];
   const keys       = dayKeys();
-  const newCurrent = keys.includes(currentDay) ? currentDay : keys[0];
+  const activeKeys = keys.filter(function(k) { return !DAYS_DATA[k].archived; });
+  const newCurrent = activeKeys.includes(currentDay) ? currentDay : (activeKeys[0] || keys[0]);
   renderTabs();
   renderAllDays();
-  dayKeys().forEach(dk => redrawDay(dk));
+  dayKeys().forEach(dk => { if (!DAYS_DATA[dk].archived) redrawDay(dk); });
   switchDay(newCurrent);
   saveData();
   showToast('🗑️ День удалён');
@@ -2612,7 +2614,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.8.0';
-var APP_BUILD   = 16;
+var APP_BUILD   = 17;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 

@@ -1,6 +1,6 @@
 // ── SERVICE WORKER · Дорожный журнал ───────────────────────────────────────────
 const APP_VERSION   = '2.8.0';
-const APP_BUILD     = 16;
+const APP_BUILD     = 17;
 // CACHE_STATIC включает build — при каждом бампе старый кэш автоматически удаляется
 const CACHE_STATIC  = 'travel-static-v' + APP_VERSION.replace(/\./g,'-') + '-b' + APP_BUILD;
 const CACHE_TILES   = 'travel-tiles-v2';
