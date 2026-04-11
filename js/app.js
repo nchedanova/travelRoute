@@ -34,6 +34,8 @@ function switchDay(d) {
   if (prev !== d) _navPush();
 }
 
+var _inlineAddOpen = false; // true пока открыта форма добавления новой точки
+
 function highlightStop(id, d) {
   document.querySelectorAll('.stop-card').forEach(c => {
     c.classList.remove('selected');
@@ -52,6 +54,8 @@ function highlightStop(id, d) {
     if (num) num.style.background = color;
     card.scrollIntoView({ behavior:'smooth', block:'nearest' });
   }
+  // Не двигаем карту когда открыта форма добавления новой точки
+  if (_inlineAddOpen) return;
   const stop = DAYS_DATA[d]?.stops.find(s => s.id === id);
   if (!stop) return;
   const isWalk = !!(DAYS_DATA[d] && DAYS_DATA[d].walkMode);
@@ -1461,6 +1465,7 @@ var _inlineAddCoords = {};
 var _inlineAddSearchTimer = null;
 
 function openInlineAddStop(afterId, day) {
+  _inlineAddOpen = true;
   // Close any other open add/edit forms first
   document.querySelectorAll('[id^="add-form-"]').forEach(function(f) {
     if (f.id !== 'add-form-' + afterId) { f.style.display = 'none'; f.innerHTML = ''; }
@@ -1600,6 +1605,7 @@ function inlineAddSearch(q, afterId) {
 }
 
 function openInlineAddFirstStop(day) {
+  _inlineAddOpen = true;
   var container = document.getElementById('d' + day + '-stops');
   if (!container) return;
   var fakeId = '__first__' + day;
@@ -1671,6 +1677,7 @@ function openInlineAddFirstStop(day) {
 }
 
 function doInlineAddFirstStop(fakeId, day) {
+  _inlineAddOpen = false;
   var name = document.getElementById('ia-name-' + fakeId)?.value.trim();
   if (!name) { document.getElementById('ia-name-' + fakeId)?.focus(); return; }
   var coords = _inlineAddCoords[fakeId];
@@ -1702,6 +1709,7 @@ function doInlineAddFirstStop(fakeId, day) {
 }
 
 function cancelInlineAddStop(afterId) {
+  _inlineAddOpen = false;
   var form    = document.getElementById('add-form-' + afterId);
   var dotsBtn = document.getElementById('dots-' + afterId);
   if (form)    { form.style.display = 'none'; form.innerHTML = ''; }
@@ -1711,6 +1719,7 @@ function cancelInlineAddStop(afterId) {
 }
 
 function doInlineAddStop(afterId, day, isFirst) {
+  _inlineAddOpen = false;
   var name = document.getElementById('ia-name-' + afterId)?.value.trim();
   if (!name) { document.getElementById('ia-name-' + afterId)?.focus(); return; }
 
@@ -2460,7 +2469,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.8.0';
-var APP_BUILD   = 10;
+var APP_BUILD   = 11;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 

@@ -315,6 +315,15 @@ function toggleDrivingMode() {
     _releaseWakeLock();
     _updateSpeedDisplay(null);
     if (_db) _db.ref('gps').remove();
+    // Снять подсветку ближайшей точки
+    _nearestStopId = null;
+    document.querySelectorAll('.stop-card.gps-nearest').forEach(function(el) {
+      el.classList.remove('gps-nearest');
+      el.style.borderLeftColor = '';
+      el.style.background = '';
+      var num = el.querySelector('.stop-num');
+      if (num) num.style.background = '';
+    });
   }
 }
 
