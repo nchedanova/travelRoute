@@ -1678,13 +1678,11 @@ input.day-date-input {
   padding: 5px;
   z-index: 9999;
   display: none;
-  grid-template-columns: repeat(6, 1fr);
   gap: 1px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-  min-width: 207px;
-  max-width: 207px;
   max-height: 75px;
   overflow-y: auto;
+  overflow-x: hidden;
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
 }
