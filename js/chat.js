@@ -1472,7 +1472,7 @@ function _renderRoomTabs() {
       var unread  = (_dmUnread[roomKey] || 0) > 0 && _currentRoom !== roomKey;
       var name    = contact ? contact.name : dm.name;
       html += '<button class="chat-room-tab' + active + '" onclick="switchChatRoom(\'' + roomKey + '\')">'
-           + _esc(name) + '<span class="room-role-badge"> ✏</span>'
+           + _esc(name) 
            + (unread ? '<span class="room-unread-dot"></span>' : '')
            + '</button>';
     });
@@ -1495,7 +1495,7 @@ function _renderRoomTabs() {
     });
     Object.values(bestByName).forEach(function(c) {
       html += '<button class="chat-room-tab contact" onclick="openDmWith(\'' + _esc(c.uid) + '\',\'' + _esc(c.name) + '\',\'' + _esc(c.role) + '\')">'
-           + '+ ' + _esc(c.name) + '<span class="room-role-badge"> ✏</span></button>';
+           + '+ ' + _esc(c.name) + '</button>';
     });
   }
 
@@ -1560,4 +1560,3 @@ function _startDmRoomListener(roomId) {
     }
   });
 }
-
