@@ -340,7 +340,7 @@ function _buildViewerHash() {
     var parts = dayKeys().sort(function(a,b){return a-b;}).map(function(d) {
       var day = DAYS_DATA[d];
       if (!day) return '';
-      var s = d + ':' + (day.hidden?'H':'') + ':' + (day.dateISO||'') + ':' + (day.date||'') + ':' + (day.departP||'') + ':' + (day.departA||'');
+      var s = d + ':' + (day.hidden?'H':'') + (day.archived?'A':'') + ':' + (day.dateISO||'') + ':' + (day.date||'') + ':' + (day.departP||'') + ':' + (day.departA||'');
       day.stops.forEach(function(st) {
         s += '|' + st.lat + ',' + st.lng + ',' + (st.arrP||'') + ',' + (st.arrA||'') + ',' + (st.depP||'') + ',' + (st.depA||'');
         // Только public notes
@@ -448,8 +448,12 @@ async function pollCloud() {
     // Переключаем карту на текущий день только если изменилась геометрия —
     // иначе fitBounds прыгает на маршрут каждые 10 сек пока читатель смотрит на карту
     var validDay = _pickVisibleDay(currentDay);
-    if (validDay !== currentDay) currentDay = validDay;
-    if (geoChanged || validDay !== currentDay) switchMapDay(validDay || currentDay);
+    if (validDay !== currentDay) {
+      currentDay = validDay;
+      if (typeof switchDay === 'function') switchDay(currentDay);
+    } else if (geoChanged) {
+      switchMapDay(currentDay);
+    }
     const t = new Date().toLocaleTimeString('ru', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
     setSyncStatus(`🔄 обновлено ${t}`, 'var(--green)');
     setTimeout(() => setSyncStatus(
