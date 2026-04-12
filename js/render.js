@@ -475,6 +475,7 @@ function makeStopCard(s, day) {
           }
           html += '</div>';
         } else {
+          var _react = typeof buildNoteReactHtml === 'function' ? buildNoteReactHtml(s.id, i) : null;
           html += '<div class="stop-note-item">';
           html += '<div class="stop-note-display stop-note-readonly">';
           html += '<div class="stop-note-display-inner"><div>'+_l(n.text||'').replace(/\n/g,'<br>')+'</div>';
@@ -482,7 +483,11 @@ function makeStopCard(s, day) {
           if (n.images && n.images.length) n.images.forEach(function(url){
             html += '<div class="note-img-thumb-wrap">'+_noteImgTag(url,' onclick="event.stopPropagation();openChatPhoto(this)"')+'</div>';
           });
-          html += '</div></div></div></div>';
+          html += '</div>';
+          if (_react) html += _react.row;
+          html += '</div>';
+          if (_react) html += _react.btn;
+          html += '</div></div>';
         }
       });
       html += '</div>';

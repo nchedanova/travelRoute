@@ -693,3 +693,121 @@ document.addEventListener('paste', e => {
   }
 });
 
+// ── STOP NOTE REACTIONS ──────────────────────────────────────────────────────
+// Хранение: Firebase /note_reactions/{stopId}/{noteIdx}/{sid} = 'emoji' | null
+// Читатель может ставить/снимать. Все видят чужие реакции в реальном времени.
+// Формат: reactions[emoji] = [sid, sid, ...]  — аналогично чату.
+
+const NOTE_REACTIONS = ['👍','❤️','🥰','😂','😱','🔥','💯','👀','🎉','😔'];
+var _noteReactDb  = null;
+var _noteReactRef = null;
+var _noteReactData = {}; // {stopId_idx: {emoji:[sid,...]}}
+var _noteReactListeners = {}; // {stopId_idx: true}
+var _openReactPicker = null; // {stopId, idx} — открытый пикер
+
+function _noteReactKey(stopId, idx) { return stopId + '_' + idx; }
+
+function initNoteReactions() {
+  if (_noteReactDb) return;
+  var db = _noteImgDb();
+  if (!db) return;
+  _noteReactDb  = db;
+  _noteReactRef = db.ref('note_reactions');
+}
+
+// Подписываемся на реакции конкретной заметки (при рендере карточки читателем)
+function _listenNoteReactions(stopId, idx) {
+  initNoteReactions();
+  if (!_noteReactRef) return;
+  var k = _noteReactKey(stopId, idx);
+  if (_noteReactListeners[k]) return;
+  _noteReactListeners[k] = true;
+  _noteReactRef.child(stopId).child(String(idx)).on('value', function(snap) {
+    _noteReactData[k] = snap.val() || {};
+    _reRenderNoteReactions(stopId, idx);
+  });
+}
+
+function _reRenderNoteReactions(stopId, idx) {
+  var el = document.getElementById('note-react-row-' + stopId + '-' + idx);
+  if (!el) return;
+  el.innerHTML = _buildReactRowHtml(stopId, idx);
+}
+
+function _buildReactRowHtml(stopId, idx) {
+  var k   = _noteReactKey(stopId, idx);
+  var r   = _noteReactData[k] || {};
+  var sid = typeof getSessionId === 'function' ? getSessionId() : '';
+  var btns = Object.entries(r).filter(function(e){ return e[1] && e[1].length; }).map(function(entry) {
+    var em   = entry[0], sids = entry[1];
+    var mine = sids.indexOf(sid) >= 0;
+    return '<button class="reaction-btn' + (mine ? ' active' : '') + '" onmousedown="event.preventDefault()" onclick="event.stopPropagation();toggleNoteReaction(\'' + _escN(stopId) + '\',' + idx + ',\'' + em + '\')" title="' + em + '">' + em + ' ' + sids.length + '</button>';
+  }).join('');
+  return btns;
+}
+
+function toggleNoteReaction(stopId, idx, emoji) {
+  initNoteReactions();
+  if (!_noteReactRef) return;
+  var sid = typeof getSessionId === 'function' ? getSessionId() : '';
+  if (!sid) return;
+  var k    = _noteReactKey(stopId, idx);
+  var r    = _noteReactData[k] ? JSON.parse(JSON.stringify(_noteReactData[k])) : {};
+  if (!r[emoji]) r[emoji] = [];
+  var pos  = r[emoji].indexOf(sid);
+  if (pos >= 0) { r[emoji].splice(pos, 1); if (!r[emoji].length) delete r[emoji]; }
+  else r[emoji].push(sid);
+  _noteReactRef.child(stopId).child(String(idx)).set(Object.keys(r).length ? r : null);
+  closeNoteReactPicker();
+}
+
+function openNoteReactPicker(btn, stopId, idx) {
+  // Закрыть предыдущий
+  closeNoteReactPicker();
+  // Построить пикер
+  var picker = document.createElement('div');
+  picker.id  = 'note-react-picker';
+  picker.className = 'note-react-picker';
+  picker.innerHTML = NOTE_REACTIONS.map(function(em) {
+    return '<button class="pick-em" onmousedown="event.preventDefault()" onclick="event.stopPropagation();toggleNoteReaction(\'' + _escN(stopId) + '\',' + idx + ',\'' + em + '\')">' + em + '</button>';
+  }).join('');
+  btn.style.position = 'relative';
+  btn.parentNode.style.position = 'relative';
+  btn.parentNode.appendChild(picker);
+  _openReactPicker = { stopId: stopId, idx: idx };
+  // Закрыть по клику вне
+  setTimeout(function() {
+    document.addEventListener('click', _closeNotePickerOutside);
+  }, 0);
+}
+
+function _closeNotePickerOutside(e) {
+  var p = document.getElementById('note-react-picker');
+  if (p && !p.contains(e.target)) closeNoteReactPicker();
+}
+
+function closeNoteReactPicker() {
+  var p = document.getElementById('note-react-picker');
+  if (p) p.remove();
+  _openReactPicker = null;
+  document.removeEventListener('click', _closeNotePickerOutside);
+}
+
+// Строит HTML кнопки-реакции + ряда реакций для читателя
+function buildNoteReactHtml(stopId, idx) {
+  var k   = _noteReactKey(stopId, idx);
+  var r   = _noteReactData[k] || {};
+  var sid = typeof getSessionId === 'function' ? getSessionId() : '';
+  var hasOwn = Object.values(r).some(function(sids){ return sids && sids.indexOf(sid) >= 0; });
+  var btn = '<button class="note-vis-btn' + (hasOwn ? ' note-react-active' : '') + '" '
+    + 'onmousedown="event.preventDefault()" '
+    + 'onclick="event.stopPropagation();var b=this;if(document.getElementById(\'note-react-picker\')){closeNoteReactPicker();}else{openNoteReactPicker(b,\'' + _escN(stopId) + '\',' + idx + ');}" '
+    + 'title="Реакция">❤️</button>';
+  var row = '<div class="chat-reactions" id="note-react-row-' + _escN(stopId) + '-' + idx + '">'
+    + _buildReactRowHtml(stopId, idx)
+    + '</div>';
+  // Запускаем слушатель Firebase
+  _listenNoteReactions(stopId, idx);
+  return { btn: btn, row: row };
+}
+

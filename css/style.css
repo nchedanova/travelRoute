@@ -2353,6 +2353,35 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
   word-break: break-word;
 }
 
+/* ── NOTE REACTIONS (читатель) ───────────────────────────────────────────────── */
+.note-react-active { background: var(--accent-bg) !important; border-color: var(--amber) !important; color: var(--amber) !important; }
+.note-react-picker {
+  position: absolute;
+  right: 0; top: 32px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 6px;
+  z-index: 200;
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  gap: 2px;
+  max-width: 220px;
+  scrollbar-width: none;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+  white-space: nowrap;
+}
+.note-react-picker::-webkit-scrollbar { display: none; }
+.pick-em {
+  background: none; border: none;
+  font-size: 20px; cursor: pointer;
+  padding: 3px 4px; border-radius: 6px;
+  line-height: 1; flex-shrink: 0;
+  transition: background 0.12s;
+}
+.pick-em:hover { background: var(--surface2); }
+
 /* ── PHOTO GALLERY VIEWER ────────────────────────────────────────────────────── */
 .photo-viewer {
   display: none;
