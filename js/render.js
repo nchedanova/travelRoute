@@ -1,3 +1,28 @@
+// ── NOTE IMAGE HELPERS (глобалы — notes.js добавляет _resolveNoteImg поверх) ──
+// Обратная совместимость: data: строки рендерятся напрямую, fb: — через data-fbref
+function _noteImgTag(ref, extraAttrs) {
+  var a = extraAttrs || '';
+  if (!ref) return '';
+  if (ref.startsWith('fb:')) {
+    return '<img data-fbref="' + ref.replace(/"/g, '&quot;') + '" src="" class="note-img-thumb"' + a + ' alt="">';
+  }
+  return '<img src="' + ref.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;') + '" class="note-img-thumb"' + a + ' alt="">';
+}
+// Резолвит все img[data-fbref] внутри el; _resolveNoteImg определяется в notes.js
+function _resolveImgsInEl(el) {
+  if (!el) return;
+  el.querySelectorAll('img[data-fbref]').forEach(function(img) {
+    if (typeof _resolveNoteImg === 'function') _resolveNoteImg(img.dataset.fbref, img);
+  });
+}
+// Резолвит все img[data-fbref] на всей странице — вызывается после готовности Firebase
+function _resolveAllNoteImgs() {
+  if (typeof _resolveNoteImg !== 'function') return;
+  document.querySelectorAll('img[data-fbref]').forEach(function(img) {
+    _resolveNoteImg(img.dataset.fbref, img);
+  });
+}
+
 // ── TIME UTILS ────────────────────────────────────────────────────────────────
 function timeDelta(planned, actual) {
   if (!planned || !actual || planned.length < 4 || actual.length < 4) return null;
@@ -411,7 +436,6 @@ function makeStopCard(s, day) {
       var notes = s.notes || [];
       var _e = typeof _escN==='function' ? _escN : function(x){return x;};
       var _l = typeof _linkifyN==='function' ? _linkifyN : _e;
-      var _imgTag = typeof _noteImgTag==='function' ? _noteImgTag : function(ref,attrs){ return '<img src="'+_e(ref)+'" class="note-img-thumb"'+(attrs||'')+' alt="">'; };
       var eyeOn = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
       var eyeOff = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
       var admin = typeof isAdmin==='function' && isAdmin();
@@ -428,7 +452,7 @@ function makeStopCard(s, day) {
           html += '<textarea class="stop-note-input" id="stop-note-'+s.id+'-'+i+'" placeholder="Заметка к точке…" style="touch-action:auto" oninput="autoResizeNote(this)" onfocus="var c=this.closest(\'.stop-card\');if(c)c.draggable=false" ontouchstart="event.stopPropagation()" ontouchmove="event.stopPropagation()" onmousedown="event.stopPropagation()">'+_e(n.text||'')+'</textarea>';
           html += '<div class="note-images-inline" id="stop-note-edit-images-'+s.id+'-'+i+'">';
           if (n.images && n.images.length) n.images.forEach(function(url,j){
-            html += '<div class="note-img-thumb-wrap">'+_imgTag(url,' onclick="event.stopPropagation();openChatPhoto(this)"')+'<button class="pending-thumb-remove" onclick="event.stopPropagation();removePendingStopImage(\''+s.id+'\','+i+','+j+')">×</button></div>';
+            html += '<div class="note-img-thumb-wrap">'+_noteImgTag(url,' onclick="event.stopPropagation();openChatPhoto(this)"')+'<button class="pending-thumb-remove" onclick="event.stopPropagation();removePendingStopImage(\''+s.id+'\','+i+','+j+')">×</button></div>';
           });
           html += '</div>';
           html += '<div class="stop-note-toolbar">';
@@ -443,7 +467,7 @@ function makeStopCard(s, day) {
             html += '<div class="stop-note-display-inner"><div id="stop-note-text-'+s.id+'-'+i+'">'+_l(n.text||'').replace(/\n/g,'<br>')+'</div>';
             html += '<div class="note-images-inline" id="stop-note-images-'+s.id+'-'+i+'">';
             if (n.images && n.images.length) n.images.forEach(function(url){
-              html += '<div class="note-img-thumb-wrap">'+_imgTag(url,' onclick="event.stopPropagation();openChatPhoto(this)"')+'</div>';
+              html += '<div class="note-img-thumb-wrap">'+_noteImgTag(url,' onclick="event.stopPropagation();openChatPhoto(this)"')+'</div>';
             });
             html += '</div></div>';
             html += '<button class="note-vis-btn '+(n.public?'note-vis-on':'')+'" onclick="event.stopPropagation();toggleNotePublic(\''+s.id+'\','+i+','+day+')" title="'+(n.public?'Видна читателю':'Скрыта от читателя')+'">'+(n.public?eyeOn:eyeOff)+'</button>';
@@ -456,7 +480,7 @@ function makeStopCard(s, day) {
           html += '<div class="stop-note-display-inner"><div>'+_l(n.text||'').replace(/\n/g,'<br>')+'</div>';
           html += '<div class="note-images-inline">';
           if (n.images && n.images.length) n.images.forEach(function(url){
-            html += '<div class="note-img-thumb-wrap">'+_imgTag(url,' onclick="event.stopPropagation();openChatPhoto(this)"')+'</div>';
+            html += '<div class="note-img-thumb-wrap">'+_noteImgTag(url,' onclick="event.stopPropagation();openChatPhoto(this)"')+'</div>';
           });
           html += '</div></div></div></div>';
         }
