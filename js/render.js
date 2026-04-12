@@ -427,7 +427,7 @@ function makeStopCard(s, day) {
           html += '<textarea class="stop-note-input" id="stop-note-'+s.id+'-'+i+'" placeholder="Заметка к точке…" style="touch-action:auto" oninput="autoResizeNote(this)" onfocus="var c=this.closest(\'.stop-card\');if(c)c.draggable=false" ontouchstart="event.stopPropagation()" ontouchmove="event.stopPropagation()" onmousedown="event.stopPropagation()">'+_e(n.text||'')+'</textarea>';
           html += '<div class="note-images-inline" id="stop-note-edit-images-'+s.id+'-'+i+'">';
           if (n.images && n.images.length) n.images.forEach(function(url,j){
-            html += '<div class="note-img-thumb-wrap"><img src="'+_e(url)+'" class="note-img-thumb" onclick="event.stopPropagation();openChatPhoto(this)" alt=""><button class="pending-thumb-remove" onclick="event.stopPropagation();removePendingStopImage(\''+s.id+'\','+i+','+j+')">×</button></div>';
+            html += '<div class="note-img-thumb-wrap">'+_noteImgTag(url,' onclick="event.stopPropagation();openChatPhoto(this)"')+'<button class="pending-thumb-remove" onclick="event.stopPropagation();removePendingStopImage(\''+s.id+'\','+i+','+j+')">×</button></div>';
           });
           html += '</div>';
           html += '<div class="stop-note-toolbar">';
@@ -442,7 +442,7 @@ function makeStopCard(s, day) {
             html += '<div class="stop-note-display-inner"><div id="stop-note-text-'+s.id+'-'+i+'">'+_l(n.text||'').replace(/\n/g,'<br>')+'</div>';
             html += '<div class="note-images-inline" id="stop-note-images-'+s.id+'-'+i+'">';
             if (n.images && n.images.length) n.images.forEach(function(url){
-              html += '<div class="note-img-thumb-wrap"><img src="'+_e(url)+'" class="note-img-thumb" onclick="event.stopPropagation();openChatPhoto(this)" alt=""></div>';
+              html += '<div class="note-img-thumb-wrap">'+_noteImgTag(url,' onclick="event.stopPropagation();openChatPhoto(this)"')+'</div>';
             });
             html += '</div></div>';
             html += '<button class="note-vis-btn '+(n.public?'note-vis-on':'')+'" onclick="event.stopPropagation();toggleNotePublic(\''+s.id+'\','+i+','+day+')" title="'+(n.public?'Видна читателю':'Скрыта от читателя')+'">'+(n.public?eyeOn:eyeOff)+'</button>';
@@ -455,7 +455,7 @@ function makeStopCard(s, day) {
           html += '<div class="stop-note-display-inner"><div>'+_l(n.text||'').replace(/\n/g,'<br>')+'</div>';
           html += '<div class="note-images-inline">';
           if (n.images && n.images.length) n.images.forEach(function(url){
-            html += '<div class="note-img-thumb-wrap"><img src="'+_e(url)+'" class="note-img-thumb" onclick="event.stopPropagation();openChatPhoto(this)" alt=""></div>';
+            html += '<div class="note-img-thumb-wrap">'+_noteImgTag(url,' onclick="event.stopPropagation();openChatPhoto(this)"')+'</div>';
           });
           html += '</div></div></div></div>';
         }
@@ -464,8 +464,9 @@ function makeStopCard(s, day) {
       return html;
     })()}`;
 
+  if (typeof _resolveImgsInEl === 'function') _resolveImgsInEl(div);
+
   if (typeof isAdmin === 'function' && isAdmin()) {
-    div.addEventListener('dragstart', onDragStart);
     div.addEventListener('dragover',  onDragOver);
     div.addEventListener('dragleave', onDragLeave);
     div.addEventListener('drop',      onDrop);
