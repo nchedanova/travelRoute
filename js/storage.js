@@ -54,9 +54,18 @@ async function fetchCloudData() {
   // Сохраняем логин для дальнейших запросов без токена
   if (json.owner?.login) _gistOwnerLogin = json.owner.login;
 
-  const raw = json.files['data.json']?.content;
-  if (!raw) throw new Error('data.json not found in gist');
-  return JSON.parse(raw);
+  const fileInfo = json.files['data.json'];
+  if (!fileInfo) throw new Error('data.json not found in gist');
+
+  // GitHub API обрезает content на ~1 МБ и ставит truncated:true.
+  // В этом случае скачиваем полный файл по raw_url.
+  if (fileInfo.truncated) {
+    const rawR = await fetch(fileInfo.raw_url + '?t=' + Date.now(), { cache: 'no-store' });
+    if (!rawR.ok) throw new Error('raw HTTP ' + rawR.status);
+    return await rawR.json();
+  }
+
+  return JSON.parse(fileInfo.content);
 }
 
 async function pushCloudData(payload) {
@@ -406,7 +415,14 @@ async function pollCloud() {
     _lastCloudHash = hash;
 
     applyPayload(saved);
-    localStorage.setItem('travel_tracker_v3', json);
+    try {
+      localStorage.setItem('travel_tracker_v3', json);
+    } catch(e) {
+      if (e.name === 'QuotaExceededError') {
+        try { localStorage.removeItem('travel_route_cache_v2'); } catch {}
+        try { localStorage.setItem('travel_tracker_v3', json); } catch {}
+      }
+    }
 
     // Проверяем изменилась ли геометрия маршрута (координаты, walkMode, состав дней).
     // Если нет — не трогаем слои карты: читатель не видит вспышку прямых линий

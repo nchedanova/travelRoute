@@ -694,12 +694,14 @@ function _compressToBase64(file, maxDim, quality) {
       canvas.width = w; canvas.height = h;
       canvas.getContext('2d').drawImage(img, 0, 0, w, h);
       const dataUrl = canvas.toDataURL('image/jpeg', quality);
-      // Проверка размера (~100KB лимит для Realtime DB)
+      // Fallback: если > 150 KB — сжимаем до 0.6× + quality 0.5
+      // (notes хранятся в Gist JSON, нельзя превышать ~150 KB на фото)
       const sizeKB = Math.round(dataUrl.length * 0.75 / 1024);
-      if (sizeKB > 400) {
-        canvas.width = Math.round(w * 0.75); canvas.height = Math.round(h * 0.75);
-        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', 0.7));
+      if (sizeKB > 150) {
+        const fw = Math.round(w * 0.6), fh = Math.round(h * 0.6);
+        canvas.width = fw; canvas.height = fh;
+        canvas.getContext('2d').drawImage(img, 0, 0, fw, fh);
+        resolve(canvas.toDataURL('image/jpeg', 0.5));
       } else {
         resolve(dataUrl);
       }
