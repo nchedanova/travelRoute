@@ -32,7 +32,7 @@ function setModeBadge() {
   }
 }
 
-let _gistOwnerLogin = null; // кешируем логин владельца после первого API-запроса
+let _gistOwnerLogin = localStorage.getItem('travel_gist_owner') || null; // кешируем логин между сессиями
 
 async function fetchCloudData() {
   const headers = { 'Accept': 'application/vnd.github+json' };
@@ -52,7 +52,10 @@ async function fetchCloudData() {
   const json = await r.json();
 
   // Сохраняем логин для дальнейших запросов без токена
-  if (json.owner?.login) _gistOwnerLogin = json.owner.login;
+  if (json.owner?.login) {
+    _gistOwnerLogin = json.owner.login;
+    try { localStorage.setItem('travel_gist_owner', _gistOwnerLogin); } catch(e) {}
+  }
 
   const fileInfo = json.files['data.json'];
   if (!fileInfo) throw new Error('data.json not found in gist');
