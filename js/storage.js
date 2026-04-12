@@ -195,6 +195,7 @@ async function loadState() {
     const raw = localStorage.getItem('travel_tracker_v3');
     if (raw) {
       applyPayload(JSON.parse(raw));
+      _lastCloudHash = strHash(raw); // если облако вернёт те же данные — пропустим redraw
       _fullRedraw();
       _didRedraw = true;
       renderTabs();
@@ -406,6 +407,8 @@ async function pollCloud() {
   // Блокируем поллинг если пользователь активно вводит данные или идёт сохранение
   if (_userIsTyping || _userHasFocus) return;
   if (_saveCloudTimer) return;
+  // Не перебиваем активное редактирование/добавление точки или выбор на карте
+  if (window._inlineAddOpen || window._mapPickIsEdit || window._mapPickIsEditStart) return;
 
   try {
     const saved = await fetchCloudData();

@@ -777,6 +777,7 @@ function doEditStart() {
   redrawDay(day);
   saveData();
   showToast('✅ Старт обновлён');
+  if (typeof fetchStartWeather === 'function') fetchStartWeather(day);
 }
 
 // ── EDITABLE DATE ─────────────────────────────────────────────────────────────
@@ -918,6 +919,11 @@ function swapDays(fromDay, toDay) {
   renderAllDays();
   updateProgress();
   switchDay(dayKeys().includes(currentDay) ? currentDay : dayKeys()[0] || 1);
+  // Обновляем хэши чтобы ближайший pollCloud не счёл это внешним изменением
+  if (typeof _buildGeoHash === 'function') {
+    _lastGeoHash    = _buildGeoHash();
+    _lastViewerHash = _buildViewerHash();
+  }
   saveData();
   showToast('📅 Дни переставлены');
 }
@@ -1945,11 +1951,16 @@ function _finalizeInlineAdd(afterId, day, newId) {
   updateProgress();
   saveData();
   showToast('✅ Точка добавлена');
-  // Cascade от точки ПЕРЕД вставленной (или от начала)
   var stops  = DAYS_DATA[day].stops;
   var newIdx = stops.findIndex(function(x) { return x.id === newId; });
   var prevId = newIdx > 0 ? stops[newIdx - 1].id : null;
-  if (prevId && typeof cascadeAutoFillFrom === 'function') {
+  // Cascade: сбрасываем arrP только у точек ПОСЛЕ новой.
+  // Если newId уже имеет arrP (задан вручную) — каскад начинается от него,
+  // чтобы OSRM не перезаписал вручную введённое значение.
+  var newStop = stops[newIdx];
+  if (newStop && newStop.arrP) {
+    cascadeAutoFillFrom(day, newId);
+  } else if (prevId && typeof cascadeAutoFillFrom === 'function') {
     cascadeAutoFillFrom(day, prevId);
   } else {
     autoFillTimes(day);
@@ -2614,7 +2625,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.8.0';
-var APP_BUILD   = 24;
+var APP_BUILD   = 25;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 

@@ -42,6 +42,8 @@ function initGps() {
   if (!firebase.apps.length) {
     const cfg = Object.assign({}, FIREBASE_CONFIG, { apiKey: localStorage.getItem('travel_firebase_key') || '' });
     firebase.initializeApp(cfg);
+    // Инициируем заметки сразу после Firebase — не ждём открытия вкладки
+    if (typeof initNotes === 'function') setTimeout(initNotes, 0);
   }
 
   // Auth — use existing session (Google/anonymous) or create anonymous

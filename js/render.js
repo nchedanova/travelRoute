@@ -697,7 +697,7 @@ function renderTabs() {
     btn.textContent = data.dateISO ? fmtDateShort(data.dateISO) : (typeof _dayLabel === 'function' ? _dayLabel(d) : 'День ' + d);
     btn.onclick = () => switchDay(d);
     btn.style.setProperty('--dc', data.color);
-    if (d === currentDay && !data.hidden) {
+    if (d === currentDay) {
       btn.style.color           = data.color;
       btn.style.borderColor     = data.color;
       btn.style.backgroundColor = data.color + '1f';
