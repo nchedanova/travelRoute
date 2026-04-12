@@ -131,7 +131,7 @@ function setNoteType(type) {
     : 'Каждая строка — отдельный пункт списка…';
 }
 
-async function addNote() {
+function addNote() {
   // If editing — commit the edit
   if (_editingNoteKey) { commitEditNote(_editingNoteKey); return; }
 
@@ -156,8 +156,7 @@ async function addNote() {
   }
 
   if (hasImages) {
-    var uploaded = await Promise.all(_noteTabPendingImages.map(_uploadNoteImg));
-    payload.images = uploaded;
+    payload.images = _noteTabPendingImages.slice();
     _noteTabPendingImages = [];
     if (typeof _renderNoteTabPending === 'function') _renderNoteTabPending();
   }
@@ -262,9 +261,6 @@ function closeDeleteNoteModal() {
 }
 function doDeleteNote() {
   if (!_deleteNoteKey) return;
-  // Чистим фото из Firebase перед удалением
-  var entry = _notesData[_deleteNoteKey];
-  if (entry && entry.images) entry.images.forEach(_deleteNoteImg);
   if (_isDemoNotes()) { delete _notesData[_deleteNoteKey]; _saveDemoNotes(); }
   else if (_notesRef) { _notesRef.child(_deleteNoteKey).remove(); }
   closeDeleteNoteModal();
@@ -272,77 +268,8 @@ function doDeleteNote() {
 
 function onNotesTabOpen() { if (!_notesInited) initNotes(); }
 
-// ── NOTE IMAGE FIREBASE HELPERS ───────────────────────────────────────────────
-// Фото заметок к точкам и вкладке Заметки хранятся в Firebase Realtime DB
-// по пути note_imgs/{key}. В Gist/DAYS_DATA лежит ссылка "fb:{key}" (~20 байт).
-// Обратная совместимость: старые строки data:… рендерятся напрямую.
-
-var _fbImgCache = {}; // {key: dataUrl} — кэш после первого fetch
-
-function _noteImgDb() {
-  return (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length)
-    ? firebase.database() : null;
-}
-
-// Загружаем base64 в Firebase, возвращаем "fb:{key}" или исходный dataUrl при ошибке
-async function _uploadNoteImg(dataUrl) {
-  var db = _noteImgDb();
-  if (!db) return dataUrl;
-  try {
-    var ref = db.ref('note_imgs').push();
-    await ref.set({ data: dataUrl, ts: Date.now() });
-    _fbImgCache[ref.key] = dataUrl;
-    return 'fb:' + ref.key;
-  } catch(e) {
-    console.error('Note img upload error:', e);
-    return dataUrl; // fallback — кладём base64 в Gist как раньше
-  }
-}
-
-// Удаляем из Firebase (fire-and-forget)
-function _deleteNoteImg(ref) {
-  if (!ref || !ref.startsWith('fb:')) return;
-  var db = _noteImgDb();
-  if (!db) return;
-  var key = ref.slice(3);
-  db.ref('note_imgs/' + key).remove().catch(function() {});
-  delete _fbImgCache[key];
-}
-
-// Резолвим ссылку в src img-элемента: data: → сразу, fb: → async + кэш
-function _resolveNoteImg(ref, imgEl) {
-  if (!ref || !imgEl) return;
-  if (!ref.startsWith('fb:')) { imgEl.src = ref; return; }
-  var key = ref.slice(3);
-  if (_fbImgCache[key]) { imgEl.src = _fbImgCache[key]; return; }
-  imgEl.src = ''; imgEl.style.opacity = '0.3';
-  var db = _noteImgDb();
-  if (!db) return;
-  db.ref('note_imgs/' + key).once('value').then(function(snap) {
-    var d = snap.val();
-    if (d && d.data) { _fbImgCache[key] = d.data; imgEl.src = d.data; imgEl.style.opacity = ''; }
-  }).catch(function(e) { console.warn('Note img resolve:', e); });
-}
-
-// После innerHTML — резолвим все img[data-fbref] внутри контейнера
-function _resolveImgsInEl(el) {
-  if (!el) return;
-  el.querySelectorAll('img[data-fbref]').forEach(function(img) {
-    _resolveNoteImg(img.dataset.fbref, img);
-  });
-}
-
-// Генерация <img> тега с учётом fb: / data: ссылки
-function _noteImgTag(ref, extraAttrs) {
-  var attrs = extraAttrs || '';
-  if (ref && ref.startsWith('fb:')) {
-    return '<img data-fbref="' + _escN(ref) + '" src="" class="note-img-thumb"' + attrs + ' alt="">';
-  }
-  return '<img src="' + _escN(ref) + '" class="note-img-thumb"' + attrs + ' alt="">';
-}
-
 // ── STOP NOTES (notes[] array) ────────────────────────────────────────────────
-var _pendingStopImages = {}; // key: 'stopId-noteIdx' → [dataUrl, ...] (base64 до commit)
+var _pendingStopImages = {}; // key: 'stopId-noteIdx' → [dataUrl, ...]
 
 function _findStop(stopId) {
   var result = null;
@@ -387,9 +314,6 @@ function toggleNotePublic(stopId, idx, day) {
 function deleteStopNote(stopId, day, idx) {
   var s = _findStop(stopId);
   if (!s || !s.notes || !s.notes[idx]) return;
-  // Чистим фото из Firebase
-  var note = s.notes[idx];
-  if (note.images) note.images.forEach(_deleteNoteImg);
   s.notes.splice(idx, 1);
   delete _pendingStopImages[_pendingKey(stopId, idx)];
   saveData();
@@ -398,7 +322,7 @@ function deleteStopNote(stopId, day, idx) {
 }
 
 // ── COMMIT (save) ──
-async function commitStopNote(stopId, day, idx) {
+function commitStopNote(stopId, day, idx) {
   var s = _findStop(stopId);
   if (!s || !s.notes) return;
   var note = s.notes[idx];
@@ -407,12 +331,11 @@ async function commitStopNote(stopId, day, idx) {
 
   note.text = inp ? inp.value.trim() : '';
 
-  // Загружаем pending фото в Firebase, кладём "fb:key" вместо base64
+  // Commit pending images
   var pk = _pendingKey(stopId, idx);
   if (_pendingStopImages[pk] && _pendingStopImages[pk].length) {
     if (!note.images) note.images = [];
-    var uploaded = await Promise.all(_pendingStopImages[pk].map(_uploadNoteImg));
-    note.images = note.images.concat(uploaded);
+    note.images = note.images.concat(_pendingStopImages[pk]);
     delete _pendingStopImages[pk];
   }
 
@@ -466,7 +389,6 @@ function removePendingStopImage(stopId, noteIdx, imgIdx) {
   var pending = _pendingStopImages[pk] || [];
 
   if (imgIdx < saved.length) {
-    _deleteNoteImg(saved[imgIdx]); // чистим из Firebase если fb: ссылка
     saved.splice(imgIdx, 1);
     if (note) note.images = saved;
   } else {
@@ -486,10 +408,9 @@ function _renderStopNoteEditImages(stopId, idx) {
   var pending = _pendingStopImages[pk] || [];
   var all = saved.concat(pending);
   if (!all.length) { container.innerHTML = ''; return; }
-  container.innerHTML = all.map(function(ref, i) {
-    return '<div class="note-img-thumb-wrap">' + _noteImgTag(ref, ' onclick="event.stopPropagation();openChatPhoto(this)"') + '<button class="pending-thumb-remove" onclick="event.stopPropagation();removePendingStopImage(\'' + _escN(stopId) + '\',' + idx + ',' + i + ')">×</button></div>';
+  container.innerHTML = all.map(function(url, i) {
+    return '<div class="note-img-thumb-wrap"><img src="' + _escN(url) + '" class="note-img-thumb" onclick="event.stopPropagation();openChatPhoto(this)" alt=""><button class="pending-thumb-remove" onclick="event.stopPropagation();removePendingStopImage(\'' + _escN(stopId) + '\',' + idx + ',' + i + ')">×</button></div>';
   }).join('');
-  _resolveImgsInEl(container);
 }
 
 function _renderStopNotePreviewImages(stopId, idx) {
@@ -498,10 +419,9 @@ function _renderStopNotePreviewImages(stopId, idx) {
   var s = _findStop(stopId);
   var note = (s && s.notes) ? s.notes[idx] : null;
   var imgs = note ? (note.images || []) : [];
-  container.innerHTML = imgs.map(function(ref) {
-    return '<div class="note-img-thumb-wrap">' + _noteImgTag(ref, ' onclick="event.stopPropagation();openChatPhoto(this)"') + '</div>';
+  container.innerHTML = imgs.map(function(url) {
+    return '<div class="note-img-thumb-wrap"><img src="' + _escN(url) + '" class="note-img-thumb" onclick="event.stopPropagation();openChatPhoto(this)" alt=""></div>';
   }).join('');
-  _resolveImgsInEl(container);
 }
 
 function triggerStopNotePhoto(stopId, day, noteIdx) {
@@ -690,10 +610,9 @@ _renderNotesList = function() {
       imgContainer.className = 'note-images-inline';
       noteEl.appendChild(imgContainer);
     }
-    imgContainer.innerHTML = entry.images.map(ref =>
-      `<div class="note-img-thumb-wrap">${_noteImgTag(ref, ' onclick="openChatPhoto(this)"')}</div>`
+    imgContainer.innerHTML = entry.images.map(url =>
+      `<div class="note-img-thumb-wrap"><img src="${_escN(url)}" class="note-img-thumb" onclick="openChatPhoto(this)" alt=""></div>`
     ).join('');
-    _resolveImgsInEl(imgContainer);
   });
 };
 
