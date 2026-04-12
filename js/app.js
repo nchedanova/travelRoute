@@ -766,6 +766,7 @@ function doEditStart() {
   if (!lat || !lng) { alert('Укажите координаты'); return; }
   const icon = document.getElementById('edit-start-icon').value.trim() || '🚗';
   const day  = editStartDay;
+  const oldDepartP = DAYS_DATA[day].departP || '';
   DAYS_DATA[day].start   = { lat, lng, name, icon };
   DAYS_DATA[day].departP = document.getElementById('edit-start-departP').value.trim();
   closeEditStart();
@@ -775,12 +776,19 @@ function doEditStart() {
   if (planTimeEl) planTimeEl.textContent = DAYS_DATA[day].departP || '—';
   updateDayRoute(day);
   redrawDay(day);
-  // Сбросить arrP всех точек и пересчитать каскадно от нового времени старта
-  if (DAYS_DATA[day].stops.length && typeof autoFillTimes === 'function') {
+  // Если время старта изменилось — сдвигаем все plan-времена точек на дельту.
+  // Если у точки arrP пустой (не задан) — autoFillTimes заполнит его с нуля.
+  const oldMins = typeof timeToMins === 'function' ? timeToMins(oldDepartP) : null;
+  const newMins = typeof timeToMins === 'function' ? timeToMins(DAYS_DATA[day].departP) : null;
+  if (oldMins !== null && newMins !== null && oldMins !== newMins) {
+    const delta = newMins - oldMins;
     DAYS_DATA[day].stops.forEach(function(s) {
-      s.arrP = '';
-      if (typeof DEP_OFFSETS !== 'undefined' && DEP_OFFSETS[s.type]) s.depP = '';
+      if (s.arrP) s.arrP = shiftTime(s.arrP, delta);
+      if (s.depP) s.depP = shiftTime(s.depP, delta);
     });
+    renderStops(day);
+    updateProgress();
+  } else if (typeof autoFillTimes === 'function') {
     autoFillTimes(day);
   }
   saveData();
