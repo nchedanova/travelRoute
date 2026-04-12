@@ -775,6 +775,14 @@ function doEditStart() {
   if (planTimeEl) planTimeEl.textContent = DAYS_DATA[day].departP || '—';
   updateDayRoute(day);
   redrawDay(day);
+  // Сбросить arrP всех точек и пересчитать каскадно от нового времени старта
+  if (DAYS_DATA[day].stops.length && typeof autoFillTimes === 'function') {
+    DAYS_DATA[day].stops.forEach(function(s) {
+      s.arrP = '';
+      if (typeof DEP_OFFSETS !== 'undefined' && DEP_OFFSETS[s.type]) s.depP = '';
+    });
+    autoFillTimes(day);
+  }
   saveData();
   showToast('✅ Старт обновлён');
   if (typeof fetchStartWeather === 'function') fetchStartWeather(day);

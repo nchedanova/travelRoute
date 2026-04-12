@@ -492,6 +492,7 @@ function makeStopCard(s, day) {
   if (typeof _resolveImgsInEl === 'function') _resolveImgsInEl(div);
 
   if (typeof isAdmin === 'function' && isAdmin()) {
+    div.addEventListener('dragstart', onDragStart);
     div.addEventListener('dragover',  onDragOver);
     div.addEventListener('dragleave', onDragLeave);
     div.addEventListener('drop',      onDrop);
