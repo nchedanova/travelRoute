@@ -33,6 +33,8 @@ function initNotes() {
   _listenNotes();
   // Резолвим fb: ссылки на уже отрендеренных карточках (Firebase теперь готов)
   if (typeof _resolveAllNoteImgs === 'function') _resolveAllNoteImgs();
+  // Устанавливаем слушатели реакций для уже отрендеренных заметок
+  setTimeout(_setupAllNoteReactListeners, 0);
 }
 
 // ── DEMO NOTES (localStorage) ─────────────────────────────────────────────
@@ -721,6 +723,14 @@ var _noteReactData = {}; // {stopId_idx: {emoji:[sid,...]}}
 var _noteReactListeners = {}; // {stopId_idx: true}
 var _openReactPicker = null; // {stopId, idx} — открытый пикер
 
+// Устанавливает слушатели реакций для всех note-react-row на странице
+function _setupAllNoteReactListeners() {
+  document.querySelectorAll('[id^="note-react-row-"]').forEach(function(el) {
+    var m = el.id.match(/^note-react-row-(.+)-(\d+)$/);
+    if (m) _listenNoteReactions(m[1], parseInt(m[2]));
+  });
+}
+
 function _noteReactKey(stopId, idx) { return stopId + '_' + idx; }
 
 function initNoteReactions() {
@@ -758,6 +768,7 @@ function _listenNoteReactions(stopId, idx) {
   var k = _noteReactKey(stopId, idx);
   if (_noteReactListeners[k]) return;
   _noteReactListeners[k] = true;
+  // on('value') сразу отдаёт текущее значение — первый рендер получит данные без задержки
   _noteReactRef.child(stopId).child(String(idx)).on('value', function(snap) {
     _noteReactData[k] = snap.val() || {};
     _reRenderNoteReactions(stopId, idx);
@@ -768,6 +779,15 @@ function _reRenderNoteReactions(stopId, idx) {
   var el = document.getElementById('note-react-row-' + stopId + '-' + idx);
   if (!el) return;
   el.innerHTML = _buildReactRowHtml(stopId, idx);
+  // Обновляем подсветку кнопки пикера
+  var btn = el.closest('.stop-note-display')?.querySelector('.note-vis-btn[title="Реакция"]');
+  if (btn) {
+    var k = _noteReactKey(stopId, idx);
+    var r = _noteReactData[k] || {};
+    var sid = typeof getSessionId === 'function' ? getSessionId() : '';
+    var hasOwn = Object.values(r).some(function(sids){ return sids && sids.indexOf(sid) >= 0; });
+    btn.classList.toggle('note-react-active', hasOwn);
+  }
 }
 
 function _buildReactRowHtml(stopId, idx) {
@@ -792,14 +812,17 @@ function toggleNoteReaction(stopId, idx, emoji) {
   if (pos >= 0) { r[emoji].splice(pos, 1); if (!r[emoji].length) delete r[emoji]; }
   else r[emoji].push(sid);
   _noteReactData[k] = r;
+  // Немедленно обновляем UI — не ждём Firebase callback
+  _reRenderNoteReactions(stopId, idx);
   closeNoteReactPicker();
   if (_isDemoReactions()) {
     _demoSetReact(stopId, idx, r);
-    _reRenderNoteReactions(stopId, idx);
     return;
   }
   initNoteReactions();
   if (!_noteReactRef) return;
+  // Убеждаемся что слушатель установлен (мог не сработать при раннем рендере)
+  _listenNoteReactions(stopId, idx);
   _noteReactRef.child(stopId).child(String(idx)).set(Object.keys(r).length ? r : null);
 }
 
