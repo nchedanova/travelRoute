@@ -2231,7 +2231,13 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
   min-height: 36px; max-height: 200px;
   overflow-y: auto; outline: none;
   -webkit-user-select: text; user-select: text;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
 }
+.stop-note-bubble .stop-note-input::-webkit-scrollbar { width: 4px; }
+.stop-note-bubble .stop-note-input::-webkit-scrollbar-track { background: transparent; }
+.stop-note-bubble .stop-note-input::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.stop-note-bubble .stop-note-input::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 .stop-note-bubble .note-images-inline {
   padding: 0 6px 6px;
 }
