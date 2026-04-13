@@ -2300,6 +2300,10 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
   width: 12px; height: 12px; accent-color: var(--accent);
   cursor: pointer; flex-shrink: 0; margin: 0;
 }
+.stop-note-offline-hint {
+  font-size: 10px; color: var(--amber); padding: 4px 6px 2px;
+  line-height: 1.4;
+}
 .stop-note-btns {
   display: flex;
   flex-direction: column;
