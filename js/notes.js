@@ -531,7 +531,7 @@ function triggerStopNotePhoto(stopId, day, noteIdx) {
     var files = Array.from(inp.files).slice(0, MAX_NOTE_IMAGES);
     files.forEach(function(file) {
       if (typeof _compressToBase64 === 'function') {
-        _compressToBase64(file, 800, 0.65).then(function(dataUrl) {
+        _compressToBase64(file, 1600, 0.82).then(function(dataUrl) {
           addPendingStopImage(stopId, noteIdx, dataUrl);
         }).catch(function(err) { console.error('Stop note photo error:', err); });
       }
@@ -623,7 +623,7 @@ function _handleNotePaste(e) {
     if (!blob) return;
     // Сжимаем с тем же алгоритмом что и чат
     if (typeof _compressToBase64 === 'function') {
-      _compressToBase64(blob, 800, 0.65).then(dataUrl => {
+      _compressToBase64(blob, 1600, 0.82).then(dataUrl => {
         if (isNoteTab) {
           _addNoteTabImage(dataUrl);
         } else if (stopMatch) {
@@ -679,7 +679,7 @@ function triggerNoteTabPhoto() {
     var files = Array.from(inp.files).slice(0, MAX_NOTE_IMAGES - _noteTabPendingImages.length);
     files.forEach(function(file) {
       if (typeof _compressToBase64 === 'function') {
-        _compressToBase64(file, 800, 0.65).then(function(dataUrl) {
+        _compressToBase64(file, 1600, 0.82).then(function(dataUrl) {
           _addNoteTabImage(dataUrl);
         }).catch(function(err) { console.error('Note tab photo error:', err); });
       }

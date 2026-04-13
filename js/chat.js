@@ -694,14 +694,14 @@ function _compressToBase64(file, maxDim, quality) {
       canvas.width = w; canvas.height = h;
       canvas.getContext('2d').drawImage(img, 0, 0, w, h);
       const dataUrl = canvas.toDataURL('image/jpeg', quality);
-      // Fallback: если > 150 KB — сжимаем до 0.6× + quality 0.5
-      // (notes хранятся в Gist JSON, нельзя превышать ~150 KB на фото)
+      // Fallback: если > 400 KB — сжимаем до 0.75× + quality 0.7
+      // (notes теперь в Firebase, лимит Gist не актуален)
       const sizeKB = Math.round(dataUrl.length * 0.75 / 1024);
-      if (sizeKB > 150) {
-        const fw = Math.round(w * 0.6), fh = Math.round(h * 0.6);
+      if (sizeKB > 400) {
+        const fw = Math.round(w * 0.75), fh = Math.round(h * 0.75);
         canvas.width = fw; canvas.height = fh;
         canvas.getContext('2d').drawImage(img, 0, 0, fw, fh);
-        resolve(canvas.toDataURL('image/jpeg', 0.5));
+        resolve(canvas.toDataURL('image/jpeg', 0.7));
       } else {
         resolve(dataUrl);
       }

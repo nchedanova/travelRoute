@@ -239,7 +239,6 @@ async function loadState() {
     const saved = await fetchCloudData();
     const json  = JSON.stringify(saved);
     _lastCloudHash = strHash(json);
-    if (saved._savedAt) _lastAppliedSavedAt = saved._savedAt;
     const geoHashBefore = _buildGeoHash();
     applyPayload(saved);
     if (typeof enableRouteLoading === 'function') enableRouteLoading(); // реальные данные из облака — OSRM можно
@@ -328,7 +327,7 @@ function saveData() {
 let _lastCloudHash   = null;
 let _lastGeoHash     = null;
 let _lastViewerHash  = null;
-let _lastAppliedSavedAt = 0; // защита от CDN edge-флуктуаций
+
 let _userIsTyping  = false;
 let _userHasFocus  = false;  // любой инпут сфокусирован
 let _typingTimer   = null;
@@ -417,13 +416,10 @@ async function pollCloud() {
 
   try {
     const saved = await fetchCloudData();
-    // Игнорируем данные "из прошлого" — CDN edge-ноды могут вернуть устаревший кэш
-    if (saved._savedAt && saved._savedAt < _lastAppliedSavedAt) return;
     const json  = JSON.stringify(saved);
     const hash  = strHash(json);
     if (hash === _lastCloudHash) return;
     _lastCloudHash = hash;
-    if (saved._savedAt) _lastAppliedSavedAt = saved._savedAt;
 
     applyPayload(saved);
     try {
