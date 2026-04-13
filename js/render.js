@@ -462,7 +462,8 @@ function makeStopCard(s, day) {
           html += '<div class="stop-note-toolbar">';
           html += '<button class="note-vis-btn '+(n.public?'note-vis-on':'')+'" onmousedown="event.preventDefault()" onclick="toggleNotePublic(\''+s.id+'\','+i+','+day+')" title="'+(n.public?'Видна читателю':'Скрыта от читателя')+'">'+(n.public?eyeOn:eyeOff)+'</button>';
           html += '<button class="stop-note-photo-btn" onmousedown="event.preventDefault()" onclick="triggerStopNotePhoto(\''+s.id+'\','+day+','+i+')" title="Добавить фото">📷</button>';
-          var _offChk = (typeof _pendingStopOffline !== 'undefined' && _pendingStopOffline[s.id+'-'+i]) ? ' checked' : '';
+          var _hasOfflineImgs = n.images && n.images.some(function(r){return r&&r.startsWith('data:');});
+          var _offChk = (_hasOfflineImgs || (typeof _pendingStopOffline !== 'undefined' && _pendingStopOffline[s.id+'-'+i])) ? ' checked' : '';
           var _offHintStyle = _offChk ? '' : 'display:none';
           html += '<label class="stop-note-offline-label" onmousedown="event.preventDefault()"><input type="checkbox" onchange="setStopNoteOffline(\''+s.id+'\','+i+',this.checked);var h=document.getElementById(\'offline-hint-'+s.id+'-'+i+'\');if(h)h.style.display=this.checked?\'block\':\'none\'"'+_offChk+'>Фото офлайн</label>';
           html += '<div id="offline-hint-'+s.id+'-'+i+'" class="stop-note-offline-hint" style="'+_offHintStyle+'">⚠️ Фото в Gist: 800px, сжатие. Лимит ~14 фото.</div>';

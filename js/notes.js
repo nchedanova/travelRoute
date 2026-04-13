@@ -448,6 +448,10 @@ async function commitStopNote(stopId, day, idx) {
 
   // Загружаем pending фото
   var pk = _pendingKey(stopId, idx);
+  // Авто-детект: заметка уже содержит data: фото — считаем офлайн-режим
+  if (note.images && note.images.some(function(r){return r&&r.startsWith('data:');})) {
+    _pendingStopOffline[pk] = true;
+  }
   if (_pendingStopImages[pk] && _pendingStopImages[pk].length) {
     if (!note.images) note.images = [];
     if (_pendingStopOffline[pk]) {
@@ -570,6 +574,11 @@ function triggerStopNotePhoto(stopId, day, noteIdx) {
   inp.onchange = function() {
     if (!inp.files.length) return;
     var files = Array.from(inp.files).slice(0, MAX_NOTE_IMAGES);
+    // Авто-детект: если в заметке уже есть data: фото — режим офлайн
+    var _existNote = _findStop(stopId); var _existN = (_existNote&&_existNote.notes)?_existNote.notes[noteIdx]:null;
+    if (_existN && _existN.images && _existN.images.some(function(r){return r&&r.startsWith('data:');})) {
+      _pendingStopOffline[_pendingKey(stopId, noteIdx)] = true;
+    }
     var _offlineMode = !!_pendingStopOffline[_pendingKey(stopId, noteIdx)];
     var _maxDim = _offlineMode ? 800 : 1600;
     var _quality = _offlineMode ? 0.70 : 0.82;
