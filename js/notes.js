@@ -324,11 +324,11 @@ function _resolveNoteImg(ref, imgEl) {
   var key = ref.slice(3);
   var wrap = imgEl.parentElement;
   // Проверяем memory-кэш
-  if (_fbImgCache[key]) { imgEl.src = _fbImgCache[key]; if (wrap) wrap.classList.add('img-loaded'); return; }
+  if (_fbImgCache[key]) { imgEl.src = _fbImgCache[key]; imgEl.classList.remove('loading'); if (wrap) wrap.classList.add('img-loaded'); return; }
   // Проверяем sessionStorage (переживает рефреш в рамках сессии)
   try {
     var ss = sessionStorage.getItem('ni_' + key);
-    if (ss) { _fbImgCache[key] = ss; imgEl.src = ss; if (wrap) wrap.classList.add('img-loaded'); return; }
+    if (ss) { _fbImgCache[key] = ss; imgEl.src = ss; imgEl.classList.remove('loading'); if (wrap) wrap.classList.add('img-loaded'); return; }
   } catch(e) {}
   // Показываем placeholder пока грузим
   imgEl.classList.add('loading');
@@ -900,4 +900,3 @@ function buildNoteReactHtml(stopId, idx) {
   _listenNoteReactions(stopId, idx);
   return { btn: btn, row: row };
 }
-
