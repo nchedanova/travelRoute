@@ -455,18 +455,10 @@ async function pollCloud() {
     }
     // Если геометрия та же — слои не трогаем, линии по дорогам остаются
 
-    // Для читателя: renderAllDays только если изменились видимые данные
-    // (координаты, времена, public notes). Приватные заметки не мигают сайдбаром.
-    var newViewerHash = _buildViewerHash();
-    var viewerChanged = (newViewerHash !== _lastViewerHash);
-    _lastViewerHash = newViewerHash;
-
-    var shouldRenderUI = isAdmin() || viewerChanged;
-    if (shouldRenderUI) {
-      renderTabs();
-      renderAllDays();
-      if (typeof renderArchiveBtn === 'function') renderArchiveBtn();
-    }
+    // Данные изменились (_lastCloudHash уже это гарантирует) — рендерим UI
+    renderTabs();
+    renderAllDays();
+    if (typeof renderArchiveBtn === 'function') renderArchiveBtn();
     updateProgress();
     // Переключаем карту на текущий день только если изменилась геометрия —
     // иначе fitBounds прыгает на маршрут каждые 10 сек пока читатель смотрит на карту
