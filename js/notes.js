@@ -515,6 +515,9 @@ function _renderStopNoteEditImages(stopId, idx) {
     return '<div class="note-img-thumb-wrap">' + _noteImgTag(ref, ' onclick="event.stopPropagation();openChatPhoto(this)"') + '<button class="pending-thumb-remove" onclick="event.stopPropagation();removePendingStopImage(\'' + _escN(stopId) + '\',' + idx + ',' + i + ')">×</button></div>';
   }).join('');
   _resolveImgsInEl(container);
+  container.querySelectorAll('img.note-img-thumb:not([data-fbref])').forEach(function(img) {
+    if (img.parentElement) img.parentElement.classList.add('img-loaded');
+  });
 }
 
 function _renderStopNotePreviewImages(stopId, idx) {
