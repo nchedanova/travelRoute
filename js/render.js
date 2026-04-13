@@ -4,7 +4,7 @@ function _noteImgTag(ref, extraAttrs) {
   var a = extraAttrs || '';
   if (!ref) return '';
   if (ref.startsWith('fb:')) {
-    return '<img data-fbref="' + ref.replace(/"/g, '&quot;') + '" src="" class="note-img-thumb"' + a + ' alt="">';
+    return '<img data-fbref="' + ref.replace(/"/g, '&quot;') + '" src="" class="note-img-thumb loading"' + a + ' alt="">';
   }
   return '<img src="' + ref.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;') + '" class="note-img-thumb"' + a + ' alt="">';
 }

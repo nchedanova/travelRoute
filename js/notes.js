@@ -315,13 +315,27 @@ function _resolveNoteImg(ref, imgEl) {
   if (!ref || !imgEl) return;
   if (!ref.startsWith('fb:')) { imgEl.src = ref; return; }
   var key = ref.slice(3);
-  if (_fbImgCache[key]) { imgEl.src = _fbImgCache[key]; return; }
-  imgEl.style.opacity = '0.3';
+  var wrap = imgEl.parentElement;
+  // Проверяем memory-кэш
+  if (_fbImgCache[key]) { imgEl.src = _fbImgCache[key]; if (wrap) wrap.classList.add('img-loaded'); return; }
+  // Проверяем sessionStorage (переживает рефреш в рамках сессии)
+  try {
+    var ss = sessionStorage.getItem('ni_' + key);
+    if (ss) { _fbImgCache[key] = ss; imgEl.src = ss; if (wrap) wrap.classList.add('img-loaded'); return; }
+  } catch(e) {}
+  // Показываем placeholder пока грузим
+  imgEl.classList.add('loading');
   var db = _noteImgDb();
   if (!db) return;
   db.ref('note_imgs/' + key).once('value').then(function(snap) {
     var d = snap.val();
-    if (d && d.data) { _fbImgCache[key] = d.data; imgEl.src = d.data; imgEl.style.opacity = ''; }
+    if (d && d.data) {
+      _fbImgCache[key] = d.data;
+      try { sessionStorage.setItem('ni_' + key, d.data); } catch(e) {}
+      imgEl.src = d.data;
+      imgEl.classList.remove('loading');
+      if (wrap) wrap.classList.add('img-loaded');
+    }
   }).catch(function(e) { console.warn('Note img resolve:', e); });
 }
 
