@@ -160,11 +160,16 @@ async function addNote() {
   }
 
   if (hasImages) {
-    try {
-      var uploaded = await Promise.all(_noteTabPendingImages.map(_uploadNoteImg));
-      payload.images = uploaded;
-    } catch(e) {
+    var fbConnected = await _isFirebaseConnected();
+    if (!fbConnected) {
       showToast('⚠️ Нет связи с Firebase — фото не сохранены');
+    } else {
+      try {
+        var uploaded = await Promise.all(_noteTabPendingImages.map(_uploadNoteImg));
+        payload.images = uploaded;
+      } catch(e) {
+        showToast('⚠️ Нет связи с Firebase — фото не сохранены');
+      }
     }
     _noteTabPendingImages = [];
     if (typeof _renderNoteTabPending === 'function') _renderNoteTabPending();
@@ -289,6 +294,14 @@ var _fbImgCache = {};
 function _noteImgDb() {
   return (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length)
     ? firebase.database() : null;
+}
+
+function _isFirebaseConnected() {
+  return new Promise(function(resolve) {
+    var db = _noteImgDb();
+    if (!db) { resolve(false); return; }
+    db.ref('.info/connected').once('value', function(snap) { resolve(!!snap.val()); });
+  });
 }
 
 async function _uploadNoteImg(dataUrl) {
@@ -432,11 +445,16 @@ async function commitStopNote(stopId, day, idx) {
   var pk = _pendingKey(stopId, idx);
   if (_pendingStopImages[pk] && _pendingStopImages[pk].length) {
     if (!note.images) note.images = [];
-    try {
-      var uploaded = await Promise.all(_pendingStopImages[pk].map(_uploadNoteImg));
-      note.images = note.images.concat(uploaded);
-    } catch(e) {
+    var fbConnected = await _isFirebaseConnected();
+    if (!fbConnected) {
       showToast('⚠️ Нет связи с Firebase — фото не сохранены');
+    } else {
+      try {
+        var uploaded = await Promise.all(_pendingStopImages[pk].map(_uploadNoteImg));
+        note.images = note.images.concat(uploaded);
+      } catch(e) {
+        showToast('⚠️ Нет связи с Firebase — фото не сохранены');
+      }
     }
     delete _pendingStopImages[pk];
   }
