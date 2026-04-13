@@ -458,6 +458,8 @@ function makeStopCard(s, day) {
           html += '<div class="stop-note-toolbar">';
           html += '<button class="note-vis-btn '+(n.public?'note-vis-on':'')+'" onmousedown="event.preventDefault()" onclick="toggleNotePublic(\''+s.id+'\','+i+','+day+')" title="'+(n.public?'Видна читателю':'Скрыта от читателя')+'">'+(n.public?eyeOn:eyeOff)+'</button>';
           html += '<button class="stop-note-photo-btn" onmousedown="event.preventDefault()" onclick="triggerStopNotePhoto(\''+s.id+'\','+day+','+i+')" title="Добавить фото">📷</button>';
+          var _offChk = (typeof _pendingStopOffline !== 'undefined' && _pendingStopOffline[s.id+'-'+i]) ? ' checked' : '';
+          html += '<label class="stop-note-offline-label" onmousedown="event.preventDefault()"><input type="checkbox" onchange="setStopNoteOffline(\''+s.id+'\','+i+',this.checked)"'+_offChk+'>Фото офлайн</label>';
           html += '<div style="flex:1"></div>';
           html += '<button class="stop-note-del-btn" onmousedown="event.preventDefault()" onclick="deleteStopNote(\''+s.id+'\','+day+','+i+')" title="Удалить заметку">🗑️</button>';
           html += '<button class="stop-note-save-btn" onmousedown="event.preventDefault()" onclick="commitStopNote(\''+s.id+'\','+day+','+i+')" title="Сохранить">✓</button>';

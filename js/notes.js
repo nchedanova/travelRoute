@@ -361,6 +361,11 @@ function _resolveNoteImg(ref, imgEl) {
 
 // ── STOP NOTES (notes[] array) ────────────────────────────────────────────────
 var _pendingStopImages = {}; // key: 'stopId-noteIdx' → [dataUrl, ...] (base64 до commit)
+var _pendingStopOffline = {}; // key: 'stopId-noteIdx' → bool (true = сохранить в Gist)
+
+function setStopNoteOffline(stopId, idx, val) {
+  _pendingStopOffline[_pendingKey(stopId, idx)] = !!val;
+}
 
 function _findStop(stopId) {
   var result = null;
@@ -441,22 +446,28 @@ async function commitStopNote(stopId, day, idx) {
 
   note.text = inp ? inp.value.trim() : '';
 
-  // Загружаем pending фото в Firebase, кладём "fb:key" вместо base64
+  // Загружаем pending фото
   var pk = _pendingKey(stopId, idx);
   if (_pendingStopImages[pk] && _pendingStopImages[pk].length) {
     if (!note.images) note.images = [];
-    var fbConnected = await _isFirebaseConnected();
-    if (!fbConnected) {
-      showToast('⚠️ Нет связи с Firebase — фото не сохранены');
+    if (_pendingStopOffline[pk]) {
+      // Офлайн-режим: сохраняем base64 прямо в Gist (800px q0.70)
+      note.images = note.images.concat(_pendingStopImages[pk]);
     } else {
-      try {
-        var uploaded = await Promise.all(_pendingStopImages[pk].map(_uploadNoteImg));
-        note.images = note.images.concat(uploaded);
-      } catch(e) {
+      var fbConnected = await _isFirebaseConnected();
+      if (!fbConnected) {
         showToast('⚠️ Нет связи с Firebase — фото не сохранены');
+      } else {
+        try {
+          var uploaded = await Promise.all(_pendingStopImages[pk].map(_uploadNoteImg));
+          note.images = note.images.concat(uploaded);
+        } catch(e) {
+          showToast('⚠️ Нет связи с Firebase — фото не сохранены');
+        }
       }
     }
     delete _pendingStopImages[pk];
+    delete _pendingStopOffline[pk];
   }
 
   var hasContent = note.text || (note.images && note.images.length);
@@ -561,9 +572,12 @@ function triggerStopNotePhoto(stopId, day, noteIdx) {
   inp.onchange = function() {
     if (!inp.files.length) return;
     var files = Array.from(inp.files).slice(0, MAX_NOTE_IMAGES);
+    var _offlineMode = !!_pendingStopOffline[_pendingKey(stopId, noteIdx)];
+    var _maxDim = _offlineMode ? 800 : 1600;
+    var _quality = _offlineMode ? 0.70 : 0.82;
     files.forEach(function(file) {
       if (typeof _compressToBase64 === 'function') {
-        _compressToBase64(file, 1600, 0.82).then(function(dataUrl) {
+        _compressToBase64(file, _maxDim, _quality).then(function(dataUrl) {
           addPendingStopImage(stopId, noteIdx, dataUrl);
         }).catch(function(err) { console.error('Stop note photo error:', err); });
       }
@@ -921,3 +935,4 @@ function buildNoteReactHtml(stopId, idx) {
   _listenNoteReactions(stopId, idx);
   return { btn: btn, row: row };
 }
+
