@@ -365,11 +365,27 @@ function toggleNotePublic(stopId, idx, day) {
   showToast(s.notes[idx].public ? '👁 Видна читателю' : '🔒 Скрыта от читателя');
 }
 
-// ── DELETE NOTE ──
+// ── DELETE NOTE (с подтверждением) ──
+var _deleteStopNoteTarget = null; // {stopId, day, idx}
+
 function deleteStopNote(stopId, day, idx) {
+  _deleteStopNoteTarget = { stopId: stopId, day: day, idx: idx };
+  document.getElementById('deleteStopNoteModal')?.classList.add('show');
+}
+
+function closeDeleteStopNoteModal() {
+  _deleteStopNoteTarget = null;
+  document.getElementById('deleteStopNoteModal')?.classList.remove('show');
+}
+
+function doDeleteStopNote() {
+  if (!_deleteStopNoteTarget) return;
+  var stopId = _deleteStopNoteTarget.stopId;
+  var day    = _deleteStopNoteTarget.day;
+  var idx    = _deleteStopNoteTarget.idx;
+  closeDeleteStopNoteModal();
   var s = _findStop(stopId);
   if (!s || !s.notes || !s.notes[idx]) return;
-  // Чистим фото из Firebase
   var note = s.notes[idx];
   if (note.images) note.images.forEach(_deleteNoteImg);
   s.notes.splice(idx, 1);
@@ -709,14 +725,34 @@ function _noteReactKey(stopId, idx) { return stopId + '_' + idx; }
 
 function initNoteReactions() {
   if (_noteReactDb) return;
+  if (typeof isDemoMode === 'function' && isDemoMode()) return; // демо: localStorage
   var db = _noteImgDb();
   if (!db) return;
   _noteReactDb  = db;
   _noteReactRef = db.ref('note_reactions');
 }
 
-// Подписываемся на реакции конкретной заметки (при рендере карточки читателем)
+function _isDemoReactions() {
+  return typeof isDemoMode === 'function' && isDemoMode();
+}
+
+function _demoReactKey(stopId, idx) { return 'dr_' + stopId + '_' + idx; }
+
+function _demoGetReact(stopId, idx) {
+  try { return JSON.parse(localStorage.getItem(_demoReactKey(stopId, idx)) || 'null') || {}; }
+  catch(e) { return {}; }
+}
+
+function _demoSetReact(stopId, idx, r) {
+  try { localStorage.setItem(_demoReactKey(stopId, idx), JSON.stringify(r)); } catch(e) {}
+}
+
 function _listenNoteReactions(stopId, idx) {
+  if (_isDemoReactions()) {
+    var k = _noteReactKey(stopId, idx);
+    _noteReactData[k] = _demoGetReact(stopId, idx);
+    return;
+  }
   initNoteReactions();
   if (!_noteReactRef) return;
   var k = _noteReactKey(stopId, idx);
@@ -747,18 +783,24 @@ function _buildReactRowHtml(stopId, idx) {
 }
 
 function toggleNoteReaction(stopId, idx, emoji) {
-  initNoteReactions();
-  if (!_noteReactRef) return;
   var sid = typeof getSessionId === 'function' ? getSessionId() : '';
   if (!sid) return;
-  var k    = _noteReactKey(stopId, idx);
-  var r    = _noteReactData[k] ? JSON.parse(JSON.stringify(_noteReactData[k])) : {};
+  var k   = _noteReactKey(stopId, idx);
+  var r   = _noteReactData[k] ? JSON.parse(JSON.stringify(_noteReactData[k])) : {};
   if (!r[emoji]) r[emoji] = [];
-  var pos  = r[emoji].indexOf(sid);
+  var pos = r[emoji].indexOf(sid);
   if (pos >= 0) { r[emoji].splice(pos, 1); if (!r[emoji].length) delete r[emoji]; }
   else r[emoji].push(sid);
-  _noteReactRef.child(stopId).child(String(idx)).set(Object.keys(r).length ? r : null);
+  _noteReactData[k] = r;
   closeNoteReactPicker();
+  if (_isDemoReactions()) {
+    _demoSetReact(stopId, idx, r);
+    _reRenderNoteReactions(stopId, idx);
+    return;
+  }
+  initNoteReactions();
+  if (!_noteReactRef) return;
+  _noteReactRef.child(stopId).child(String(idx)).set(Object.keys(r).length ? r : null);
 }
 
 function openNoteReactPicker(btn, stopId, idx) {

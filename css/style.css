@@ -2373,6 +2373,17 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
   white-space: nowrap;
 }
 .note-react-picker::-webkit-scrollbar { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  .note-react-picker {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+    padding-bottom: 10px;
+  }
+  .note-react-picker::-webkit-scrollbar { display: block; height: 3px; }
+  .note-react-picker::-webkit-scrollbar-track { background: transparent; }
+  .note-react-picker::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .note-react-picker::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+}
 .pick-em {
   background: none; border: none;
   font-size: 20px; cursor: pointer;
