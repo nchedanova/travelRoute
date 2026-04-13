@@ -1153,7 +1153,13 @@ input.day-date-input {
   box-sizing: border-box;
   outline: none;
   transition: border-color 0.15s;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
 }
+.notes-textarea::-webkit-scrollbar { width: 4px; }
+.notes-textarea::-webkit-scrollbar-track { background: transparent; }
+.notes-textarea::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.notes-textarea::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 .notes-textarea:focus { border-color: var(--amber); }
 .notes-send-btn {
   align-self: flex-end;

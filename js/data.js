@@ -209,6 +209,16 @@ const DAYS_DATA = {
 // ── DEMO: скрываем день 5 (маршрут демо заканчивается в Каппадокии) ───────────
 if (typeof isDemoMode === 'function' && isDemoMode()) {
   delete DAYS_DATA[6];
+  // Мок-реакции для публичных заметок к точкам — чтобы читатель видел живой пример
+  var _demoMockReacts = {
+    'dr_d1s2_0': { '❤️': ['user1','user2','user3'], '😂': ['user4'] },
+    'dr_d1s7_0': { '👍': ['user1','user2'], '🥰': ['user3'] }
+  };
+  Object.keys(_demoMockReacts).forEach(function(k) {
+    if (!localStorage.getItem(k)) {
+      try { localStorage.setItem(k, JSON.stringify(_demoMockReacts[k])); } catch(e) {}
+    }
+  });
 }
 // ── STATE ─────────────────────────────────────────────────────────────────────
 let state = { actuals: {} };
