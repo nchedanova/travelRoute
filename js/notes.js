@@ -160,8 +160,12 @@ async function addNote() {
   }
 
   if (hasImages) {
-    var uploaded = await Promise.all(_noteTabPendingImages.map(_uploadNoteImg));
-    payload.images = uploaded;
+    try {
+      var uploaded = await Promise.all(_noteTabPendingImages.map(_uploadNoteImg));
+      payload.images = uploaded;
+    } catch(e) {
+      showToast('⚠️ Нет связи с Firebase — фото не сохранены');
+    }
     _noteTabPendingImages = [];
     if (typeof _renderNoteTabPending === 'function') _renderNoteTabPending();
   }
@@ -289,7 +293,10 @@ function _noteImgDb() {
 
 async function _uploadNoteImg(dataUrl) {
   var db = _noteImgDb();
-  if (!db) return dataUrl;
+  if (!db) {
+    // Firebase недоступен — фото не сохраняем, чтобы не переполнить Gist
+    throw new Error('Firebase недоступен');
+  }
   try {
     var ref = db.ref('note_imgs').push();
     await ref.set({ data: dataUrl, ts: Date.now() });
@@ -297,7 +304,7 @@ async function _uploadNoteImg(dataUrl) {
     return 'fb:' + ref.key;
   } catch(e) {
     console.error('Note img upload error:', e);
-    return dataUrl;
+    throw e; // не кладём base64 в Gist
   }
 }
 
@@ -425,8 +432,12 @@ async function commitStopNote(stopId, day, idx) {
   var pk = _pendingKey(stopId, idx);
   if (_pendingStopImages[pk] && _pendingStopImages[pk].length) {
     if (!note.images) note.images = [];
-    var uploaded = await Promise.all(_pendingStopImages[pk].map(_uploadNoteImg));
-    note.images = note.images.concat(uploaded);
+    try {
+      var uploaded = await Promise.all(_pendingStopImages[pk].map(_uploadNoteImg));
+      note.images = note.images.concat(uploaded);
+    } catch(e) {
+      showToast('⚠️ Нет связи с Firebase — фото не сохранены');
+    }
     delete _pendingStopImages[pk];
   }
 
@@ -616,7 +627,7 @@ function _handleNotePaste(e) {
   // Определяем контекст: заметки-вкладка или заметка-точки
   const target = e.target;
   const isNoteTab = target.id === 'noteInput';
-  const stopMatch = target.id?.match(/^stop-note-(.+)$/);
+  const stopMatch = target.id?.match(/^stop-note-(.+)-(\d+)$/);
 
   imageItems.forEach(item => {
     const blob = item.getAsFile();
@@ -627,7 +638,7 @@ function _handleNotePaste(e) {
         if (isNoteTab) {
           _addNoteTabImage(dataUrl);
         } else if (stopMatch) {
-          _addStopNoteImage(stopMatch[1], dataUrl);
+          addPendingStopImage(stopMatch[1], parseInt(stopMatch[2]), dataUrl);
         }
       }).catch(err => console.error('Note paste error:', err));
     }
