@@ -453,6 +453,7 @@ async function commitStopNote(stopId, day, idx) {
     if (_pendingStopOffline[pk]) {
       // Офлайн-режим: сохраняем base64 прямо в Gist (800px q0.70)
       note.images = note.images.concat(_pendingStopImages[pk]);
+      showToast('📴 Фото сохранены офлайн');
     } else {
       var fbConnected = await _isFirebaseConnected();
       if (!fbConnected) {
@@ -544,9 +545,6 @@ function _renderStopNoteEditImages(stopId, idx) {
     return '<div class="note-img-thumb-wrap">' + _noteImgTag(ref, ' onclick="event.stopPropagation();openChatPhoto(this)"') + '<button class="pending-thumb-remove" onclick="event.stopPropagation();removePendingStopImage(\'' + _escN(stopId) + '\',' + idx + ',' + i + ')">×</button></div>';
   }).join('');
   _resolveImgsInEl(container);
-  container.querySelectorAll('img.note-img-thumb:not([data-fbref])').forEach(function(img) {
-    if (img.parentElement) img.parentElement.classList.add('img-loaded');
-  });
 }
 
 function _renderStopNotePreviewImages(stopId, idx) {

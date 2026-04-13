@@ -6,13 +6,17 @@ function _noteImgTag(ref, extraAttrs) {
   if (ref.startsWith('fb:')) {
     return '<img data-fbref="' + ref.replace(/"/g, '&quot;') + '" src="" class="note-img-thumb loading"' + a + ' alt="">';
   }
-  return '<img src="' + ref.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;') + '" class="note-img-thumb"' + a + ' alt="">';
+  return '<img src="' + ref.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;') + '" class="note-img-thumb" onload="if(this.parentElement)this.parentElement.classList.add(&quot;img-loaded&quot;)"' + a + ' alt="">';
 }
 // Резолвит все img[data-fbref] внутри el; _resolveNoteImg определяется в notes.js
 function _resolveImgsInEl(el) {
   if (!el) return;
   el.querySelectorAll('img[data-fbref]').forEach(function(img) {
     if (typeof _resolveNoteImg === 'function') _resolveNoteImg(img.dataset.fbref, img);
+  });
+  // data: или http: — уже загружены, ставим img-loaded сразу
+  el.querySelectorAll('img.note-img-thumb:not([data-fbref])').forEach(function(img) {
+    if (img.complete && img.naturalWidth && img.parentElement) img.parentElement.classList.add('img-loaded');
   });
 }
 // Резолвит все img[data-fbref] на всей странице — вызывается после готовности Firebase
