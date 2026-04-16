@@ -991,7 +991,7 @@ function editDayIcon(d, triggerEl) {
   var customRow =
     '<div class="dip-custom-row">' +
       '<input id="dipCustom" class="edit-input" type="text" maxlength="4" placeholder="Свой…"' +
-      ' style="width:56px;height:26px;font-size:15px;text-align:center;padding:0 4px"' +
+      ' style="width:60px;height:28px;font-size:14px;font-family:\'JetBrains Mono\',monospace;text-align:center;padding:0 6px"' +
       ' onmousedown="event.stopPropagation()"' +
       ' oninput="if(this.value.trim())selectDayIcon(' + d + ',this.value.trim())">' +
       '<button class="dip-clear-btn" onmousedown="event.preventDefault()" onclick="selectDayIcon(' + d + ',\'\')">Убрать иконку</button>' +
