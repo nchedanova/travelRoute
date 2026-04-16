@@ -149,12 +149,17 @@ function initGps() {
     _showEl('speedDisplay');
   }
 
-  // Пауза слежения при ручном движении карты — автовозврат через 7 сек
+  // Пауза слежения при ручном drag-е карты — автовозврат через 7 сек после отпускания
+  // dragstart/dragend — Leaflet-события, НЕ срабатывают на программный panTo
   let _followPauseTimer = null;
-  map.on('mousedown touchstart', () => {
+  map.on('dragstart', () => {
     if (!_followCamera) return;
     _userPanned = true;
+    clearTimeout(_followPauseTimer);
     document.getElementById('gpsFollowBtn')?.classList.add('paused');
+  });
+  map.on('dragend', () => {
+    if (!_followCamera || !_userPanned) return;
     clearTimeout(_followPauseTimer);
     _followPauseTimer = setTimeout(() => {
       if (_userPanned) resumeGpsFollow();
