@@ -655,6 +655,18 @@ body.viewer-mode #undoBtn { display:none !important; }
 .day-date-wrap { display:inline-flex; align-items:center; gap:4px; cursor:pointer; }
 .day-date-wrap:hover .day-date-edit-icon { opacity:1; }
 .day-date-edit-icon { opacity:0; font-size:9px; color:var(--muted); transition:opacity 0.15s; }
+
+/* ── DAY ICON ────────────────────────────────────────── */
+.day-icon-wrap { display:inline-flex; align-items:center; gap:2px; cursor:pointer; }
+.day-icon-wrap:hover .day-date-edit-icon { opacity:1; }
+.day-icon-val { font-size:14px; line-height:1; }
+.day-icon-picker {
+  position:fixed; z-index:2000;
+  background:var(--surface2); border:1px solid var(--border); border-radius:8px;
+  padding:6px; display:flex; flex-wrap:wrap; gap:2px;
+  max-width:220px; box-shadow:0 4px 16px rgba(0,0,0,0.4);
+}
+.dip-reset { font-size:10px !important; color:var(--muted) !important; }
 input.day-date-input {
   background:transparent; border:none; border-bottom:1px solid var(--amber);
   color:var(--amber); font-family:'Unbounded',sans-serif; font-size:11px;
@@ -753,8 +765,7 @@ input.day-date-input {
 /* ── MOBILE ──────────────────────────────────────────── */
 @media (max-width:700px) {
   header { flex-wrap:nowrap; padding:8px 14px; gap:8px; }
-  .logo { font-size:14px; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .logo span { display:none; }
+  .logo { display:none; }
   .sidebar-toggle { display:none; }
   .header-right { gap:6px; scrollbar-width:none; }
   .header-right::-webkit-scrollbar { display:none; }

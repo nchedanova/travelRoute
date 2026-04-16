@@ -550,6 +550,7 @@ function renderDaySection(d) {
     <div class="day-header" style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;">
       <div style="flex:1;min-width:0">
         <div class="day-label" style="color:${data.color};">
+          ${isAdmin() ? `<span class="day-icon-wrap" id="d${d}-day-icon-wrap" onclick="editDayIcon(${d}, this)" title="Иконка дня"><span class="day-icon-val" id="d${d}-day-icon">${data.icon || '📅'}</span><span class="day-date-edit-icon">✏️</span></span> · ` : (data.icon ? `<span class="day-icon-val">${data.icon}</span> · ` : '')}
           <span class="day-date-wrap" ${isAdmin() ? `onclick="editDayDate(${d}, this)" title="Нажмите для изменения даты"` : ''}>
             <span class="day-date-text">${data.dateISO || 'Дата'}</span>
             ${isAdmin() ? `<span class="day-date-edit-icon">✏️</span>` : ''}
@@ -713,7 +714,7 @@ function renderTabs() {
     const btn  = document.createElement('button');
     btn.className  = 'day-tab' + (d === currentDay ? ' active' : '') + (data.hidden ? ' day-hidden' : '');
     btn.dataset.day = d;
-    btn.textContent = data.dateISO ? fmtDateShort(data.dateISO) : (typeof _dayLabel === 'function' ? _dayLabel(d) : 'День ' + d);
+    btn.textContent = (data.icon ? data.icon + ' ' : '') + (data.dateISO ? fmtDateShort(data.dateISO) : (typeof _dayLabel === 'function' ? _dayLabel(d) : 'День ' + d));
     btn.onclick = () => switchDay(d);
     btn.style.setProperty('--dc', data.color);
     if (d === currentDay) {

@@ -964,7 +964,68 @@ function editDesc(day, wrapEl) {
   };
 }
 
-// ── DAY OVERFLOW MENU ─────────────────────────────────────────────────────────
+// ── DAY ICON PICKER ────────────────────────────────────────────────────────────
+function editDayIcon(d, triggerEl) {
+  // Закрыть если уже открыт для этого дня
+  var existing = document.getElementById('dayIconPickerInline');
+  if (existing) {
+    if (existing.dataset.forDay === String(d)) { existing.remove(); return; }
+    existing.remove();
+  }
+
+  // Собираем иконки: все из ICON_SETS без дублей
+  var icons = [];
+  Object.keys(ICON_SETS).forEach(function(k) {
+    ICON_SETS[k].forEach(function(ic) { if (icons.indexOf(ic) === -1) icons.push(ic); });
+  });
+
+  var current = DAYS_DATA[d] && DAYS_DATA[d].icon || '';
+  var picker = document.createElement('div');
+  picker.id = 'dayIconPickerInline';
+  picker.className = 'day-icon-picker';
+  picker.dataset.forDay = String(d);
+
+  // Кнопка «сбросить»
+  var resetBtn = '<button class="icon-pick-stop-btn dip-reset" title="Убрать иконку" onmousedown="event.preventDefault()" onclick="selectDayIcon(' + d + ',\'\')">✕</button>';
+  picker.innerHTML = resetBtn + icons.map(function(ic) {
+    return '<button class="icon-pick-stop-btn' + (ic === current ? ' ip-sel' : '') + '" onmousedown="event.preventDefault()" onclick="selectDayIcon(' + d + ',\'' + ic + '\')">' + ic + '</button>';
+  }).join('');
+
+  // Позиция — под триггером
+  document.body.appendChild(picker);
+  var tr = triggerEl.getBoundingClientRect();
+  var ph = picker.offsetHeight || 120;
+  var pw = picker.offsetWidth  || 200;
+  var top = tr.bottom + window.scrollY + 4;
+  var left = Math.max(4, Math.min(tr.left + window.scrollX, window.innerWidth - pw - 4));
+  picker.style.top  = top  + 'px';
+  picker.style.left = left + 'px';
+
+  // Закрытие по клику вне
+  setTimeout(function() {
+    document.addEventListener('click', _dayIconOutside);
+  }, 0);
+}
+
+function _dayIconOutside(e) {
+  var p = document.getElementById('dayIconPickerInline');
+  if (p && !p.contains(e.target)) {
+    p.remove();
+    document.removeEventListener('click', _dayIconOutside);
+  }
+}
+
+function selectDayIcon(d, icon) {
+  if (!DAYS_DATA[d]) return;
+  DAYS_DATA[d].icon = icon;
+  // Обновляем отображение в хэдере дня
+  var iconEl = document.getElementById('d' + d + '-day-icon');
+  if (iconEl) iconEl.textContent = icon || '📅';
+  renderTabs();
+  saveData();
+  var p = document.getElementById('dayIconPickerInline');
+  if (p) { p.remove(); document.removeEventListener('click', _dayIconOutside); }
+}
 function toggleDayMenu(d) {
   var menu = document.getElementById('dayMenu' + d);
   if (!menu) return;
@@ -2775,7 +2836,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.8.0';
-var APP_BUILD   = 45;
+var APP_BUILD   = 46;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 
