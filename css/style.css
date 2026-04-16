@@ -623,6 +623,34 @@ body.viewer-mode #undoBtn { display:none !important; }
 .search-result-item .result-sub { font-size:9px; color:var(--muted); margin-top:2px; }
 .search-spinner { font-size:10px; color:var(--muted); padding:8px 10px; }
 
+/* ── GEO LOCATION BUTTON ─────────────────────────────── */
+.geo-loc-btn {
+  display:flex; align-items:center; gap:6px;
+  width:100%; height:28px; margin-bottom:8px; margin-top:2px;
+  padding:0 10px; border-radius:6px; cursor:pointer; font-family:inherit;
+  font-size:11px; color:var(--accent); background:var(--surface);
+  border:1px solid var(--border);
+}
+.geo-loc-btn:hover { border-color:var(--accent); }
+.geo-loc-dot {
+  width:7px; height:7px; border-radius:50%; flex-shrink:0;
+  background:var(--green);
+}
+
+/* ── REVERSE DAY MODAL LIST ──────────────────────────── */
+.rev-item {
+  display:flex; align-items:center; gap:8px; padding:6px 4px;
+  border-bottom:1px solid var(--border); cursor:pointer; font-size:11px;
+}
+.rev-item:last-child { border-bottom:none; }
+.rev-item:hover { background:var(--surface); border-radius:4px; }
+.rev-icon { font-size:13px; width:18px; text-align:center; flex-shrink:0; }
+.rev-name { flex:1; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.rev-badge {
+  font-size:9px; color:var(--muted); background:var(--surface2);
+  border-radius:3px; padding:1px 5px; flex-shrink:0;
+}
+
 /* ── EDITABLE DATE ───────────────────────────────────── */
 .day-date-wrap { display:inline-flex; align-items:center; gap:4px; cursor:pointer; }
 .day-date-wrap:hover .day-date-edit-icon { opacity:1; }

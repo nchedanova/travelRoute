@@ -149,11 +149,16 @@ function initGps() {
     _showEl('speedDisplay');
   }
 
-  // Пауза слежения при ручном движении карты
+  // Пауза слежения при ручном движении карты — автовозврат через 7 сек
+  let _followPauseTimer = null;
   map.on('mousedown touchstart', () => {
     if (!_followCamera) return;
     _userPanned = true;
     document.getElementById('gpsFollowBtn')?.classList.add('paused');
+    clearTimeout(_followPauseTimer);
+    _followPauseTimer = setTimeout(() => {
+      if (_userPanned) resumeGpsFollow();
+    }, 7000);
   });
 }
 
@@ -272,6 +277,7 @@ function _panTo(lat, lng) {
 
 // Кнопка "вернуться к позиции" после ручного движения
 function resumeGpsFollow() {
+  if (typeof _followPauseTimer !== 'undefined') clearTimeout(_followPauseTimer);
   _userPanned    = false;
   _followCamera  = true;
   document.getElementById('gpsFollowBtn')?.classList.remove('paused');

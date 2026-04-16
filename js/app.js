@@ -341,6 +341,98 @@ function closeAddStop() {
   addStopDay = null;
 }
 
+// ── ГЕОЛОКАЦИЯ — «Использовать моё местоположение» ────────────────────────────
+function _useCurrentLocation(onSuccess) {
+  // Если GPS-маркер уже активен — берём его позицию без запроса
+  if (typeof _gpsMarker !== 'undefined' && _gpsMarker) {
+    var ll = _gpsMarker.getLatLng();
+    fetch('https://nominatim.openstreetmap.org/reverse?lat=' + ll.lat + '&lon=' + ll.lng + '&format=json&accept-language=ru')
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        var name = d.name || (d.address && (d.address.road || d.address.village || d.address.town || d.address.city)) || '';
+        onSuccess({ lat: ll.lat, lng: ll.lng, name: name, display: d.display_name || '' });
+      })
+      .catch(function() { onSuccess({ lat: ll.lat, lng: ll.lng, name: '', display: '' }); });
+    return;
+  }
+  if (!navigator.geolocation) { showToast('GPS недоступен в браузере'); return; }
+  showToast('📡 Определяю местоположение…');
+  navigator.geolocation.getCurrentPosition(function(pos) {
+    var lat = pos.coords.latitude, lng = pos.coords.longitude;
+    fetch('https://nominatim.openstreetmap.org/reverse?lat=' + lat + '&lon=' + lng + '&format=json&accept-language=ru')
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        var name = d.name || (d.address && (d.address.road || d.address.village || d.address.town || d.address.city)) || '';
+        onSuccess({ lat: lat, lng: lng, name: name, display: d.display_name || '' });
+      })
+      .catch(function() { onSuccess({ lat: lat, lng: lng, name: '', display: '' }); });
+  }, function(err) { showToast('⚠️ Нет доступа к GPS'); }, { enableHighAccuracy: true, timeout: 10000 });
+}
+
+// Для модалки «Новая точка»
+function useCurrentLocationForModal() {
+  _useCurrentLocation(function(loc) {
+    newStopLat = loc.lat; newStopLng = loc.lng;
+    if (loc.display) document.getElementById('nominatim-input').value = loc.display;
+    if (loc.name)    document.getElementById('new-stop-name').value   = loc.name;
+    document.getElementById('new-stop-lat').value = loc.lat.toFixed(6);
+    document.getElementById('new-stop-lng').value = loc.lng.toFixed(6);
+    document.getElementById('new-stop-coords-text').textContent = loc.lat.toFixed(5) + ', ' + loc.lng.toFixed(5);
+    document.getElementById('new-stop-coords-display').style.display = 'block';
+    if (typeof resumeGpsFollow === 'function') resumeGpsFollow();
+  });
+}
+
+// Для модалки «Точка старта»
+function useCurrentLocationForStart() {
+  _useCurrentLocation(function(loc) {
+    editStartLat = loc.lat; editStartLng = loc.lng;
+    if (loc.display) document.getElementById('edit-start-search').value = loc.display;
+    if (loc.name)    document.getElementById('edit-start-name').value   = loc.name;
+    document.getElementById('edit-start-lat').value = loc.lat.toFixed(6);
+    document.getElementById('edit-start-lng').value = loc.lng.toFixed(6);
+    document.getElementById('edit-start-coords-text').textContent = loc.lat.toFixed(5) + ', ' + loc.lng.toFixed(5);
+    document.getElementById('edit-start-coords-display').style.display = 'flex';
+    if (typeof resumeGpsFollow === 'function') resumeGpsFollow();
+  });
+}
+
+// Для инлайн-формы редактирования точки
+function useCurrentLocationForEdit(id) {
+  _useCurrentLocation(function(loc) {
+    _editStopCoords[id] = { lat: loc.lat, lng: loc.lng };
+    if (loc.display) { var s = document.getElementById('ei-search-' + id); if (s) s.value = loc.display; }
+    if (loc.name)    { var n = document.getElementById('ei-name-'   + id); if (n && !n.value) n.value = loc.name; }
+    var latEl = document.getElementById('ei-lat-' + id);
+    var lngEl = document.getElementById('ei-lng-' + id);
+    var txtEl = document.getElementById('ei-coords-' + id + '-text');
+    var dspEl = document.getElementById('ei-coords-' + id + '-display');
+    if (latEl) latEl.value = loc.lat.toFixed(6);
+    if (lngEl) lngEl.value = loc.lng.toFixed(6);
+    if (txtEl) txtEl.textContent = loc.lat.toFixed(5) + ', ' + loc.lng.toFixed(5);
+    if (dspEl) dspEl.style.display = 'flex';
+    if (typeof resumeGpsFollow === 'function') resumeGpsFollow();
+  });
+}
+
+// Для инлайн-формы добавления точки
+function useCurrentLocationForAdd(afterId) {
+  _useCurrentLocation(function(loc) {
+    _inlineAddCoords[afterId] = { lat: loc.lat, lng: loc.lng };
+    if (loc.display) { var s = document.getElementById('ia-search-' + afterId); if (s) s.value = loc.display; }
+    if (loc.name)    { var n = document.getElementById('ia-name-'   + afterId); if (n && !n.value) n.value = loc.name; }
+    var latEl = document.getElementById('ia-lat-' + afterId);
+    var lngEl = document.getElementById('ia-lng-' + afterId);
+    var txtEl = document.getElementById('ia-coords-' + afterId + '-text');
+    var dspEl = document.getElementById('ia-coords-' + afterId + '-display');
+    if (latEl) latEl.value = loc.lat.toFixed(6);
+    if (lngEl) lngEl.value = loc.lng.toFixed(6);
+    if (txtEl) txtEl.textContent = loc.lat.toFixed(5) + ', ' + loc.lng.toFixed(5);
+    if (dspEl) dspEl.style.display = 'block';
+    if (typeof resumeGpsFollow === 'function') resumeGpsFollow();
+  });
+}
+
 function nominatimSearch(q) {
   clearTimeout(nominatimTimer);
   const res = document.getElementById('nominatim-results');
@@ -1036,65 +1128,97 @@ function _archiveOutsideClick(e) {
 }
 
 // ── REVERSE DAY ROUTE ─────────────────────────────────────────────────────────
+var _reverseDayTarget = null;
+
 function reverseDay(d) {
   var day = DAYS_DATA[d];
   if (!day) return;
+  if (!day.stops || !day.stops.length) { showToast('⚠ Нет точек для обратного маршрута'); return; }
+  _reverseDayTarget = d;
 
-  var lastStop = day.stops[day.stops.length - 1];
-  if (!lastStop) { showToast('⚠ Нет точек для обратного маршрута'); return; }
-
-  // New start = last stop of original day
-  var newStart = {
-    lat: lastStop.lat, lng: lastStop.lng,
-    name: lastStop.name, icon: lastStop.icon || '📍'
-  };
-
-  // Collect intermediate accommodation stops (exclude last stop + any at same coords as new start)
-  var accomStops = day.stops.filter(function(s) {
-    if (s.type !== 'Отель' && s.type !== 'Жильё') return false;
-    if (s.id === lastStop.id) return false;
-    if (Math.abs(s.lat - newStart.lat) < 0.001 && Math.abs(s.lng - newStart.lng) < 0.001) return false;
-    return true;
+  // Список для попапа: все точки в обратном порядке + оригинальный старт в конце
+  // Порядок = порядок нового маршрута (первый пункт станет start нового дня)
+  var reversed = day.stops.slice().reverse(); // последняя стоп → первая
+  var points = reversed.map(function(s) {
+    return { icon: s.icon || '📍', name: s.name, id: s.id, isOrigStop: true };
   });
+  // Оригинальный старт = финишная точка нового маршрута
+  var startSameAsLast = day.stops.length &&
+    Math.abs(day.start.lat - day.stops[day.stops.length-1].lat) < 0.001 &&
+    Math.abs(day.start.lng - day.stops[day.stops.length-1].lng) < 0.001;
+  if (!startSameAsLast) {
+    points.push({ icon: day.start.icon || '🚗', name: day.start.name, id: '__start__', isOrigStop: false });
+  }
 
-  // Build reversed stops: accommodation in reverse order
+  var html = points.map(function(p, i) {
+    var checked = (i === 0 || i === points.length - 1) ? 'checked' : '';
+    var badge = i === 0 ? '<span class="rev-badge">старт</span>'
+               : i === points.length - 1 ? '<span class="rev-badge">финиш</span>' : '';
+    return '<label class="rev-item"><input type="checkbox" class="rev-cb" data-idx="' + i + '" ' + checked + '>' +
+           '<span class="rev-icon">' + p.icon + '</span>' +
+           '<span class="rev-name">' + (p.name || '—') + '</span>' + badge + '</label>';
+  }).join('');
+
+  document.getElementById('reverseDayList').innerHTML = html;
+  // Сохраняем points-данные для doReverseDay
+  document.getElementById('reverseDayList').dataset.points = JSON.stringify(points);
+  document.getElementById('reverseDayModal').classList.add('show');
+}
+
+function closeReverseDayModal() {
+  document.getElementById('reverseDayModal').classList.remove('show');
+  _reverseDayTarget = null;
+}
+
+function doReverseDay() {
+  var d = _reverseDayTarget;
+  if (d === null) return;
+  var day = DAYS_DATA[d];
+  if (!day) return;
+
+  var list   = document.getElementById('reverseDayList');
+  var points = JSON.parse(list.dataset.points || '[]');
+  var cbs    = list.querySelectorAll('.rev-cb');
+  var selected = [];
+  cbs.forEach(function(cb, i) { if (cb.checked && points[i]) selected.push(points[i]); });
+
+  if (selected.length < 1) { showToast('⚠ Выберите хотя бы одну точку'); return; }
+
+  // Первый выбранный = start нового дня
+  var firstSel = selected[0];
+  var origStop = firstSel.isOrigStop ? day.stops.find(function(s) { return s.id === firstSel.id; }) : null;
+  var newStart = origStop
+    ? { lat: origStop.lat, lng: origStop.lng, name: origStop.name, icon: origStop.icon || '📍' }
+    : { lat: day.start.lat, lng: day.start.lng, name: day.start.name, icon: day.start.icon || '🚗' };
+
+  // Остальные = stops
   var newStops = [];
-  for (var i = accomStops.length - 1; i >= 0; i--) {
-    var s = accomStops[i];
-    newStops.push({
-      id: '', num: 0, icon: s.icon || '🛎️', type: s.type,
-      name: s.name, lat: s.lat, lng: s.lng,
-      arrP: '', depP: '', arrA: '', depA: '', notes: []
-    });
+  for (var i = 1; i < selected.length; i++) {
+    var sel = selected[i];
+    var src = sel.isOrigStop ? day.stops.find(function(s) { return s.id === sel.id; }) : null;
+    if (!src && !sel.isOrigStop) {
+      // Оригинальный старт
+      newStops.push({ id: '', num: 0, icon: day.start.icon || '🚗', type: 'Другое',
+        name: day.start.name, lat: day.start.lat, lng: day.start.lng,
+        arrP: '', depP: '', arrA: '', depA: '', notes: [] });
+    } else if (src) {
+      newStops.push({ id: '', num: 0, icon: src.icon || '📍', type: src.type || 'Другое',
+        name: src.name, lat: src.lat, lng: src.lng,
+        arrP: '', depP: '', arrA: '', depA: '', notes: [] });
+    }
   }
 
-  // Final destination = original start (only if not the same place as newStart)
-  var startSameAsEnd = Math.abs(day.start.lat - newStart.lat) < 0.001 && Math.abs(day.start.lng - newStart.lng) < 0.001;
-  if (!startSameAsEnd) {
-    newStops.push({
-      id: '', num: 0, icon: day.start.icon || '🚗', type: 'Другое',
-      name: day.start.name, lat: day.start.lat, lng: day.start.lng,
-      arrP: '', depP: '', arrA: '', depA: '', notes: []
-    });
-  }
-
-  // Create new day
   var keys = dayKeys();
   var newD = Math.max.apply(null, keys) + 1;
-  var colorIdx = keys.length % DAY_COLORS.length;
+  var colorIdx = keys.filter(function(k) { return !DAYS_DATA[k].archived; }).length % DAY_COLORS.length;
 
-  // Assign IDs
   newStops.forEach(function(s, i) { s.id = 'd' + newD + 's' + (i + 1); s.num = i + 1; });
 
-  var descParts = [newStart.name, newStops[newStops.length - 1]?.name].filter(Boolean);
-
+  var descParts = [newStart.name, newStops.length ? newStops[newStops.length-1].name : ''].filter(Boolean);
   DAYS_DATA[newD] = {
-    color: DAY_COLORS[colorIdx],
-    dateISO: '',
+    color: DAY_COLORS[colorIdx], dateISO: '',
     date: descParts.join(' → ') || 'Обратный маршрут',
-    departP: '', departA: '',
-    start: newStart,
-    stops: newStops
+    departP: '', departA: '', start: newStart, stops: newStops
   };
 
   layers[newD] = L.layerGroup();
@@ -1106,6 +1230,7 @@ function reverseDay(d) {
   redrawDay(newD);
   switchDay(newD);
   saveData();
+  closeReverseDayModal();
   showToast('↩ Обратный маршрут создан');
 }
 
@@ -1498,6 +1623,9 @@ function editStop(id, day) {
         <div class="search-results" id="ei-results-${id}"></div>
       </div>
     </div>
+    <button class="geo-loc-btn" onclick="useCurrentLocationForEdit('${id}')" onmousedown="event.preventDefault()">
+      <span class="geo-loc-dot"></span>Моё местоположение
+    </button>
     <div id="ei-coords-${id}-display" style="display:${s.lat ? 'flex' : 'none'};align-items:center;justify-content:space-between;padding:4px 8px;background:var(--bg);border-radius:5px;border:1px solid var(--border);margin-bottom:8px;font-size:11px;">
       <span style="color:var(--muted);">📍 <span id="ei-coords-${id}-text">${s.lat ? s.lat.toFixed(5) + ', ' + s.lng.toFixed(5) : ''}</span></span>
       <span style="color:var(--muted);font-size:10px;">💡 Или перетащите маркер</span>
@@ -1665,6 +1793,9 @@ function openInlineAddStop(afterId, day) {
         <div class="search-results" id="ia-results-${afterId}"></div>
       </div>
     </div>
+    <button class="geo-loc-btn" onclick="useCurrentLocationForAdd('${afterId}')" onmousedown="event.preventDefault()">
+      <span class="geo-loc-dot"></span>Моё местоположение
+    </button>
     <div id="ia-coords-${afterId}-display" style="font-size:10px;color:var(--green);margin-bottom:6px;display:none;">
       📍 <span id="ia-coords-${afterId}-text"></span>
     </div>
@@ -1789,6 +1920,9 @@ function openInlineAddFirstStop(day) {
         <div class="search-results" id="ia-results-${fakeId}"></div>
       </div>
     </div>
+    <button class="geo-loc-btn" onclick="useCurrentLocationForAdd('${fakeId}')" onmousedown="event.preventDefault()">
+      <span class="geo-loc-dot"></span>Моё местоположение
+    </button>
     <div id="ia-coords-${fakeId}-display" style="display:none;align-items:center;justify-content:space-between;padding:4px 8px;background:var(--bg);border-radius:5px;border:1px solid var(--border);margin-bottom:8px;font-size:11px;">
       <span style="color:var(--muted);">📍 <span id="ia-coords-${fakeId}-text"></span></span>
       <span style="color:var(--muted);font-size:10px;">💡 Или перетащите маркер</span>
@@ -2641,7 +2775,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.8.0';
-var APP_BUILD   = 42;
+var APP_BUILD   = 44;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 

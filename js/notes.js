@@ -93,7 +93,7 @@ function _renderNotesList() {
         entry.items.map(it => `
           <label class="note-check-row" onclick="if(event.target.tagName==='A')event.preventDefault()">
             <input type="checkbox" ${it.done?'checked':''} onchange="toggleNoteItem('${entry.key}','${it.id}',this.checked)" style="accent-color:var(--amber)">
-            <span class="${it.done?'note-item-done':''}">${_linkifyN(it.text)}</span>
+            <span class="${it.done?'note-item-done':''}">${_linkifyN(it.text).replace(/\n/g,'<br>')}</span>
           </label>`).join('') +
         '</div>';
     } else if (entry.type === 'other') {
@@ -153,7 +153,7 @@ async function addNote() {
   } else {
     payload.items = text.split('\n').filter(l=>l.trim()).map(l => ({
       id: Math.random().toString(36).slice(2),
-      text: l.trim(),
+      text: l.replace(/\u2028/g, '\n').trim(),
       done: false
     }));
     if (!payload.items.length && !hasImages) return;
@@ -187,7 +187,14 @@ function _demoAddNote(payload) {
 }
 
 function noteInputKeydown(e) {
-  if (e.key === 'Enter' && e.ctrlKey) { e.preventDefault(); addNote(); }
+  if (e.key === 'Enter' && e.ctrlKey) { e.preventDefault(); addNote(); return; }
+  // Desktop only: Shift+Enter = мягкий перенос внутри пункта (не новый пункт)
+  if (e.key === 'Enter' && e.shiftKey && !e.ctrlKey && _noteType !== 'other') {
+    if (!/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+      e.preventDefault();
+      document.execCommand('insertText', false, '\u2028');
+    }
+  }
 }
 
 // ── CHECKBOX TOGGLE ────────────────────────────────────────────────────────────
@@ -211,7 +218,7 @@ function startEditNote(key) {
     if (entry.type === 'other') {
       inp.value = entry.text || '';
     } else {
-      inp.value = (entry.items || []).map(i => i.text).join('\n');
+      inp.value = (entry.items || []).map(i => i.text.replace(/\n/g, '\u2028')).join('\n');
     }
     autoResizeNote(inp);
     inp.focus();
@@ -255,7 +262,7 @@ function commitEditNote(key) {
   } else {
     const items = text.split('\n').filter(l=>l.trim()).map((l,i) => {
       const oldItem = entry.items && entry.items[i];
-      return { id: (oldItem && oldItem.id) || Math.random().toString(36).slice(2), text: l.trim(), done: (oldItem && oldItem.done) || false };
+      return { id: (oldItem && oldItem.id) || Math.random().toString(36).slice(2), text: l.replace(/\u2028/g, '\n').trim(), done: (oldItem && oldItem.done) || false };
     });
     if (_isDemoNotes()) { _notesData[key].items = items; _saveDemoNotes(); }
     else { _notesRef.child(key).update({ items }); }

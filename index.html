@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=42">
+<link rel="stylesheet" href="css/style.css?v=44">
 <script>
 (function(){
   var t=localStorage.getItem('travel_theme');
@@ -162,6 +162,9 @@
             oninput="nominatimSearch(this.value)" autocomplete="nope">
           <div class="search-results" id="nominatim-results"></div>
         </div>
+        <button class="geo-loc-btn" onclick="useCurrentLocationForModal()" type="button">
+          <span class="geo-loc-dot"></span>Моё местоположение
+        </button>
       </div>
       <div class="modal-field">
         <div class="modal-label">Название точки</div>
@@ -210,6 +213,19 @@
     </div>
   </div>
 
+  <!-- Reverse day modal -->
+  <div class="modal-overlay" id="reverseDayModal" onclick="if(event.target===this)closeReverseDayModal()">
+    <div class="modal modal-lg">
+      <div class="modal-title">&#x21A9; Обратный маршрут</div>
+      <div class="modal-body" style="margin-bottom:8px;font-size:11px;color:var(--muted)">Выберите точки для нового дня</div>
+      <div id="reverseDayList" style="max-height:320px;overflow-y:auto;margin-bottom:12px;"></div>
+      <div class="modal-actions">
+        <button class="modal-cancel" onclick="closeReverseDayModal()">Отмена</button>
+        <button class="modal-confirm" style="border-color:var(--green);color:var(--green);background:rgba(74,222,128,0.1);" onclick="doReverseDay()">Создать день</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Confirm delete day modal -->
   <div class="modal-overlay" id="deleteDayModal" onclick="if(event.target===this)closeDeleteDayModal()">
     <div class="modal">
@@ -235,6 +251,9 @@
             onclick="enterMapPickModeForEditStart()" title="Выбрать на карте">📍</span>
           <div class="search-results" id="edit-start-results"></div>
         </div>
+        <button class="geo-loc-btn" onclick="useCurrentLocationForStart()" type="button">
+          <span class="geo-loc-dot"></span>Моё местоположение
+        </button>
       </div>
       <div id="edit-start-coords-display" style="display:none;align-items:center;padding:4px 8px;background:var(--bg);border-radius:5px;border:1px solid var(--border);margin-bottom:6px;font-size:11px;">
         <span style="color:var(--muted);">📍 <span id="edit-start-coords-text"></span></span>
@@ -546,15 +565,15 @@
 <!-- Scripts: порядок важен — config и data первыми -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="js/config.js?v=19"></script>
-<script src="js/data.js?v=42"></script>
-<script src="js/storage.js?v=42"></script>
+<script src="js/data.js?v=44"></script>
+<script src="js/storage.js?v=44"></script>
 <script src="js/offline.js?v=19"></script>
 <script src="js/map.js?v=19"></script>
-<script src="js/render.js?v=42"></script>
-<script src="js/app.js?v=42"></script>
-<script src="js/gps.js?v=42"></script>
-<script src="js/chat.js?v=42"></script>
-<script src="js/notes.js?v=42"></script>
+<script src="js/render.js?v=44"></script>
+<script src="js/app.js?v=44"></script>
+<script src="js/gps.js?v=44"></script>
+<script src="js/chat.js?v=44"></script>
+<script src="js/notes.js?v=44"></script>
 <script src="js/import.js?v=19"></script>
 <script src="js/gpx.js?v=19"></script>
 <script>
