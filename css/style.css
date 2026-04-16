@@ -671,6 +671,9 @@ body.viewer-mode #undoBtn { display:none !important; }
   width:100%; border-top:1px solid var(--border); margin-top:4px; padding-top:6px;
   grid-column:1/-1;
 }
+.dip-custom-row input::placeholder {
+  font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted);
+}
 .dip-clear-btn {
   flex:1; height:26px; border-radius:4px; font-size:10px; font-family:inherit;
   cursor:pointer; background:transparent; border:1px solid var(--border);
