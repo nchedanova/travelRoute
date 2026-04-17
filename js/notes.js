@@ -438,6 +438,7 @@ function doDeleteStopNote() {
   if (note.images) note.images.forEach(_deleteNoteImg);
   s.notes.splice(idx, 1);
   delete _pendingStopImages[_pendingKey(stopId, idx)];
+  _clearNoteReactions(stopId, idx);
   saveData();
   renderStops(day);
   showToast('🗑️ Заметка удалена');
@@ -535,6 +536,11 @@ function removePendingStopImage(stopId, noteIdx, imgIdx) {
     _deleteNoteImg(saved[imgIdx]); // чистим из Firebase если fb: ссылка
     saved.splice(imgIdx, 1);
     if (note) note.images = saved;
+    // Если заметка стала пустой — обнуляем реакции
+    var remainingPending = (_pendingStopImages[pk] || []).length;
+    if (!saved.length && !remainingPending && !note.text) {
+      _clearNoteReactions(stopId, noteIdx);
+    }
   } else {
     pending.splice(imgIdx - saved.length, 1);
     _pendingStopImages[pk] = pending;
@@ -806,6 +812,13 @@ function _setupAllNoteReactListeners() {
 }
 
 function _noteReactKey(stopId, idx) { return stopId + '_' + idx; }
+
+// Удаляет реакции из Firebase когда заметка удаляется или фото заменяются
+function _clearNoteReactions(stopId, idx) {
+  if (!_noteReactRef) return;
+  _noteReactRef.child(stopId).child(String(idx)).remove();
+  delete _noteReactData[_noteReactKey(stopId, idx)];
+}
 
 function initNoteReactions() {
   if (_noteReactDb) return;
