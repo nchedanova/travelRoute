@@ -15,6 +15,7 @@ let _notesInited = false;
 let _notesFilter = 'all';
 let _notesData   = {};
 let _noteType    = 'other'; // выбранный тип в форме
+var _expandedNotes = new Set(); // ключи развёрнутых заметок
 
 function initNotes() {
   if (_notesInited) return;
@@ -96,21 +97,26 @@ function _renderNotesList() {
     if (hasItems) {
       const total = entry.items.length;
       const needToggle = total > COLLAPSE_ITEMS;
-      itemsHtml = '<div class="note-checklist note-collapsible' + (needToggle ? ' is-collapsed' : '') + '" id="note-checklist-' + entry.key + '">' +
+      const expanded = _expandedNotes.has(entry.key);
+      const startCollapsed = needToggle && !expanded;
+      itemsHtml = '<div class="note-checklist note-collapsible' + (startCollapsed ? ' is-collapsed' : '') + '" id="note-checklist-' + entry.key + '">' +
         entry.items.map(function(it, idx) {
-          return '<label class="note-check-row' + (needToggle && idx >= COLLAPSE_ITEMS ? ' note-hidden-item' : '') + '" onclick="if(event.target.tagName===\'A\')event.preventDefault()">' +
+          const hide = startCollapsed && idx >= COLLAPSE_ITEMS;
+          return '<label class="note-check-row' + (needToggle && idx >= COLLAPSE_ITEMS ? ' note-hidden-item' : '') + '"' + (hide ? ' style="display:none"' : '') + ' onclick="if(event.target.tagName===\'A\')event.preventDefault()">' +
             '<input type="checkbox" ' + (it.done ? 'checked' : '') + ' onchange="toggleNoteItem(\'' + entry.key + '\',\'' + it.id + '\',this.checked)" style="accent-color:var(--amber)">' +
             '<span class="' + (it.done ? 'note-item-done' : '') + '">' + _linkifyN(it.text).replace(/\n/g,'<br>') + '</span>' +
             '</label>';
         }).join('') +
         '</div>' +
-        (needToggle ? '<div class="note-toggle-bar" onclick="toggleNoteCollapse(this)">' + _chevron(false) + '</div>' : '');
+        (needToggle ? '<div class="note-toggle-bar" onclick="toggleNoteCollapse(this)">' + _chevron(!startCollapsed) + '</div>' : '');
     } else if (entry.type === 'other') {
       const text = entry.text || '';
       const lines = text.split('\n').length;
       const needToggle = lines > COLLAPSE_ITEMS;
-      itemsHtml = '<div class="note-text' + (needToggle ? ' is-collapsed' : '') + '" id="note-text-' + entry.key + '">' + _linkifyN(text).replace(/\n/g,'<br>') + '</div>' +
-        (needToggle ? '<div class="note-toggle-bar" onclick="toggleNoteCollapse(this)">' + _chevron(false) + '</div>' : '');
+      const expanded = _expandedNotes.has(entry.key);
+      const startCollapsed = needToggle && !expanded;
+      itemsHtml = '<div class="note-text' + (startCollapsed ? ' is-collapsed' : '') + '" id="note-text-' + entry.key + '">' + _linkifyN(text).replace(/\n/g,'<br>') + '</div>' +
+        (needToggle ? '<div class="note-toggle-bar" onclick="toggleNoteCollapse(this)">' + _chevron(!startCollapsed) + '</div>' : '');
     }
 
     item.innerHTML = `
@@ -130,13 +136,22 @@ function _renderNotesList() {
 function toggleNoteCollapse(bar) {
   var content = bar.previousElementSibling;
   if (!content) return;
-  var collapsed = content.classList.toggle('is-collapsed');
-  if (content.classList.contains('note-collapsible')) {
-    content.querySelectorAll('.note-hidden-item').forEach(function(el) {
-      el.style.display = collapsed ? 'none' : '';
-    });
+  var isCollapsed = content.classList.contains('is-collapsed');
+  var key = (content.id || '').replace('note-checklist-', '').replace('note-text-', '');
+  if (isCollapsed) {
+    content.classList.remove('is-collapsed');
+    if (key) _expandedNotes.add(key);
+    if (content.classList.contains('note-collapsible')) {
+      content.querySelectorAll('.note-hidden-item').forEach(function(el) { el.style.display = ''; });
+    }
+  } else {
+    content.classList.add('is-collapsed');
+    if (key) _expandedNotes.delete(key);
+    if (content.classList.contains('note-collapsible')) {
+      content.querySelectorAll('.note-hidden-item').forEach(function(el) { el.style.display = 'none'; });
+    }
   }
-  var pts = collapsed ? '6 9 12 15 18 9' : '18 15 12 9 6 15';
+  var pts = !isCollapsed ? '6 9 12 15 18 9' : '18 15 12 9 6 15';
   var poly = bar.querySelector('polyline');
   if (poly) poly.setAttribute('points', pts);
 }
