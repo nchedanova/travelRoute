@@ -1236,6 +1236,18 @@ function _showViewerPhoto() {
   }
   if (prev) prev.style.display = multi ? '' : 'none';
   if (next) next.style.display = multi ? '' : 'none';
+  // Mobile nav bar dots
+  const navBar  = document.getElementById('pvNavBar');
+  const navDots = document.getElementById('pvNavDots');
+  const navPrev = navBar && navBar.querySelector('.pv-nav-prev');
+  const navNext = navBar && navBar.querySelector('.pv-nav-next');
+  if (navDots) {
+    navDots.innerHTML = multi
+      ? _viewerPhotos.map(function(_,i) { return '<div class="pv-nav-dot' + (i === _viewerIndex ? ' active' : '') + '"></div>'; }).join('')
+      : '';
+  }
+  if (navPrev) navPrev.style.visibility = multi ? '' : 'hidden';
+  if (navNext) navNext.style.visibility = multi ? '' : 'hidden';
 }
 
 function viewerPrev() {

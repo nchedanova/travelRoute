@@ -88,16 +88,23 @@ function _renderNotesList() {
     item.style.borderLeftColor = borderColor;
 
     let itemsHtml = '';
+    const COLLAPSE_ITEMS = 5;
     if (hasItems) {
-      itemsHtml = '<div class="note-checklist" id="note-checklist-' + entry.key + '">' +
-        entry.items.map(it => `
-          <label class="note-check-row" onclick="if(event.target.tagName==='A')event.preventDefault()">
+      const total = entry.items.length;
+      const collapsed = total > COLLAPSE_ITEMS;
+      itemsHtml = '<div class="note-checklist note-collapsible' + (collapsed ? ' is-collapsed' : '') + '" id="note-checklist-' + entry.key + '" onclick="if(this.classList.contains(\'is-collapsed\')){this.classList.remove(\'is-collapsed\');event.stopPropagation();}">' +
+        entry.items.map((it, idx) => `
+          <label class="note-check-row${collapsed && idx >= COLLAPSE_ITEMS ? ' note-hidden-item' : ''}" onclick="if(event.target.tagName==='A')event.preventDefault()">
             <input type="checkbox" ${it.done?'checked':''} onchange="toggleNoteItem('${entry.key}','${it.id}',this.checked)" style="accent-color:var(--amber)">
             <span class="${it.done?'note-item-done':''}">${_linkifyN(it.text).replace(/\n/g,'<br>')}</span>
           </label>`).join('') +
+        (collapsed ? '<div class="note-collapse-hint">▾ ещё ' + (total - COLLAPSE_ITEMS) + '</div>' : '') +
         '</div>';
     } else if (entry.type === 'other') {
-      itemsHtml = `<div class="note-text" id="note-text-${entry.key}">${_linkifyN(entry.text||'').replace(/\n/g,'<br>')}</div>`;
+      const text = entry.text || '';
+      const lines = text.split('\n').length;
+      const collapsed = lines > COLLAPSE_ITEMS;
+      itemsHtml = `<div class="note-text${collapsed ? ' is-collapsed' : ''}" id="note-text-${entry.key}" onclick="if(this.classList.contains('is-collapsed')){this.classList.remove('is-collapsed');event.stopPropagation();}">${_linkifyN(text).replace(/\n/g,'<br>')}${collapsed ? '<div class="note-collapse-hint">▾ развернуть</div>' : ''}</div>`;
     }
 
     item.innerHTML = `
@@ -105,7 +112,7 @@ function _renderNotesList() {
         <span class="note-type-badge">${t.emoji} ${t.label}</span>
         <span class="note-date">${date}</span>
         <button class="note-action-btn" onclick="startEditNote('${entry.key}')" title="Редактировать">✏️</button>
-        <button class="note-action-btn danger" onclick="deleteNote('${entry.key}')" title="Удалить">×</button>
+        <button class="note-action-btn danger" onclick="deleteNote('${entry.key}')" title="Удалить">❌</button>
       </div>
       ${itemsHtml}
 `;
