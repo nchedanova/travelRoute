@@ -1605,7 +1605,7 @@ input.day-date-input {
   background: none;
   border: none;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 11px;
   cursor: pointer;
   padding: 1px 5px;
   border-radius: 3px;
@@ -2005,14 +2005,17 @@ input.day-date-input {
 }
 .note-collapsible.is-collapsed .note-hidden-item { display: none; }
 .note-collapsible.is-collapsed { cursor: pointer; }
-.note-collapse-hint {
-  font-size: 11px;
-  color: var(--muted);
-  margin-top: 4px;
-  user-select: none;
+.note-toggle-bar {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  margin-top: 6px;
+  border-top: 1px solid var(--border);
+  padding-top: 5px;
+  cursor: pointer;
 }
-.note-text.is-collapsed .note-collapse-hint,
-.note-collapsible.is-collapsed .note-collapse-hint { display: block; }
+.note-toggle-bar svg { display: block; }
+.note-item .note-toggle-bar { display: flex; }
 .note-collapse-hint { display: none; }
 
 /* ── NOTES: variant V layout ── */

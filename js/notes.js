@@ -89,22 +89,28 @@ function _renderNotesList() {
 
     let itemsHtml = '';
     const COLLAPSE_ITEMS = 5;
+    const _chevron = function(up) {
+      var pts = up ? '18 15 12 9 6 15' : '6 9 12 15 18 9';
+      return '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="' + pts + '"/></svg>';
+    };
     if (hasItems) {
       const total = entry.items.length;
-      const collapsed = total > COLLAPSE_ITEMS;
-      itemsHtml = '<div class="note-checklist note-collapsible' + (collapsed ? ' is-collapsed' : '') + '" id="note-checklist-' + entry.key + '" onclick="if(this.classList.contains(\'is-collapsed\')){this.classList.remove(\'is-collapsed\');event.stopPropagation();}">' +
-        entry.items.map((it, idx) => `
-          <label class="note-check-row${collapsed && idx >= COLLAPSE_ITEMS ? ' note-hidden-item' : ''}" onclick="if(event.target.tagName==='A')event.preventDefault()">
-            <input type="checkbox" ${it.done?'checked':''} onchange="toggleNoteItem('${entry.key}','${it.id}',this.checked)" style="accent-color:var(--amber)">
-            <span class="${it.done?'note-item-done':''}">${_linkifyN(it.text).replace(/\n/g,'<br>')}</span>
-          </label>`).join('') +
-        (collapsed ? '<div class="note-collapse-hint">▾ ещё ' + (total - COLLAPSE_ITEMS) + '</div>' : '') +
-        '</div>';
+      const needToggle = total > COLLAPSE_ITEMS;
+      itemsHtml = '<div class="note-checklist note-collapsible' + (needToggle ? ' is-collapsed' : '') + '" id="note-checklist-' + entry.key + '">' +
+        entry.items.map(function(it, idx) {
+          return '<label class="note-check-row' + (needToggle && idx >= COLLAPSE_ITEMS ? ' note-hidden-item' : '') + '" onclick="if(event.target.tagName===\'A\')event.preventDefault()">' +
+            '<input type="checkbox" ' + (it.done ? 'checked' : '') + ' onchange="toggleNoteItem(\'' + entry.key + '\',\'' + it.id + '\',this.checked)" style="accent-color:var(--amber)">' +
+            '<span class="' + (it.done ? 'note-item-done' : '') + '">' + _linkifyN(it.text).replace(/\n/g,'<br>') + '</span>' +
+            '</label>';
+        }).join('') +
+        '</div>' +
+        (needToggle ? '<div class="note-toggle-bar" onclick="toggleNoteCollapse(this)">' + _chevron(false) + '</div>' : '');
     } else if (entry.type === 'other') {
       const text = entry.text || '';
       const lines = text.split('\n').length;
-      const collapsed = lines > COLLAPSE_ITEMS;
-      itemsHtml = `<div class="note-text${collapsed ? ' is-collapsed' : ''}" id="note-text-${entry.key}" onclick="if(this.classList.contains('is-collapsed')){this.classList.remove('is-collapsed');event.stopPropagation();}">${_linkifyN(text).replace(/\n/g,'<br>')}${collapsed ? '<div class="note-collapse-hint">▾ развернуть</div>' : ''}</div>`;
+      const needToggle = lines > COLLAPSE_ITEMS;
+      itemsHtml = '<div class="note-text' + (needToggle ? ' is-collapsed' : '') + '" id="note-text-' + entry.key + '">' + _linkifyN(text).replace(/\n/g,'<br>') + '</div>' +
+        (needToggle ? '<div class="note-toggle-bar" onclick="toggleNoteCollapse(this)">' + _chevron(false) + '</div>' : '');
     }
 
     item.innerHTML = `
@@ -121,6 +127,20 @@ function _renderNotesList() {
 }
 
 // ── FILTER ─────────────────────────────────────────────────────────────────────
+function toggleNoteCollapse(bar) {
+  var content = bar.previousElementSibling;
+  if (!content) return;
+  var collapsed = content.classList.toggle('is-collapsed');
+  if (content.classList.contains('note-collapsible')) {
+    content.querySelectorAll('.note-hidden-item').forEach(function(el) {
+      el.style.display = collapsed ? 'none' : '';
+    });
+  }
+  var pts = collapsed ? '6 9 12 15 18 9' : '18 15 12 9 6 15';
+  var poly = bar.querySelector('polyline');
+  if (poly) poly.setAttribute('points', pts);
+}
+
 function setNotesFilter(type) {
   _notesFilter = type;
   document.querySelectorAll('.notes-filter-btn').forEach(b => {
