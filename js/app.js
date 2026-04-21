@@ -2526,6 +2526,47 @@ function listenWeather(day) {
   });
 }
 
+// ── WEATHER HELPER ────────────────────────────────────────────────────────────
+// Finds best hourly index for a given dateISO + timeStr ("HH:MM").
+// If dateISO has no slots (beyond forecast horizon) uses the latest available date.
+// Fixes: parseInt('00')||12 bug + date-unaware search.
+function _pickBestWeatherIdx(hourlyTimes, dateISO, timeStr) {
+  var parts = (timeStr || '').split(':');
+  var h = parseInt(parts[0], 10);
+  var m = parseInt(parts[1], 10);
+  if (isNaN(h)) h = 12;
+  if (isNaN(m)) m = 0;
+  var targetMin = h * 60 + m;
+
+  // Collect all distinct dates in the hourly array
+  var targetDate = (dateISO || '').substring(0, 10); // "YYYY-MM-DD"
+
+  // Check if target date has any slots
+  var hasTarget = hourlyTimes.some(function(t) { return t.substring(0, 10) === targetDate; });
+
+  var useDate;
+  if (hasTarget) {
+    useDate = targetDate;
+  } else {
+    // Find latest available date in the forecast
+    useDate = '';
+    hourlyTimes.forEach(function(t) {
+      var d = t.substring(0, 10);
+      if (d > useDate) useDate = d;
+    });
+  }
+
+  var bestIdx = 0, bestDiff = 99999;
+  hourlyTimes.forEach(function(t, j) {
+    if (t.substring(0, 10) !== useDate) return;
+    var slotH = parseInt(t.substring(11, 13), 10) || 0;
+    var slotM = parseInt(t.substring(14, 16), 10) || 0;
+    var diff = Math.abs(slotH * 60 + slotM - targetMin);
+    if (diff < bestDiff) { bestDiff = diff; bestIdx = j; }
+  });
+  return bestIdx;
+}
+
 async function fetchDayWeather(day) {
   var data = DAYS_DATA[day];
   if (!data) return;
@@ -2562,15 +2603,7 @@ async function fetchDayWeather(day) {
       var fc = results[i];
       if (!fc || !fc.hourly) return;
 
-      var parts = pt.time.split(':');
-      var targetMin = (parseInt(parts[0]) || 12) * 60 + (parseInt(parts[1]) || 0);
-      var bestIdx = 0, bestDiff = 99999;
-
-      fc.hourly.time.forEach(function(t, j) {
-        var h = parseInt(t.substring(11, 13)) || 0;
-        var diff = Math.abs(h * 60 - targetMin);
-        if (diff < bestDiff) { bestDiff = diff; bestIdx = j; }
-      });
+      var bestIdx = _pickBestWeatherIdx(fc.hourly.time, data.dateISO, pt.time);
 
       var temp = Math.round(fc.hourly.temperature_2m[bestIdx]);
       var code = fc.hourly.weather_code[bestIdx] || 0;
@@ -2657,14 +2690,7 @@ async function fetchStopWeather(day, stopId) {
     var resp = await fetch(url);
     var json = await resp.json();
     if (!json || !json.hourly) return;
-    var parts = time.split(':');
-    var targetMin = (parseInt(parts[0]) || 12) * 60 + (parseInt(parts[1]) || 0);
-    var bestIdx = 0, bestDiff = 99999;
-    json.hourly.time.forEach(function(t, j) {
-      var h = parseInt(t.substring(11, 13)) || 0;
-      var diff = Math.abs(h * 60 - targetMin);
-      if (diff < bestDiff) { bestDiff = diff; bestIdx = j; }
-    });
+    var bestIdx = _pickBestWeatherIdx(json.hourly.time, dateISO, time);
     var temp = Math.round(json.hourly.temperature_2m[bestIdx]);
     var code = json.hourly.weather_code[bestIdx] || 0;
     var windKmh = json.hourly.wind_speed_10m[bestIdx] || 0;
@@ -2703,14 +2729,7 @@ async function fetchStartWeather(day) {
     var resp = await fetch(url);
     var json = await resp.json();
     if (!json || !json.hourly) return;
-    var parts = time.split(':');
-    var targetMin = (parseInt(parts[0]) || 8) * 60 + (parseInt(parts[1]) || 0);
-    var bestIdx = 0, bestDiff = 99999;
-    json.hourly.time.forEach(function(t, j) {
-      var h = parseInt(t.substring(11, 13)) || 0;
-      var diff = Math.abs(h * 60 - targetMin);
-      if (diff < bestDiff) { bestDiff = diff; bestIdx = j; }
-    });
+    var bestIdx = _pickBestWeatherIdx(json.hourly.time, data.dateISO, time);
     var temp = Math.round(json.hourly.temperature_2m[bestIdx]);
     var code = json.hourly.weather_code[bestIdx] || 0;
     var windKmh = json.hourly.wind_speed_10m[bestIdx] || 0;
@@ -2841,7 +2860,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.8.0';
-var APP_BUILD   = 52;
+var APP_BUILD   = 53;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 
