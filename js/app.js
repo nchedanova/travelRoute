@@ -923,6 +923,7 @@ function editDayDate(day, wrapEl) {
     inp.replaceWith(newWrap);
     renderTabs();
     saveData();
+    if (val && val !== current) fetchDayWeather(day);
   };
   inp.onblur = commit;
   inp.onkeydown = function(e) {
@@ -2527,6 +2528,33 @@ function listenWeather(day) {
 }
 
 // ── WEATHER HELPER ────────────────────────────────────────────────────────────
+// Returns {start_date, end_date} for OpenMeteo given a dateISO string ("DD.MM.YYYY" or "YYYY-MM-DD").
+// Clamps to today+15 if dateISO is beyond forecast horizon or missing.
+function _weatherDateRange(dateISO) {
+  var today = new Date(); today.setHours(0,0,0,0);
+  var maxDate = new Date(today); maxDate.setDate(today.getDate() + 15);
+
+  var target = null;
+  if (dateISO) {
+    var iso = dateISO;
+    if (iso.indexOf('.') !== -1) {
+      var p = iso.split('.'); // DD.MM.YYYY
+      if (p.length === 3) iso = p[2] + '-' + p[1] + '-' + p[0];
+    }
+    var d = new Date(iso);
+    if (!isNaN(d.getTime())) target = d;
+  }
+  if (!target || target > maxDate) target = maxDate;
+
+  var fmt = function(d) {
+    var mm = String(d.getMonth()+1).padStart(2,'0');
+    var dd = String(d.getDate()).padStart(2,'0');
+    return d.getFullYear() + '-' + mm + '-' + dd;
+  };
+  var s = fmt(target);
+  return '&start_date=' + s + '&end_date=' + s;
+}
+
 // Finds best hourly index for a given dateISO + timeStr ("HH:MM").
 // If dateISO has no slots (beyond forecast horizon) uses the latest available date.
 // Fixes: parseInt('00')||12 bug + date-unaware search.
@@ -2592,7 +2620,7 @@ async function fetchDayWeather(day) {
     var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lats +
       '&longitude=' + lngs +
       '&hourly=temperature_2m,weather_code,wind_speed_10m,precipitation,is_day' +
-      '&timezone=auto&forecast_days=2';
+      '&timezone=auto' + _weatherDateRange(data.dateISO);
     var resp = await fetch(url);
     var json = await resp.json();
     var results = Array.isArray(json) ? json : [json];
@@ -2686,7 +2714,7 @@ async function fetchStopWeather(day, stopId) {
     var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + s.lat +
       '&longitude=' + s.lng +
       '&hourly=temperature_2m,weather_code,wind_speed_10m,precipitation,is_day' +
-      '&timezone=auto&forecast_days=2';
+      '&timezone=auto' + _weatherDateRange(dateISO);
     var resp = await fetch(url);
     var json = await resp.json();
     if (!json || !json.hourly) return;
@@ -2725,7 +2753,7 @@ async function fetchStartWeather(day) {
     var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + data.start.lat +
       '&longitude=' + data.start.lng +
       '&hourly=temperature_2m,weather_code,wind_speed_10m,precipitation,is_day' +
-      '&timezone=auto&forecast_days=2';
+      '&timezone=auto' + _weatherDateRange(data.dateISO);
     var resp = await fetch(url);
     var json = await resp.json();
     if (!json || !json.hourly) return;
@@ -2860,7 +2888,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.8.0';
-var APP_BUILD   = 53;
+var APP_BUILD   = 54;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 
