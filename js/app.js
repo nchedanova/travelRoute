@@ -2532,7 +2532,7 @@ function listenWeather(day) {
 // Clamps to today+15 if dateISO is beyond forecast horizon or missing.
 function _weatherDateRange(dateISO) {
   var today = new Date(); today.setHours(0,0,0,0);
-  var maxDate = new Date(today); maxDate.setDate(today.getDate() + 16);
+  var maxDate = new Date(today); maxDate.setDate(today.getDate() + 15);
 
   var target = null;
   if (dateISO) {
@@ -2888,7 +2888,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.8.0';
-var APP_BUILD   = 55;
+var APP_BUILD   = 56;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 
