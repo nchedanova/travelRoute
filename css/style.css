@@ -1937,6 +1937,10 @@ input.day-date-input {
   color: var(--amber);
   background: rgba(245,166,35,0.1);
 }
+.notes-filter-btn[data-type="buy"].active   { border-color:#6b7280; color:#6b7280; background:rgba(107,114,128,0.12); }
+.notes-filter-btn[data-type="take"].active  { border-color:#d4aa70; color:#d4aa70; background:rgba(212,170,112,0.12); }
+.notes-filter-btn[data-type="todo"].active  { border-color:#a78bfa; color:#a78bfa; background:rgba(167,139,250,0.12); }
+.notes-filter-btn[data-type="other"].active { border-color:var(--amber); color:var(--amber); background:rgba(245,166,35,0.12); }
 
 /* ── NOTES: type selector ── */
 .note-type-row {
@@ -1994,7 +1998,6 @@ input.day-date-input {
 .note-title-display {
   font-size: 12px;
   font-weight: 500;
-  color: var(--amber);
   margin-bottom: 4px;
 }
 
@@ -2073,10 +2076,10 @@ input.day-date-input {
 .notes-filters::-webkit-scrollbar { display: none; }
 
 /* ── NOTE TYPE BUTTONS — coloured ── */
-.note-type-btn.type-buy.active  { border-color:#e05c3a; background:rgba(224,92,58,0.15);  }
-.note-type-btn.type-take.active { border-color:#378add; background:rgba(55,138,221,0.15); }
-.note-type-btn.type-todo.active { border-color:#1d9e75; background:rgba(29,158,117,0.15); }
-.note-type-btn.type-other.active{ border-color:var(--muted); background:rgba(107,114,128,0.15); }
+.note-type-btn.type-buy.active  { border-color:#6b7280; background:rgba(107,114,128,0.15); }
+.note-type-btn.type-take.active { border-color:#d4aa70; background:rgba(212,170,112,0.15); }
+.note-type-btn.type-todo.active { border-color:#a78bfa; background:rgba(167,139,250,0.15); }
+.note-type-btn.type-other.active{ border-color:var(--amber); background:rgba(245,166,35,0.15); }
 
 /* ── EMOJI PICKER: 8 cols, larger ── */
 .emoji-picker {

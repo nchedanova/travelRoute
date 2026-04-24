@@ -126,7 +126,7 @@ function _renderNotesList() {
         <button class="note-action-btn" onclick="startEditNote('${entry.key}')" title="Редактировать">✏️</button>
         <button class="note-action-btn danger" onclick="deleteNote('${entry.key}')" title="Удалить">❌</button>
       </div>
-      ${entry.title ? `<div class="note-title-display">${_escN(entry.title)}</div>` : ''}
+      ${entry.title ? `<div class="note-title-display" style="color:${borderColor}">${_escN(entry.title)}</div>` : ''}
       ${itemsHtml}
 `;
     list.appendChild(item);
