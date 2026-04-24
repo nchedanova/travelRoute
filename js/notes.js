@@ -3,9 +3,9 @@
 // Только для админа (canWrite)
 
 const NOTE_TYPES = {
-  buy:   { emoji:'🛒', label:'Купить',  color:'#e05c3a' },
-  take:  { emoji:'📦', label:'Взять',   color:'#378add' },
-  todo:  { emoji:'☑️', label:'Сделать', color:'#1d9e75' },
+  buy:   { emoji:'🛒', label:'Купить',  color:'#6b7280' },
+  take:  { emoji:'📦', label:'Взять',   color:'#d4aa70' },
+  todo:  { emoji:'☑️', label:'Сделать', color:'#a78bfa' },
   other: { emoji:'📝', label:'Другое',  color:null }
 };
 
@@ -81,7 +81,7 @@ function _renderNotesList() {
     const t    = NOTE_TYPES[entry.type] || NOTE_TYPES.other;
     const date = new Date(entry.ts).toLocaleString('ru',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
     const hasItems = entry.type !== 'other' && entry.items && entry.items.length;
-    const borderColor = t.color || 'var(--border)';
+    const borderColor = t.color || 'var(--amber)';
 
     const item = document.createElement('div');
     item.className = 'note-item';
