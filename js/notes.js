@@ -293,21 +293,46 @@ function cancelEditNote() {
   if (btn) { btn.textContent = '+'; btn.style.background = ''; btn.style.borderColor = ''; btn.style.color = ''; }
 }
 
-function commitEditNote(key) {
-  const inp  = document.getElementById('noteInput'); if (!inp) return;
-  const text = inp.value.trim(); if (!text) return;
+async function commitEditNote(key) {
+  const inp = document.getElementById('noteInput');
+  const text = inp ? inp.value.trim() : '';
   const entry = _notesData[key]; if (!entry) return;
+  const hasPending = typeof _noteTabPendingImages !== 'undefined' && _noteTabPendingImages.length > 0;
+  if (!text && !hasPending) return;
+
+  // Upload pending images
+  var newImages = [];
+  if (hasPending) {
+    var fbConnected = await _isFirebaseConnected();
+    if (!fbConnected) {
+      showToast('⚠️ Нет связи с Firebase — фото не сохранены');
+    } else {
+      try {
+        newImages = await Promise.all(_noteTabPendingImages.map(_uploadNoteImg));
+      } catch(e) {
+        showToast('⚠️ Ошибка загрузки фото');
+      }
+    }
+    _noteTabPendingImages = [];
+    if (typeof _renderNoteTabPending === 'function') _renderNoteTabPending();
+  }
+
+  var mergedImages = (entry.images || []).concat(newImages);
+  var update = {};
+  if (mergedImages.length) update.images = mergedImages;
 
   if (entry.type === 'other') {
-    if (_isDemoNotes()) { _notesData[key].text = text; _saveDemoNotes(); }
-    else { _notesRef.child(key).update({ text }); }
+    update.text = text;
+    if (_isDemoNotes()) { Object.assign(_notesData[key], update); _saveDemoNotes(); }
+    else { _notesRef.child(key).update(update); }
   } else {
     const items = text.split('\n').filter(l=>l.trim()).map((l,i) => {
       const oldItem = entry.items && entry.items[i];
       return { id: (oldItem && oldItem.id) || Math.random().toString(36).slice(2), text: l.replace(/\u2028/g, '\n').trim(), done: (oldItem && oldItem.done) || false };
     });
-    if (_isDemoNotes()) { _notesData[key].items = items; _saveDemoNotes(); }
-    else { _notesRef.child(key).update({ items }); }
+    update.items = items;
+    if (_isDemoNotes()) { Object.assign(_notesData[key], update); _saveDemoNotes(); }
+    else { _notesRef.child(key).update(update); }
   }
   cancelEditNote();
 }
