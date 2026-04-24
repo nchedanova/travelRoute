@@ -1976,6 +1976,27 @@ input.day-date-input {
   transition: border-color 0.15s, color 0.15s;
 }
 .notes-photo-btn:hover { border-color: var(--amber); color: var(--amber); }
+.notes-title-input {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  padding: 6px 10px;
+  outline: none;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+}
+.notes-title-input::placeholder { color: var(--muted); opacity: 0.5; }
+.notes-title-input:focus { border-color: var(--amber); }
+.note-title-display {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--amber);
+  margin-bottom: 4px;
+}
 
 /* ── NOTES: item card ── */
 .note-item {

@@ -126,6 +126,7 @@ function _renderNotesList() {
         <button class="note-action-btn" onclick="startEditNote('${entry.key}')" title="Редактировать">✏️</button>
         <button class="note-action-btn danger" onclick="deleteNote('${entry.key}')" title="Удалить">❌</button>
       </div>
+      ${entry.title ? `<div class="note-title-display">${_escN(entry.title)}</div>` : ''}
       ${itemsHtml}
 `;
     list.appendChild(item);
@@ -183,12 +184,15 @@ async function addNote() {
 
   if (!_notesInited) initNotes();
   const inp  = document.getElementById('noteInput');
+  const titleInp = document.getElementById('noteTitleInput');
   const text = inp ? inp.value.trim() : '';
+  const title = titleInp ? titleInp.value.trim() : '';
   const hasImages = typeof _noteTabPendingImages !== 'undefined' && _noteTabPendingImages.length > 0;
   if (!text && !hasImages) return;
   const author = (typeof getChatName === 'function' ? getChatName() : '') || 'Админ';
 
   let payload = { type: _noteType, author, ts: Date.now() };
+  if (title) payload.title = title;
 
   if (_noteType === 'other') {
     payload.text = text;
@@ -219,6 +223,7 @@ async function addNote() {
 
   if (_isDemoNotes()) { _demoAddNote(payload); } else { _notesRef.push(payload); }
   inp.value = ''; inp.style.height = 'auto';
+  if (titleInp) titleInp.value = '';
 }
 
 // Demo-mode addNote fallback
@@ -254,6 +259,10 @@ function startEditNote(key) {
   const entry = _notesData[key]; if (!entry) return;
   _editingNoteKey = key;
 
+  // Fill title
+  const titleInp = document.getElementById('noteTitleInput');
+  if (titleInp) titleInp.value = entry.title || '';
+
   // Fill input with current content
   const inp = document.getElementById('noteInput');
   if (inp) {
@@ -287,6 +296,8 @@ function cancelEditNote() {
   _editingNoteKey = null;
   const inp = document.getElementById('noteInput');
   if (inp) { inp.value = ''; inp.style.height = 'auto'; }
+  const titleInp = document.getElementById('noteTitleInput');
+  if (titleInp) titleInp.value = '';
   const banner = document.getElementById('noteEditBanner');
   if (banner) banner.style.display = 'none';
   const btn = document.getElementById('noteAddBtn');
@@ -295,7 +306,9 @@ function cancelEditNote() {
 
 async function commitEditNote(key) {
   const inp = document.getElementById('noteInput');
+  const titleInp = document.getElementById('noteTitleInput');
   const text = inp ? inp.value.trim() : '';
+  const title = titleInp ? titleInp.value.trim() : '';
   const entry = _notesData[key]; if (!entry) return;
   const hasPending = typeof _noteTabPendingImages !== 'undefined' && _noteTabPendingImages.length > 0;
   if (!text && !hasPending) return;
@@ -320,6 +333,7 @@ async function commitEditNote(key) {
   var mergedImages = (entry.images || []).concat(newImages);
   var update = {};
   if (mergedImages.length) update.images = mergedImages;
+  if (title) update.title = title; else update.title = null;
 
   if (entry.type === 'other') {
     update.text = text;
