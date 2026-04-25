@@ -5,7 +5,7 @@
 const NOTE_TYPES = {
   buy:   { emoji:'🛒', label:'Купить',  color:'#a8b0bc' },
   take:  { emoji:'📦', label:'Взять',   color:'#d4aa70' },
-  todo:  { emoji:'☑️', label:'Сделать', color:'#a78bfa' },
+  todo:  { emoji:'✔️', label:'Сделать', color:'#a78bfa' },
   other: { emoji:'📝', label:'Другое',  color:null }
 };
 
