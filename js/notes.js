@@ -28,8 +28,6 @@ function initNotes() {
   }
 
   if (typeof firebase === 'undefined' || !firebase.apps.length) return;
-  // Enable offline persistence (IndexedDB) — must be called before any .ref()
-  try { firebase.database().setPersistenceEnabled(true); } catch(e) {}
   _notesDb     = firebase.database();
   _notesRef    = _notesDb.ref('notes');
   _notesInited = true;
