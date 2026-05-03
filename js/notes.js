@@ -28,6 +28,8 @@ function initNotes() {
   }
 
   if (typeof firebase === 'undefined' || !firebase.apps.length) return;
+  // Enable offline persistence (IndexedDB) — must be called before any .ref()
+  try { firebase.database().setPersistenceEnabled(true); } catch(e) {}
   _notesDb     = firebase.database();
   _notesRef    = _notesDb.ref('notes');
   _notesInited = true;
@@ -55,10 +57,36 @@ function _saveDemoNotes() {
 
 // ── LISTEN ─────────────────────────────────────────────────────────────────────
 function _listenNotes() {
-  _notesRef.on('value', snap => {
+  var _fbLogged = false;
+  _notesRef.on('value', function(snap) {
     _notesData = snap.val() || {};
     _renderNotesList();
+    if (!_fbLogged) {
+      _fbLogged = true;
+      _logFirebaseSize(snap);
+    }
   });
+}
+
+function _logFirebaseSize(notesSnap) {
+  try {
+    var notesBytes = new Blob([JSON.stringify(notesSnap.val() || {})]).size;
+    // Also read note_imgs
+    var db = _noteImgDb();
+    if (db) {
+      db.ref('note_imgs').once('value').then(function(imgSnap) {
+        var imgBytes  = new Blob([JSON.stringify(imgSnap.val() || {})]).size;
+        var total     = notesBytes + imgBytes;
+        var totalMB   = (total / (1024 * 1024)).toFixed(2);
+        var pct       = (total / (1024 * 1024 * 1024) * 100).toFixed(4);
+        console.log('%c🔥 Firebase DB: ' + totalMB + ' MB / 1024 MB (' + pct + '%)', 'color:#f87171');
+      }).catch(function(){});
+    } else {
+      var totalMB = (notesBytes / (1024 * 1024)).toFixed(2);
+      var pct     = (notesBytes / (1024 * 1024 * 1024) * 100).toFixed(4);
+      console.log('%c🔥 Firebase DB (notes only): ' + totalMB + ' MB / 1024 MB (' + pct + '%)', 'color:#f87171');
+    }
+  } catch(e) {}
 }
 
 // ── RENDER ─────────────────────────────────────────────────────────────────────

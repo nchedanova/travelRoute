@@ -315,6 +315,12 @@ function saveData() {
     // Всегда сохраняем в localStorage как кэш
     localStorage.setItem('travel_tracker_v3', JSON.stringify(payload));
 
+    // Gist size log
+    var gistBytes = new Blob([JSON.stringify(payload)]).size;
+    var gistKB    = (gistBytes / 1024).toFixed(1);
+    var gistPct   = (gistBytes / (1024 * 1024) * 100).toFixed(1);
+    console.log('%c💾 Gist: ' + gistKB + ' KB / 1024 KB (' + gistPct + '%)', 'color:#f5a623');
+
     // Дополнительно — в облако (с дебаунсом), только если есть токен
     if (CLOUD_CONFIG.canWrite) scheduleCloudSave(payload);
 
