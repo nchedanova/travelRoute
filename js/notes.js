@@ -54,10 +54,28 @@ function _saveDemoNotes() {
 }
 
 // ── LISTEN ─────────────────────────────────────────────────────────────────────
+var _NOTES_CACHE_KEY = 'travel_notes_cache';
+
+function _saveNotesCache(data) {
+  try { localStorage.setItem(_NOTES_CACHE_KEY, JSON.stringify(data)); } catch(e) {}
+}
+
+function _loadNotesCache() {
+  try { return JSON.parse(localStorage.getItem(_NOTES_CACHE_KEY) || 'null'); } catch(e) { return null; }
+}
+
 function _listenNotes() {
+  // Render from cache immediately while Firebase loads
+  var cached = _loadNotesCache();
+  if (cached && Object.keys(cached).length) {
+    _notesData = cached;
+    _renderNotesList();
+  }
+
   var _fbLogged = false;
   _notesRef.on('value', function(snap) {
     _notesData = snap.val() || {};
+    _saveNotesCache(_notesData);
     _renderNotesList();
     if (!_fbLogged) {
       _fbLogged = true;
