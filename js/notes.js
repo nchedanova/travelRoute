@@ -291,7 +291,9 @@ function noteInputKeydown(e) {
 // ── CHECKBOX TOGGLE ────────────────────────────────────────────────────────────
 function toggleNoteItem(noteKey, itemId, done) {
   const entry = _notesData[noteKey]; if (!entry || !entry.items) return;
-  const items = entry.items.map(i => i.id === itemId ? {...i, done} : i);
+  var items = entry.items.map(i => i.id === itemId ? {...i, done} : i);
+  // Move done items to bottom, preserve relative order within each group
+  items = items.filter(i => !i.done).concat(items.filter(i => i.done));
   if (_isDemoNotes()) { _notesData[noteKey].items = items; _saveDemoNotes(); }
   else { _notesRef.child(noteKey).update({ items }); }
 }
