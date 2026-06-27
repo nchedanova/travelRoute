@@ -95,15 +95,73 @@ function scheduleCloudSave(payload) {
     setSyncStatus('☁ сохранение…', 'var(--amber)');
     try {
       await pushCloudData(payload);
+      _lastCloudHash = strHash(JSON.stringify(payload));
+      _clearPendingPush();
       setSyncStatus('☁ сохранено', 'var(--green)');
       setTimeout(() => setSyncStatus('☁ ок', 'var(--muted)'), 2000);
     } catch(e) {
       console.error('Cloud save error', e);
-      setSyncStatus('☁ ошибка', '#f87171');
+      _persistPendingPush(payload);
+      setSyncStatus('⚠ не синхронизировано — повтор при сети', '#f87171');
     }
     _saveCloudTimer = null;
   }, 1500);
 }
+
+// ── PENDING CLOUD PUSH (офлайн / нестабильная сеть) ───────────────────────────
+// Если pushCloudData провалился — payload не теряется: лежит в localStorage,
+// ретраится при возврате сети и периодически. Пока есть несинхронизированный
+// payload — pollCloud/loadState НЕ перезатирают локальные DAYS_DATA устаревшим
+// облачным снепшотом (иначе офлайн-правки стирались бы при следующем поллинге).
+const PENDING_PUSH_KEY = 'travel_pending_push';
+let _cloudDirty = false;
+let _pendingPushPayload = null;
+let _pushRetryTimer = null;
+
+function _loadPendingPush() {
+  try {
+    const raw = localStorage.getItem(PENDING_PUSH_KEY);
+    if (raw) { _pendingPushPayload = JSON.parse(raw); _cloudDirty = true; }
+  } catch(e) { console.warn('_loadPendingPush error', e); }
+}
+
+function _persistPendingPush(payload) {
+  _pendingPushPayload = payload;
+  _cloudDirty = true;
+  try { localStorage.setItem(PENDING_PUSH_KEY, JSON.stringify(payload)); } catch(e) {}
+}
+
+function _clearPendingPush() {
+  _pendingPushPayload = null;
+  _cloudDirty = false;
+  try { localStorage.removeItem(PENDING_PUSH_KEY); } catch(e) {}
+}
+
+async function _tryFlushPendingPush() {
+  if (!_cloudDirty || !_pendingPushPayload) return;
+  if (!CLOUD_CONFIG.canWrite) return;
+  if (_saveCloudTimer) return; // обычный дебаунс-сейв уже в процессе — не дублируем
+  setSyncStatus('☁ повтор синхронизации…', 'var(--amber)');
+  try {
+    await pushCloudData(_pendingPushPayload);
+    _lastCloudHash = strHash(JSON.stringify(_pendingPushPayload));
+    _clearPendingPush();
+    setSyncStatus('☁ синхронизировано', 'var(--green)');
+    setTimeout(() => setSyncStatus('☁ ок', 'var(--muted)'), 2000);
+  } catch(e) {
+    setSyncStatus('⚠ не синхронизировано — повтор при сети', '#f87171');
+  }
+}
+
+function _schedulePushRetry() {
+  clearInterval(_pushRetryTimer);
+  _pushRetryTimer = setInterval(() => { if (_cloudDirty) _tryFlushPendingPush(); }, 15000);
+}
+
+window.addEventListener('online', () => { if (_cloudDirty) _tryFlushPendingPush(); });
+
+_loadPendingPush();
+_schedulePushRetry();
 
 // ── APPLY SAVED PAYLOAD ───────────────────────────────────────────────────────
 function applyPayload(saved) {
@@ -235,6 +293,15 @@ async function loadState() {
     setSyncStatus('☁ загрузка…', 'var(--amber)');
   }
   setModeBadge();
+
+  // Есть несинхронизированные офлайн-правки (предыдущий пуш не прошёл) —
+  // не тянем облако поверх них, локальный кэш (шаг 1) уже актуален.
+  if (_cloudDirty && CLOUD_CONFIG.canWrite) {
+    setSyncStatus('⚠ не синхронизировано — повтор при сети', '#f87171');
+    _tryFlushPendingPush();
+    return;
+  }
+
   try {
     const saved = await fetchCloudData();
     const json  = JSON.stringify(saved);
@@ -419,6 +486,9 @@ async function pollCloud() {
   if (_saveCloudTimer) return;
   // Не перебиваем активное редактирование/добавление точки или выбор на карте
   if (window._inlineAddOpen || window._mapPickIsEdit || window._mapPickIsEditStart) return;
+  // Есть несинхронизированные офлайн-правки — не тянем устаревший облачный
+  // снепшот поверх них, пробуем допушить вместо обычного поллинга
+  if (_cloudDirty) { _tryFlushPendingPush(); return; }
 
   try {
     const saved = await fetchCloudData();

@@ -250,16 +250,11 @@ async function addNote() {
   }
 
   if (hasImages) {
-    var fbConnected = await _isFirebaseConnected();
-    if (!fbConnected) {
-      showToast('⚠️ Нет связи с Firebase — фото не сохранены');
-    } else {
-      try {
-        var uploaded = await Promise.all(_noteTabPendingImages.map(_uploadNoteImg));
-        payload.images = uploaded;
-      } catch(e) {
-        showToast('⚠️ Нет связи с Firebase — фото не сохранены');
-      }
+    var totalImgs = _noteTabPendingImages.length;
+    var resImgs = await _uploadNoteImagesBatch(_noteTabPendingImages);
+    if (resImgs.uploaded.length) payload.images = resImgs.uploaded;
+    if (resImgs.failedCount) {
+      showToast('⚠️ ' + resImgs.failedCount + ' из ' + totalImgs + ' фото не сохранилось — попробуйте позже');
     }
     _noteTabPendingImages = [];
     if (typeof _renderNoteTabPending === 'function') _renderNoteTabPending();
@@ -362,15 +357,11 @@ async function commitEditNote(key) {
   // Upload pending images
   var newImages = [];
   if (hasPending) {
-    var fbConnected = await _isFirebaseConnected();
-    if (!fbConnected) {
-      showToast('⚠️ Нет связи с Firebase — фото не сохранены');
-    } else {
-      try {
-        newImages = await Promise.all(_noteTabPendingImages.map(_uploadNoteImg));
-      } catch(e) {
-        showToast('⚠️ Ошибка загрузки фото');
-      }
+    var totalImgs2 = _noteTabPendingImages.length;
+    var resImgs2 = await _uploadNoteImagesBatch(_noteTabPendingImages);
+    newImages = resImgs2.uploaded;
+    if (resImgs2.failedCount) {
+      showToast('⚠️ ' + resImgs2.failedCount + ' из ' + totalImgs2 + ' фото не сохранилось — попробуйте позже');
     }
     _noteTabPendingImages = [];
     if (typeof _renderNoteTabPending === 'function') _renderNoteTabPending();
@@ -453,6 +444,67 @@ async function _uploadNoteImg(dataUrl) {
     console.error('Note img upload error:', e);
     throw e; // не кладём base64 в Gist
   }
+}
+
+// ── ЗАГРУЗКА ФОТО С ТАЙМАУТОМ И РЕТРАЯМИ ──────────────────────────────────────
+// На слабом/нестабильном инете ref.set() может не реджектиться, а просто
+// висеть — поэтому каждая попытка ограничена таймаутом. Несколько попыток
+// с паузой между ними переживают короткие обрывы связи. Без фоллбэка в Gist:
+// если все попытки провалились — фото просто не сохраняется, юзер видит
+// явное сообщение со счётом неудач.
+const NOTE_IMG_UPLOAD_TIMEOUT_MS = 12000;
+const NOTE_IMG_UPLOAD_MAX_ATTEMPTS = 3;
+
+function _uploadNoteImgOnce(dataUrl, timeoutMs) {
+  return new Promise(function(resolve, reject) {
+    var settled = false;
+    var timer = setTimeout(function() {
+      if (settled) return;
+      settled = true;
+      reject(new Error('timeout'));
+    }, timeoutMs);
+    _uploadNoteImg(dataUrl).then(function(res) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(res);
+    }).catch(function(err) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      reject(err);
+    });
+  });
+}
+
+async function _uploadNoteImgRetry(dataUrl) {
+  var lastErr;
+  for (var attempt = 1; attempt <= NOTE_IMG_UPLOAD_MAX_ATTEMPTS; attempt++) {
+    try {
+      return await _uploadNoteImgOnce(dataUrl, NOTE_IMG_UPLOAD_TIMEOUT_MS);
+    } catch(e) {
+      lastErr = e;
+      if (attempt < NOTE_IMG_UPLOAD_MAX_ATTEMPTS) {
+        await new Promise(function(r) { setTimeout(r, 1500 * attempt); });
+      }
+    }
+  }
+  throw lastErr;
+}
+
+// Грузит пачку фото независимо друг от друга (один упавший файл не топит
+// остальные) и с ретраями на каждый. Возвращает успешно загруженные ссылки
+// + количество окончательно провалившихся (для сообщения юзеру).
+async function _uploadNoteImagesBatch(dataUrls) {
+  if (!dataUrls || !dataUrls.length) return { uploaded: [], failedCount: 0 };
+  showToast && showToast('📤 Загрузка ' + dataUrls.length + ' фото…');
+  var results = await Promise.allSettled(dataUrls.map(function(u) { return _uploadNoteImgRetry(u); }));
+  var uploaded = [];
+  var failedCount = 0;
+  results.forEach(function(r) {
+    if (r.status === 'fulfilled') uploaded.push(r.value); else failedCount++;
+  });
+  return { uploaded: uploaded, failedCount: failedCount };
 }
 
 function _deleteNoteImg(ref) {
@@ -594,16 +646,11 @@ async function commitStopNote(stopId, day, idx) {
       note.images = note.images.concat(_pendingStopImages[pk]);
       showToast('📴 Фото сохранены офлайн');
     } else {
-      var fbConnected = await _isFirebaseConnected();
-      if (!fbConnected) {
-        showToast('⚠️ Нет связи с Firebase — фото не сохранены');
-      } else {
-        try {
-          var uploaded = await Promise.all(_pendingStopImages[pk].map(_uploadNoteImg));
-          note.images = note.images.concat(uploaded);
-        } catch(e) {
-          showToast('⚠️ Нет связи с Firebase — фото не сохранены');
-        }
+      var totalImgs3 = _pendingStopImages[pk].length;
+      var resImgs3 = await _uploadNoteImagesBatch(_pendingStopImages[pk]);
+      note.images = note.images.concat(resImgs3.uploaded);
+      if (resImgs3.failedCount) {
+        showToast('⚠️ ' + resImgs3.failedCount + ' из ' + totalImgs3 + ' фото не сохранилось — попробуйте позже');
       }
     }
     delete _pendingStopImages[pk];
