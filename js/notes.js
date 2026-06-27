@@ -238,6 +238,21 @@ async function addNote() {
   let payload = { type: _noteType, author, ts: Date.now() };
   if (title) payload.title = title;
 
+  var uploadedNow = [];
+  if (hasImages) {
+    var totalImgs = _noteTabPendingImages.length;
+    var resImgs = await _uploadNoteImagesBatch(_noteTabPendingImages);
+    uploadedNow = resImgs.uploaded;
+    if (uploadedNow.length) payload.images = uploadedNow;
+    if (resImgs.failedCount) {
+      showToast('⚠️ ' + resImgs.failedCount + ' из ' + totalImgs + ' фото не сохранилось — попробуйте позже');
+      _noteTabPendingImages = resImgs.failed; // оставляем для повтора по +
+    } else {
+      _noteTabPendingImages = [];
+    }
+    if (typeof _renderNoteTabPending === 'function') _renderNoteTabPending();
+  }
+
   if (_noteType === 'other') {
     payload.text = text;
   } else {
@@ -246,19 +261,12 @@ async function addNote() {
       text: l.replace(/\u2028/g, '\n').trim(),
       done: false
     }));
-    if (!payload.items.length && !hasImages) return;
   }
 
-  if (hasImages) {
-    var totalImgs = _noteTabPendingImages.length;
-    var resImgs = await _uploadNoteImagesBatch(_noteTabPendingImages);
-    if (resImgs.uploaded.length) payload.images = resImgs.uploaded;
-    if (resImgs.failedCount) {
-      showToast('⚠️ ' + resImgs.failedCount + ' из ' + totalImgs + ' фото не сохранилось — попробуйте позже');
-    }
-    _noteTabPendingImages = [];
-    if (typeof _renderNoteTabPending === 'function') _renderNoteTabPending();
-  }
+  // Полный провал аплоада + нет текста/пунктов — нечего сохранять, оставляем
+  // компоновщик как есть (фото остались pending выше) вместо пустой записи.
+  var hasAnyContent = (_noteType === 'other' ? !!payload.text : (payload.items && payload.items.length)) || (payload.images && payload.images.length);
+  if (!hasAnyContent) return;
 
   if (_isDemoNotes()) { _demoAddNote(payload); } else { _notesRef.push(payload); }
   inp.value = ''; inp.style.height = 'auto';
@@ -362,8 +370,10 @@ async function commitEditNote(key) {
     newImages = resImgs2.uploaded;
     if (resImgs2.failedCount) {
       showToast('⚠️ ' + resImgs2.failedCount + ' из ' + totalImgs2 + ' фото не сохранилось — попробуйте позже');
+      _noteTabPendingImages = resImgs2.failed; // оставляем для повтора по ✓
+    } else {
+      _noteTabPendingImages = [];
     }
-    _noteTabPendingImages = [];
     if (typeof _renderNoteTabPending === 'function') _renderNoteTabPending();
   }
 
@@ -496,15 +506,15 @@ async function _uploadNoteImgRetry(dataUrl) {
 // остальные) и с ретраями на каждый. Возвращает успешно загруженные ссылки
 // + количество окончательно провалившихся (для сообщения юзеру).
 async function _uploadNoteImagesBatch(dataUrls) {
-  if (!dataUrls || !dataUrls.length) return { uploaded: [], failedCount: 0 };
+  if (!dataUrls || !dataUrls.length) return { uploaded: [], failed: [], failedCount: 0 };
   showToast && showToast('📤 Загрузка ' + dataUrls.length + ' фото…');
   var results = await Promise.allSettled(dataUrls.map(function(u) { return _uploadNoteImgRetry(u); }));
   var uploaded = [];
-  var failedCount = 0;
-  results.forEach(function(r) {
-    if (r.status === 'fulfilled') uploaded.push(r.value); else failedCount++;
+  var failed = [];
+  results.forEach(function(r, i) {
+    if (r.status === 'fulfilled') uploaded.push(r.value); else failed.push(dataUrls[i]);
   });
-  return { uploaded: uploaded, failedCount: failedCount };
+  return { uploaded: uploaded, failed: failed, failedCount: failed.length };
 }
 
 function _deleteNoteImg(ref) {
@@ -635,6 +645,7 @@ async function commitStopNote(stopId, day, idx) {
 
   // Загружаем pending фото
   var pk = _pendingKey(stopId, idx);
+  var uploadFailedCount = 0;
   // Авто-детект: заметка уже содержит data: фото — считаем офлайн-режим
   if (note.images && note.images.some(function(r){return r&&r.startsWith('data:');})) {
     _pendingStopOffline[pk] = true;
@@ -645,19 +656,23 @@ async function commitStopNote(stopId, day, idx) {
       // Офлайн-режим: сохраняем base64 прямо в Gist (800px q0.70)
       note.images = note.images.concat(_pendingStopImages[pk]);
       showToast('📴 Фото сохранены офлайн');
+      delete _pendingStopImages[pk];
     } else {
       var totalImgs3 = _pendingStopImages[pk].length;
       var resImgs3 = await _uploadNoteImagesBatch(_pendingStopImages[pk]);
       note.images = note.images.concat(resImgs3.uploaded);
-      if (resImgs3.failedCount) {
-        showToast('⚠️ ' + resImgs3.failedCount + ' из ' + totalImgs3 + ' фото не сохранилось — попробуйте позже');
-      }
+      uploadFailedCount = resImgs3.failedCount;
+      // Успешные — убираем из pending. Провалившиеся — оставляем для повтора
+      // по кнопке ✓, не теряем выбранные фото из-за плохой связи.
+      if (uploadFailedCount) _pendingStopImages[pk] = resImgs3.failed;
+      else delete _pendingStopImages[pk];
     }
-    delete _pendingStopImages[pk];
     delete _pendingStopOffline[pk];
   }
 
-  var hasContent = note.text || (note.images && note.images.length);
+  // Заметка с проваленной загрузкой фото — НЕ считается пустой, иначе
+  // потеря связи на аплоаде стирала бы и текст, и саму заметку целиком.
+  var hasContent = note.text || (note.images && note.images.length) || uploadFailedCount;
 
   // If empty — remove the note entirely
   if (!hasContent) {
@@ -671,7 +686,12 @@ async function commitStopNote(stopId, day, idx) {
 
   saveData();
   renderStops(day);
-  typeof showToast === 'function' && showToast('💾 Сохранено');
+  if (uploadFailedCount) {
+    if (typeof _renderStopNoteEditImages === 'function') _renderStopNoteEditImages(stopId, idx);
+    showToast('⚠️ ' + uploadFailedCount + ' фото не сохранилось — заметка сохранена, нажмите ✓ ещё раз для повтора');
+  } else {
+    typeof showToast === 'function' && showToast('💾 Сохранено');
+  }
 }
 
 // ── OPEN EDIT ──
