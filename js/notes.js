@@ -457,32 +457,64 @@ async function _uploadNoteImg(dataUrl) {
 }
 
 // ── ЗАГРУЗКА ФОТО С ТАЙМАУТОМ И РЕТРАЯМИ ──────────────────────────────────────
-// На слабом/нестабильном инете ref.set() может не реджектиться, а просто
-// висеть — поэтому каждая попытка ограничена таймаутом. Несколько попыток
-// с паузой между ними переживают короткие обрывы связи. Без фоллбэка в Gist:
-// если все попытки провалились — фото просто не сохраняется, юзер видит
-// явное сообщение со счётом неудач.
-const NOTE_IMG_UPLOAD_TIMEOUT_MS = 12000;
+// Раньше тут был слепой таймаут на ref.set() — но после реального обрыва
+// сети Firebase SDK сам реконнектится в фоне, и это может занять дольше
+// фиксированного окна, независимо от того, когда мы пытаемся писать.
+// Поэтому: сперва ждём подтверждённый .info/connected (реальный статус
+// транспорта, не navigator.onLine), и только потом пишем — с отдельным
+// (уже небольшим) таймаутом на саму запись. Несколько попыток с паузой
+// переживают случай, когда реконнект тоже не успел за один цикл.
+const NOTE_IMG_CONNECT_WAIT_MS  = 8000;
+const NOTE_IMG_WRITE_TIMEOUT_MS = 10000;
 const NOTE_IMG_UPLOAD_MAX_ATTEMPTS = 3;
 
-function _uploadNoteImgOnce(dataUrl, timeoutMs) {
-  return new Promise(function(resolve, reject) {
-    var settled = false;
-    var timer = setTimeout(function() {
-      if (settled) return;
-      settled = true;
-      reject(new Error('timeout'));
-    }, timeoutMs);
-    _uploadNoteImg(dataUrl).then(function(res) {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      resolve(res);
-    }).catch(function(err) {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      reject(err);
+function _waitFirebaseConnected(maxWaitMs) {
+  return new Promise(function(resolve) {
+    var db = _noteImgDb();
+    if (!db) { resolve(false); return; }
+    var connRef = db.ref('.info/connected');
+    var done = false;
+    var timer;
+    function cb(snap) {
+      if (done) return;
+      if (snap.val() === true) {
+        done = true;
+        clearTimeout(timer);
+        connRef.off('value', cb);
+        resolve(true);
+      }
+    }
+    timer = setTimeout(function() {
+      if (done) return;
+      done = true;
+      connRef.off('value', cb);
+      resolve(false);
+    }, maxWaitMs);
+    connRef.on('value', cb);
+  });
+}
+
+function _uploadNoteImgOnce(dataUrl, connectWaitMs, writeTimeoutMs) {
+  return _waitFirebaseConnected(connectWaitMs).then(function(connected) {
+    if (!connected) throw new Error('not connected');
+    return new Promise(function(resolve, reject) {
+      var settled = false;
+      var timer = setTimeout(function() {
+        if (settled) return;
+        settled = true;
+        reject(new Error('write timeout'));
+      }, writeTimeoutMs);
+      _uploadNoteImg(dataUrl).then(function(res) {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve(res);
+      }).catch(function(err) {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        reject(err);
+      });
     });
   });
 }
@@ -491,11 +523,11 @@ async function _uploadNoteImgRetry(dataUrl) {
   var lastErr;
   for (var attempt = 1; attempt <= NOTE_IMG_UPLOAD_MAX_ATTEMPTS; attempt++) {
     try {
-      return await _uploadNoteImgOnce(dataUrl, NOTE_IMG_UPLOAD_TIMEOUT_MS);
+      return await _uploadNoteImgOnce(dataUrl, NOTE_IMG_CONNECT_WAIT_MS, NOTE_IMG_WRITE_TIMEOUT_MS);
     } catch(e) {
       lastErr = e;
       if (attempt < NOTE_IMG_UPLOAD_MAX_ATTEMPTS) {
-        await new Promise(function(r) { setTimeout(r, 1500 * attempt); });
+        await new Promise(function(r) { setTimeout(r, 2000 * attempt); });
       }
     }
   }
