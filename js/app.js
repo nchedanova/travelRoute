@@ -2595,6 +2595,21 @@ function _pickBestWeatherIdx(hourlyTimes, dateISO, timeStr) {
   return bestIdx;
 }
 
+// Fetch с таймаутом 8с: защита от ERR_CONNECTION_TIMED_OUT, который браузер
+// даёт через 60+ секунд при падении TCP-соединения на медленной сети.
+// Возвращает Promise<Response> или реджектит досрочно по AbortError.
+const WEATHER_FETCH_TIMEOUT_MS = 8000;
+function _fetchWeather(url) {
+  if (!navigator.onLine) return Promise.reject(new Error('offline'));
+  var ctrl = new AbortController();
+  var timer = setTimeout(function() { ctrl.abort(); }, WEATHER_FETCH_TIMEOUT_MS);
+  return fetch(url, { signal: ctrl.signal }).then(function(r) {
+    clearTimeout(timer); return r;
+  }).catch(function(e) {
+    clearTimeout(timer); throw e;
+  });
+}
+
 async function fetchDayWeather(day) {
   var data = DAYS_DATA[day];
   if (!data) return;
@@ -2621,9 +2636,7 @@ async function fetchDayWeather(day) {
       '&longitude=' + lngs +
       '&hourly=temperature_2m,weather_code,wind_speed_10m,precipitation,is_day' +
       '&timezone=auto' + _weatherDateRange(data.dateISO);
-    var resp = await fetch(url);
-    var json = await resp.json();
-    var results = Array.isArray(json) ? json : [json];
+    var resp = await _fetchWeather(url);
 
     var fbPoints = {};
 
@@ -2715,7 +2728,7 @@ async function fetchStopWeather(day, stopId) {
       '&longitude=' + s.lng +
       '&hourly=temperature_2m,weather_code,wind_speed_10m,precipitation,is_day' +
       '&timezone=auto' + _weatherDateRange(dateISO);
-    var resp = await fetch(url);
+    var resp = await _fetchWeather(url);
     var json = await resp.json();
     if (!json || !json.hourly) return;
     var bestIdx = _pickBestWeatherIdx(json.hourly.time, dateISO, time);
@@ -2754,7 +2767,7 @@ async function fetchStartWeather(day) {
       '&longitude=' + data.start.lng +
       '&hourly=temperature_2m,weather_code,wind_speed_10m,precipitation,is_day' +
       '&timezone=auto' + _weatherDateRange(data.dateISO);
-    var resp = await fetch(url);
+    var resp = await _fetchWeather(url);
     var json = await resp.json();
     if (!json || !json.hourly) return;
     var bestIdx = _pickBestWeatherIdx(json.hourly.time, data.dateISO, time);
@@ -2888,7 +2901,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.8.0';
-var APP_BUILD   = 72;
+var APP_BUILD   = 73;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 
