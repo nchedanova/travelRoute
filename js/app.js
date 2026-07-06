@@ -2600,14 +2600,21 @@ function _pickBestWeatherIdx(hourlyTimes, dateISO, timeStr) {
 // Возвращает Promise<Response> или реджектит досрочно по AbortError.
 const WEATHER_FETCH_TIMEOUT_MS = 8000;
 function _fetchWeather(url) {
-  if (!navigator.onLine) return Promise.reject(new Error('offline'));
+  if (!navigator.onLine) return Promise.reject(Object.assign(new Error('offline'), {name:'WeatherOffline'}));
   var ctrl = new AbortController();
-  var timer = setTimeout(function() { ctrl.abort(); }, WEATHER_FETCH_TIMEOUT_MS);
+  var timer = setTimeout(function() { ctrl.abort('weather-timeout'); }, WEATHER_FETCH_TIMEOUT_MS);
   return fetch(url, { signal: ctrl.signal }).then(function(r) {
     clearTimeout(timer); return r;
   }).catch(function(e) {
     clearTimeout(timer); throw e;
   });
+}
+
+// Возвращает true если ошибка — ожидаемый сетевой сбой (таймаут/офлайн/блок),
+// а не баг в коде. Такие ошибки не нужно показывать в консоли как error.
+function _isWeatherNetworkError(e) {
+  return e && (e.name === 'AbortError' || e.name === 'WeatherOffline' ||
+    (e.message && (e.message === 'offline' || e.message.indexOf('Failed to fetch') !== -1)));
 }
 
 async function fetchDayWeather(day) {
@@ -2637,6 +2644,8 @@ async function fetchDayWeather(day) {
       '&hourly=temperature_2m,weather_code,wind_speed_10m,precipitation,is_day' +
       '&timezone=auto' + _weatherDateRange(data.dateISO);
     var resp = await _fetchWeather(url);
+    var json = await resp.json();
+    var results = Array.isArray(json) ? json : [json];
 
     var fbPoints = {};
 
@@ -2672,8 +2681,8 @@ async function fetchDayWeather(day) {
 
     showToast && showToast('\u2705 \u041F\u043E\u0433\u043E\u0434\u0430 \u043E\u0431\u043D\u043E\u0432\u043B\u0435\u043D\u0430');
   } catch(e) {
-    console.error('[weather]', e);
-    showToast && showToast('\u26A0 \u041E\u0448\u0438\u0431\u043A\u0430 \u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0438 \u043F\u043E\u0433\u043E\u0434\u044B');
+    if (_isWeatherNetworkError(e)) { console.warn('[weather] недоступен (сеть/блок)', e.message); }
+    else { console.error('[weather]', e); showToast && showToast('\u26A0 \u041E\u0448\u0438\u0431\u043A\u0430 \u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0438 \u043F\u043E\u0433\u043E\u0434\u044B'); }
   }
 }
 
@@ -2752,7 +2761,8 @@ async function fetchStopWeather(day, stopId) {
       db.ref('weather/' + day + '/points/' + stopId).set(w);
     }
   } catch(e) {
-    console.error('[weather] single stop', e);
+    if (!_isWeatherNetworkError(e)) console.error('[weather] single stop', e);
+    else console.warn('[weather] single stop: недоступен', e.message);
   }
 }
 
@@ -2791,7 +2801,8 @@ async function fetchStartWeather(day) {
       db.ref('weather/' + day + '/points/' + startId).set(w);
     }
   } catch(e) {
-    console.error('[weather] start point', e);
+    if (!_isWeatherNetworkError(e)) console.error('[weather] start point', e);
+    else console.warn('[weather] start point: недоступен', e.message);
   }
 }
 
@@ -2901,7 +2912,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.8.0';
-var APP_BUILD   = 73;
+var APP_BUILD   = 75;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 2;
 
