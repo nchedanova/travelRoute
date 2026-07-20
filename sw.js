@@ -68,12 +68,9 @@ self.addEventListener('fetch', e => {
 
   // 1) Map tiles → cache-first (offline maps!)
   if (url.hostname.includes('tile.openstreetmap.org') ||
-      url.hostname.includes('basemaps.cartocdn.com') ||
       url.hostname.includes('tiles.wmflabs.org') ||
       url.hostname.includes('tile.thunderforest.com')) {
     e.respondWith(tileStrategy(e.request));
-    return;
-  }
     return;
   }
 
