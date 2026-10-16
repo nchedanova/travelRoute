@@ -405,7 +405,19 @@ body.viewer-mode #undoBtn { display:none !important; }
 .modal-body { font-size:11px; color:var(--muted); margin-bottom:20px; line-height:1.6; }
 .modal-actions { display:flex; gap:8px; justify-content:flex-end; }
 .cloud-settings-actions { display:grid; gap:8px; }
-#cloudSettingsModal > .modal { max-height:calc(100dvh - 32px); overflow-y:auto; }
+#cloudSettingsModal > .modal { max-height:calc(100dvh - 32px); overflow-y:auto; scrollbar-width:thin; scrollbar-color:var(--border) transparent; }
+#cloudSettingsModal > .modal::-webkit-scrollbar { width:5px; }
+#cloudSettingsModal > .modal::-webkit-scrollbar-track { background:transparent; }
+#cloudSettingsModal > .modal::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+#cloudSettingsModal > .modal::-webkit-scrollbar-thumb:hover { background:var(--muted); }
+.cloud-connection-settings { margin:16px 0; border:1px solid var(--border); border-radius:8px; }
+.cloud-connection-settings > summary { display:flex; align-items:center; gap:12px; padding:14px; cursor:pointer; color:var(--text); font-size:12px; list-style:none; }
+.cloud-connection-settings > summary::-webkit-details-marker { display:none; }
+.cloud-connection-settings > summary::before { content:'›'; display:block; flex:0 0 12px; text-align:center; font-size:18px; line-height:1; color:var(--muted); }
+.cloud-connection-settings[open] > summary::before { transform:rotate(90deg); }
+.cloud-connection-settings > summary:hover { color:var(--amber); }
+.cloud-connection-settings > summary:focus-visible { outline:2px solid var(--amber); outline-offset:2px; border-radius:8px; }
+.cloud-connection-body { padding:0 12px 12px; }
 .cloud-settings-action-row { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
 .cloud-settings-actions button { width:100%; min-width:0; min-height:36px; padding:7px 8px; white-space:normal; }
 .cloud-settings-actions .cloud-settings-reset { border-color:var(--red); color:var(--red); }
@@ -438,7 +450,6 @@ body.viewer-mode #undoBtn { display:none !important; }
 .changelog-release { font-size:11px; line-height:1.6; margin-top:10px; color:var(--muted); }
 .changelog-release-ver { color:var(--amber); font-weight:700; white-space:nowrap; }
 .changelog-history-hint { font-size:9px; line-height:1.5; margin-top:12px; color:var(--muted); }
-.cs-changelog-btn { display:block; width:100%; margin-top:8px; border:0; background:none; color:var(--amber); font:inherit; font-size:11px; cursor:pointer; }
 
 /* ── DRAG & DROP ─────────────────────────────────────── */
 .drag-handle {
@@ -3222,10 +3233,20 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
   border-radius: 8px;
   min-width: 220px;
   max-width: min(280px, calc(100vw - 8px));
+  box-sizing: border-box;
+  max-height: min(560px, calc(100vh - var(--archive-top, 48px) - 8px));
+  max-height: min(560px, calc(100dvh - var(--archive-top, 48px) - 8px));
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
   padding: 4px 0;
   box-shadow: 0 4px 20px rgba(0,0,0,0.5);
 }
 .archive-dropdown.show { display: block; }
+.archive-dropdown::-webkit-scrollbar { width: 6px; }
+.archive-dropdown::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.archive-dropdown::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 .archive-empty {
   padding: 10px 14px;
   font-size: 11px;

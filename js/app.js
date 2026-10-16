@@ -1175,6 +1175,7 @@ function toggleArchive() {
   var rect = btn.getBoundingClientRect();
   var ddW = 240; // min-width
   dd.style.top = (rect.bottom + 4) + 'px';
+  dd.style.setProperty('--archive-top', dd.style.top);
   dd.style.left = 'auto';
   // Align right edge to button right, but don't go off left edge
   var rightOffset = window.innerWidth - rect.right;
@@ -1188,7 +1189,7 @@ function toggleArchive() {
 }
 
 function _archiveOutsideClick(e) {
-  if (e.target.closest('#archiveWrap')) return;
+  if (e.target.closest('#archiveWrap, #archiveDropdown')) return;
   var dd = document.getElementById('archiveDropdown');
   if (dd) dd.classList.remove('show');
   document.removeEventListener('click', _archiveOutsideClick);
@@ -2914,7 +2915,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.9.0';
-var APP_BUILD   = 82;
+var APP_BUILD   = 86;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 1;
 

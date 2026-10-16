@@ -594,6 +594,7 @@ function copyShareLink(withoutChat = false) {
 
 // ── CLOUD SETTINGS UI ─────────────────────────────────────────────────────────
 function openCloudSettings() {
+  document.getElementById('cloudConnectionSettings').open = false;
   document.getElementById('cs-token').value        = localStorage.getItem('travel_gist_token') || '';
   document.getElementById('cs-gist').value          = localStorage.getItem('travel_gist_id')    || '';
   document.getElementById('cs-firebase-key').value  = localStorage.getItem('travel_firebase_key') || '';

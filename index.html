@@ -41,7 +41,7 @@
     </div>
     <button class="undo-btn" id="undoBtn" onclick="undoAction()" disabled title="Отменить последнее действие">↩ отмена</button>
     <span id="syncStatus" title="Статус облачного сохранения" style="font-size:10px;color:var(--muted);white-space:nowrap;flex-shrink:0;cursor:default;min-width:88px;text-align:center;display:inline-block;">☁ —</span>
-    <button onclick="openCloudSettings()" title="Настройки облака" class="settings-btn">⚙</button>
+    <button onclick="openCloudSettings()" title="Настройки" class="settings-btn">⚙</button>
     <button class="theme-btn" onclick="toggleThemePicker()" title="Сменить тему" id="themeBtn">🎨</button>
     <button id="drivingBtn" class="driving-btn" onclick="toggleDrivingMode()" style="display:none">🚗 Еду</button>
   </div>
@@ -389,7 +389,10 @@
   <!-- Cloud Settings Modal -->
   <div class="modal-overlay" id="cloudSettingsModal" onclick="if(event.target===this)closeCloudSettings()">
     <div class="modal modal-lg">
-      <div class="modal-title">⚙ Настройки облака</div>
+      <div class="modal-title">⚙ Настройки</div>
+      <details class="cloud-connection-settings" id="cloudConnectionSettings">
+      <summary>☁ Настройки облака</summary>
+      <div class="cloud-connection-body">
       <div class="modal-body" style="margin-bottom:14px;">
         Данные хранятся в <b>публичном</b> GitHub Gist. Токен нужен только владельцу для записи — зрители открывают сайт по ссылке без токена.
       </div>
@@ -407,6 +410,12 @@
       </div>
 
       <div id="cs-status" style="font-size:10px;min-height:16px;margin-bottom:10px;"></div>
+      <div class="cloud-settings-actions">
+        <button class="modal-cancel cloud-settings-reset" onclick="clearCloudSettings()" title="Удаляет настройки подключения только в этом браузере. Данные в облаке остаются.">Сбросить подключение</button>
+        <button class="modal-confirm" style="border-color:var(--green);color:var(--green);background:rgba(74,222,128,0.1);" onclick="saveCloudSettings()">Сохранить подключение</button>
+      </div>
+      </div>
+      </details>
 
       <div style="height:1px;background:var(--border);margin:4px 0 14px"></div>
       <div class="modal-label" style="margin-bottom:6px">Версия приложения</div>
@@ -424,20 +433,14 @@
         </div>
         <div style="margin-top:10px">
           <button class="cs-update-btn" id="csUpdateBtn" onclick="applySwUpdate()">↺ Перезагрузить / применить обновление</button>
-          <button class="cs-changelog-btn" onclick="showChangelog()">🆕 Что нового</button>
         </div>
       </div>
       <div class="cloud-settings-actions">
-        <button class="modal-cancel cloud-settings-reset" onclick="clearCloudSettings()" title="Удаляет настройки подключения только в этом браузере. Данные в облаке остаются.">Сбросить подключение</button>
         <div class="cloud-settings-action-row">
         <button class="modal-cancel" onclick="copyShareLink()" title="Просмотр маршрута и чат, без токена владельца">🔗 Ссылка читателя</button>
         <button class="modal-cancel" onclick="copyShareLink(true)" title="Просмотр без чата и запроса имени">👁 Ссылка без чата</button>
         </div>
-        <div class="cloud-settings-action-row">
-        <button class="modal-cancel" onclick="closeCloudSettings()">Отмена</button>
-        <button class="modal-confirm" style="border-color:var(--green);color:var(--green);background:rgba(74,222,128,0.1);"
-          onclick="saveCloudSettings()">Сохранить</button>
-        </div>
+        <button class="modal-cancel" onclick="closeCloudSettings()">Закрыть</button>
       </div>
     </div>
   </div>
