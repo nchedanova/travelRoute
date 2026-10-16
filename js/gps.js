@@ -30,7 +30,7 @@ function initGps() {
   if (typeof isDemoMode === 'function' && isDemoMode()) {
     initChat && initChat();
     initNotes && initNotes();
-    _showEl('drivingBtn');
+    if (isAdmin()) _showEl('drivingBtn');
     return;
   }
 
@@ -51,7 +51,7 @@ function initGps() {
   // Auth — use existing session (Google/anonymous) or create anonymous
   if (firebase.auth) {
     // Handle redirect result from Google Sign-In (fallback for popup-blocked)
-    firebase.auth().getRedirectResult().then(function(result) {
+    if (isChatEnabled()) firebase.auth().getRedirectResult().then(function(result) {
       if (result && result.user) {
         var u = result.user;
         window._firebaseUid = u.uid;
@@ -85,6 +85,8 @@ function initGps() {
         var newUid = user.uid;
         window._firebaseUid = newUid;
         localStorage.setItem('travel_firebase_uid', newUid);
+        // GPS и заметкам нужен uid, но зритель не участвует в чате.
+        if (!isChatEnabled()) return;
         var provider = user.providerData?.length ? user.providerData[0].providerId : 'anonymous';
         console.log('[auth] uid:', newUid, '(' + provider + ')');
 
@@ -124,7 +126,7 @@ function initGps() {
         if (typeof renderChatHeader === 'function') renderChatHeader();
       } else {
         // No user — but don't create anonymous if Google redirect is pending
-        if (localStorage.getItem('travel_auth_redirect_pending')) {
+        if (isChatEnabled() && localStorage.getItem('travel_auth_redirect_pending')) {
           console.log('[auth] waiting for redirect result, skipping anonymous sign-in');
         } else {
           firebase.auth().signInAnonymously().catch(e => console.warn('[auth] anonymous sign-in failed:', e));

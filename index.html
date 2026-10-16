@@ -424,14 +424,20 @@
         </div>
         <div style="margin-top:10px">
           <button class="cs-update-btn" id="csUpdateBtn" onclick="applySwUpdate()">↺ Перезагрузить / применить обновление</button>
+          <button class="cs-changelog-btn" onclick="showChangelog()">🆕 Что нового</button>
         </div>
       </div>
-      <div class="modal-actions" style="flex-wrap:wrap;gap:8px;">
-        <button class="modal-cancel" onclick="clearCloudSettings()" style="margin-right:auto;border-color:#f87171;color:#f87171;">Очистить</button>
-        <button class="modal-cancel" onclick="copyShareLink()" title="Скопировать ссылку для зрителей (без токена)">🔗 Скопировать ссылку</button>
+      <div class="cloud-settings-actions">
+        <button class="modal-cancel cloud-settings-reset" onclick="clearCloudSettings()" title="Удаляет настройки подключения только в этом браузере. Данные в облаке остаются.">Сбросить подключение</button>
+        <div class="cloud-settings-action-row">
+        <button class="modal-cancel" onclick="copyShareLink()" title="Просмотр маршрута и чат, без токена владельца">🔗 Ссылка читателя</button>
+        <button class="modal-cancel" onclick="copyShareLink(true)" title="Просмотр без чата и запроса имени">👁 Ссылка без чата</button>
+        </div>
+        <div class="cloud-settings-action-row">
         <button class="modal-cancel" onclick="closeCloudSettings()">Отмена</button>
         <button class="modal-confirm" style="border-color:var(--green);color:var(--green);background:rgba(74,222,128,0.1);"
           onclick="saveCloudSettings()">Сохранить</button>
+        </div>
       </div>
     </div>
   </div>
@@ -503,7 +509,7 @@
 </div>
 
 <div class="modal-overlay" id="changelogModal" onclick="if(event.target===this)closeChangelog()">
-  <div class="modal" style="max-width:340px">
+  <div class="modal" style="max-width:520px">
     <div class="modal-title">🆕 Что нового</div>
     <div id="changelogBody" class="modal-body"></div>
     <div class="modal-actions">

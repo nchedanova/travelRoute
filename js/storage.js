@@ -569,7 +569,7 @@ function startPolling(intervalMs = 10000) {
   }, interval);
 }
 
-function copyShareLink() {
+function copyShareLink(withoutChat = false) {
   const gistId = CLOUD_CONFIG.binId;
   if (!gistId) {
     const st = document.getElementById('cs-status');
@@ -580,11 +580,14 @@ function copyShareLink() {
   const url = new URL(window.location.href);
   url.search = ''; // убираем старые params
   url.searchParams.set('gist', gistId);
+  if (withoutChat) url.searchParams.set('chat', '0');
   const fbKey = localStorage.getItem('travel_firebase_key') || '';
   if (fbKey) url.searchParams.set('fbkey', fbKey);
   navigator.clipboard.writeText(url.toString()).then(() => {
     const st = document.getElementById('cs-status');
-    st.textContent = '✓ Ссылка скопирована! Gist должен быть публичным.';
+    st.textContent = withoutChat
+      ? '✓ Ссылка без чата скопирована! Gist должен быть публичным.'
+      : '✓ Ссылка читателя скопирована! Gist должен быть публичным.';
     st.style.color = 'var(--green)';
   });
 }

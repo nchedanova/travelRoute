@@ -2851,6 +2851,7 @@ setTimeout(() => {
 
 // Открыть сайдбар на таб чата из кнопки в шапке
 function openChatFromHeader() {
+  if (!isChatEnabled()) return;
   const sb = document.getElementById('sidebar');
   if (!sb.classList.contains('open')) {
     sb.classList.add('open');
@@ -2873,6 +2874,7 @@ function initSidebarTabs() {
 }
 
 function switchSidebarTab(tab) {
+  if (tab === 'chat' && !isChatEnabled()) return;
   var prev = _currentSidebarTab;
   _currentSidebarTab = tab;
   ['route','notes','chat'].forEach(t => {
@@ -2911,12 +2913,16 @@ document.addEventListener('click', e => {
 });
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
-var APP_VERSION = '2.8.0';
-var APP_BUILD   = 77;
+var APP_VERSION = '2.9.0';
+var APP_BUILD   = 82;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
-var CHANGELOG_MAX_SHOW = 2;
+var CHANGELOG_MAX_SHOW = 1;
 
 var APP_CHANGELOG = [
+  { ver: '2.9.0', date: '16.10.2026', items: [
+    '👁 Ссылка зрителя — без чата, уведомлений и запроса имени; обычный читатель остаётся с чатом.',
+    '📱 Ровные кнопки настроек и навигатора; понятный «Сброс подключения»; компактная история обновлений.'
+  ]},
   { ver: '2.8.0 b64', date: '03.05.2026', items: [
     '📝 Тема заметки — необязательное поле, цвет совпадает с категорией',
     '🎨 Цветовая система категорий: Купить — серый, Взять — песочный, Сделать — фиолетовый, Другое — в цвет темы',
@@ -3031,6 +3037,34 @@ var APP_CHANGELOG = [
   ]}
 ];
 
+// Краткая история: сборки одной версии объединены, подробные записи выше сохранены.
+var APP_HISTORY_SUMMARIES = {
+  '2.8.0': 'Точки на карте: выбор и перетаскивание; поиск иконок. Автовремя и пересчёт остановок, подсказки перед остановкой, архив дней, реакции и фото к заметкам, категории и сворачивание заметок.',
+  '2.7.0': 'Несколько заметок к точке; публичные и скрытые заметки; скрытие дней от читателей.',
+  '2.6.0': 'Улучшены первый запуск и импорт нового дня; добавлен пешеходный демомаршрут.',
+  '2.5.0': 'Пешие и автомобильные дни, погода ко времени прибытия, отмена изменений, экономное скачивание офлайн-карт.',
+  '2.4.0': 'Импорт маршрута по ссылке из Яндекс Карт, Google Maps, 2ГИС и OsmAnd; проверка названий и типов перед импортом.',
+  '2.3.0': 'Погода в точках и её синхронизация, вход через Google, управление кэшем карты.',
+  '2.2.0': 'Личные чаты, фото пачкой и из буфера, галерея со свайпами, имена прочитавших сообщение.',
+  '2.1.1': 'Исправлены офлайн-старт, формат дат и обновление карты у читателя.',
+  '2.1.0': 'Обратный маршрут, перестановка дней, даты и описания, кликабельные ссылки в заметках.',
+  '2.0.0': 'Мобильная шторка, навигация кнопкой «Назад», новая иконка и окно «Что нового».'
+};
+
+function getCompactReleaseHistory() {
+  var seen = new Set();
+  var result = [];
+  APP_CHANGELOG.slice(CHANGELOG_MAX_SHOW).forEach(function(entry) {
+    var version = entry.ver.split(' ')[0];
+    if (seen.has(version)) return;
+    seen.add(version);
+    result.push({ ver: version, text: APP_HISTORY_SUMMARIES[version] || entry.items.join(' · ') });
+  });
+  // Ранние фичи без точных номеров: не приписываем им вымышленные версии и даты.
+  result.push({ ver: '1.x', text: 'Основа журнала: дни и остановки, поиск мест и координаты, план/факт и прогресс, расстояния и дорожные маршруты, роли и облачная синхронизация; GPS и трек, GPX и внешние навигаторы; общий чат, ответы, реакции и уведомления; заметки и списки дел, темы оформления.' });
+  return result;
+}
+
 function showChangelog() {
   var body = document.getElementById('changelogBody');
   if (!body) return;
@@ -3042,22 +3076,34 @@ function showChangelog() {
       html += '<div class="changelog-item">' + item + '</div>';
     });
   });
+  var history = getCompactReleaseHistory();
+  html += '<details class="changelog-history"><summary>История версий · ' + history.length + ' выпусков</summary>';
+  history.forEach(function(entry) {
+    html += '<div class="changelog-release"><span class="changelog-release-ver">v' + entry.ver + '</span> — ' + entry.text + '</div>';
+  });
+  html += '<div class="changelog-history-hint">Ранние возможности сгруппированы под v1.x; точные версии и даты не восстановлены.</div></details>';
   body.innerHTML = html;
   document.getElementById('changelogModal').classList.add('show');
 }
 
 function closeChangelog() {
   document.getElementById('changelogModal').classList.remove('show');
-  try { localStorage.setItem('changelog_seen', APP_VERSION); } catch(e) {}
+  try {
+    if (!isChatEnabled()) localStorage.setItem('changelog_spectator_seen', '1');
+    else localStorage.setItem('changelog_seen', APP_VERSION);
+  } catch(e) {}
 }
 
-// Show on load if new version — только для Админа и Демо
-setTimeout(function() {
-  if (!isAdmin()) return;
+// Админ и демо: при новой версии. Зритель без чата: один раз при первом входе.
+function shouldShowChangelogOnLoad() {
   try {
-    var seen = localStorage.getItem('changelog_seen');
-    if (seen !== APP_VERSION) showChangelog();
-  } catch(e) {}
+    if (!isChatEnabled()) return !localStorage.getItem('changelog_spectator_seen');
+    return isAdmin() && localStorage.getItem('changelog_seen') !== APP_VERSION;
+  } catch(e) { return false; }
+}
+
+setTimeout(function() {
+  if (shouldShowChangelogOnLoad()) showChangelog();
 }, 800);
 
 // Start weather listener for initial day once Firebase is available

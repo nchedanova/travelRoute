@@ -56,7 +56,7 @@ function getSessionId() {
 function getNotifyMode() {
   return localStorage.getItem('travel_chat_notify') || 'on';
 }
-function isSoundEnabled() { return getNotifyMode() !== 'off'; }
+function isSoundEnabled() { return isChatEnabled() && getNotifyMode() !== 'off'; }
 
 function toggleChatSound() {
   const modes = ['on', 'off', 'pin'];
@@ -91,6 +91,7 @@ let _titleBlinkTimer = null;
 const _originalTitle = document.title;
 
 function _requestNotificationPermission() {
+  if (!isChatEnabled()) return;
   if (!('Notification' in window)) return;
   if (Notification.permission !== 'default') return; // уже выдано или заблокировано
   Notification.requestPermission().then(function(result) {
@@ -100,6 +101,7 @@ function _requestNotificationPermission() {
 
 // Публичная — на случай если нужно вызвать вручную (сейчас не используется в UI)
 async function requestChatNotifyPermission() {
+  if (!isChatEnabled()) return;
   if (!('Notification' in window)) return;
   const result = await Notification.requestPermission();
   if (result === 'granted') showToast('🔔 Уведомления включены');
@@ -108,6 +110,7 @@ async function requestChatNotifyPermission() {
 function _updateNotifyBtn() {} // заглушка — кнопка убрана, оставляем чтобы не ломать вызовы
 
 function _showNotification(name, text) {
+  if (!isChatEnabled()) return;
   if (getNotifyMode() === 'off') return;
   // Browser Notification — только на десктопе, когда вкладка не активна
   if ('Notification' in window && Notification.permission === 'granted') {
@@ -205,6 +208,7 @@ let _pollFallback  = null;    // interval для polling-фоллбека
 let _reconnectTimer = null;
 
 function initChat() {
+  if (!isChatEnabled()) return;
   if (_chatInited) return;
 
   // ── ДЕМО-РЕЖИМ ──────────────────────────────────────────────────────────────
@@ -340,6 +344,7 @@ function isGoogleUser() {
 }
 
 function _ensureNickname(cb) {
+  if (!isChatEnabled()) return;
   if (getChatName()) { cb && cb(); return; }
   // If returning from Google redirect — wait for result before showing modal
   if (localStorage.getItem('travel_auth_redirect_pending')) {
@@ -362,6 +367,7 @@ function _ensureNickname(cb) {
 }
 
 function _showNicknameModal(cb) {
+  if (!isChatEnabled()) return;
   const ov = document.getElementById('nicknameModal');
   if (!ov) { cb && cb(); return; }
   // Reset to auth choice step
@@ -499,6 +505,7 @@ function _listenDmPresence() {
 }
 
 function _writePresence() {
+  if (!isChatEnabled()) return;
   var payload = { ts: Date.now(), name: getChatName() || '?', role: getChatRole() };
   // Always write to global presence (for contacts list)
   if (_globalPresRef) _globalPresRef.child(getSessionId()).set(payload);
@@ -1319,6 +1326,7 @@ function _updateUnreadBadge() {
 }
 
 function onChatTabOpen() {
+  if (!isChatEnabled()) return;
   _chatVisible = true; _chatUnread = 0; _updateUnreadBadge();
   _stopTitleBlink();
   _updateSoundBtn();

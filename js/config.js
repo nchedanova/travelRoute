@@ -24,6 +24,10 @@ const ICON_SETS = {
 const DEP_OFFSETS = { 'Заправка': 20, 'Кафе': 60 };
 
 // ── CLOUD CONFIG ──────────────────────────────────────────────────────────────
+// Режим ссылки действует только в этой вкладке и не меняет сохранённую роль.
+// Это удобный просмотр без чата, а не серверное ограничение доступа.
+const SPECTATOR_MODE = new URLSearchParams(window.location.search).get('chat') === '0';
+function isChatEnabled() { return !SPECTATOR_MODE; }
 // Токен хранится только в localStorage владельца.
 // Gist ID может прийти из URL (?gist=ID) — тогда сайт открывается без токена
 // в режиме «только чтение». Идеально для шаринга ссылки.
@@ -57,7 +61,7 @@ const CLOUD_CONFIG = {
   get apiKey() { return localStorage.getItem('travel_gist_token') || ''; },
   get binId()  { return localStorage.getItem('travel_gist_id')    || ''; },
   // true — есть токен, можно писать
-  get canWrite() { return !!(this.apiKey && this.binId); },
+  get canWrite() { return !SPECTATOR_MODE && !!(this.apiKey && this.binId); },
   // true — есть хотя бы gistId (читаем публичный gist без токена)
   get canRead()  { return !!this.binId; },
 };
@@ -91,7 +95,7 @@ const DEMO_CHAT = [
 // isViewer() = true → Только чтение (нет gist, нет демо → никогда не бывает,
 //                     но если gist есть без токена — читатель)
 function isAdmin() {
-  return CLOUD_CONFIG.canWrite || (typeof isDemoMode === 'function' && isDemoMode());
+  return !SPECTATOR_MODE && (CLOUD_CONFIG.canWrite || (typeof isDemoMode === 'function' && isDemoMode()));
 }
 function isViewer() {
   return !isAdmin();
@@ -99,9 +103,11 @@ function isViewer() {
 
 // Set viewer-mode class on body as early as possible (CSS hides admin-only elements)
 if (document.body) {
+  if (SPECTATOR_MODE) document.body.classList.add('spectator-mode');
   if (isViewer()) document.body.classList.add('viewer-mode');
 } else {
   document.addEventListener('DOMContentLoaded', function() {
+    if (SPECTATOR_MODE) document.body.classList.add('spectator-mode');
     if (isViewer()) document.body.classList.add('viewer-mode');
   });
 }

@@ -91,6 +91,7 @@ async function queueChatMessage(msg) {
 }
 
 async function flushChatQueue() {
+  if (!isChatEnabled()) return;
   try {
     const db = await initOfflineDb();
     const tx  = db.transaction('chat_queue', 'readonly');
