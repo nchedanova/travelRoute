@@ -73,22 +73,30 @@ test('share links distinguish ordinary reader and spectator and never include th
   });
   const status = { style: {} };
   let copied;
+  const notifications = [];
+  ctx.showToast = message => notifications.push(message);
   ctx.navigator = { clipboard: { writeText(value) { copied = value; return Promise.resolve(); } } };
   ctx.document.getElementById = () => status;
   // Test the actual share function without starting unrelated cloud timers.
   const text = source('js/storage.js');
   vm.runInContext(text.slice(text.indexOf('function copyShareLink('), text.indexOf('// ── CLOUD SETTINGS UI')), ctx);
-  run('copyShareLink(true)');
-  await Promise.resolve();
+  await run('copyShareLink(true)');
+  assert.equal(notifications.at(-1), '✓ Ссылка без чата скопирована');
   let url = new URL(copied);
   assert.equal(url.searchParams.get('chat'), '0');
   assert.equal(url.searchParams.get('gist'), 'public-route');
   assert.equal(copied.includes('secret'), false);
-  run('copyShareLink()');
-  await Promise.resolve();
+  await run('copyShareLink()');
+  assert.equal(notifications.at(-1), '✓ Ссылка читателя скопирована');
   url = new URL(copied);
   assert.equal(url.searchParams.has('chat'), false);
   assert.equal(url.searchParams.get('fbkey'), 'public-key');
+  ctx.navigator.clipboard.writeText = () => Promise.reject(new Error('Clipboard denied'));
+  await run('copyShareLink()');
+  assert.match(notifications.at(-1), /Не удалось скопировать/);
+  ctx.navigator.clipboard = undefined;
+  await run('copyShareLink()');
+  assert.match(notifications.at(-1), /Не удалось скопировать/);
 });
 
 test('spectator Firebase initialization preserves GPS without reading chat profiles or presence', () => {

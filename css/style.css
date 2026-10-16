@@ -561,6 +561,8 @@ body.viewer-mode #undoBtn { display:none !important; }
 .edit-row { display:flex; gap:8px; margin-bottom:8px; align-items:flex-start; min-width:0; }
 .edit-field { display:flex; flex-direction:column; gap:3px; min-width:0; }
 .edit-field-grow { flex:1; min-width:0; }
+.stop-type-time-row { display:grid; grid-template-columns:minmax(136px,1.7fr) repeat(2,minmax(0,1fr)); gap:8px; margin-bottom:8px; }
+.stop-type-time-row .edit-input { min-width:0; padding-inline:6px; }
 .edit-input-coord { width:100%; min-width:0; box-sizing:border-box; }
 .edit-label { font-size:9px; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); }
 .edit-input {
@@ -638,6 +640,7 @@ body.viewer-mode #undoBtn { display:none !important; }
   font-size:12px; padding:8px 10px; outline:none; cursor:pointer;
 }
 .modal-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.stop-icon-type-row { grid-template-columns:minmax(0,1fr) minmax(136px,1fr); }
 .search-wrap { position:relative; }
 .search-results {
   position:absolute; top:100%; left:0; right:0; z-index:100;
@@ -3173,11 +3176,12 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 .type-dropdown-btn:hover { border-color: var(--amber); }
 .type-dropdown-btn.open { border-color: var(--amber); border-radius: 6px 6px 0 0; }
 .type-dropdown-icon { display: inline-block; width: 22px; text-align: center; font-size: 14px; flex-shrink: 0; }
-.type-dropdown-label { flex: 1; color: var(--amber); }
-.type-dropdown-arrow { font-size: 10px; color: var(--muted); transition: color 0.15s; }
+.type-dropdown-label { flex: 1; color: var(--amber); white-space:nowrap; }
+.type-dropdown-arrow { flex-shrink:0; font-size: 10px; color: var(--muted); transition: color 0.15s; }
 .type-dropdown-btn.open .type-dropdown-arrow { color: var(--amber); }
 .type-dropdown-menu {
   display: none; position: absolute; left: 0; right: 0; top: 100%;
+  min-width: max-content;
   background: var(--bg); border: 1px solid var(--border); border-top: none;
   border-radius: 0 0 6px 6px; z-index: 200; overflow: hidden;
 }

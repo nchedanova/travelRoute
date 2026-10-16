@@ -575,6 +575,7 @@ function copyShareLink(withoutChat = false) {
     const st = document.getElementById('cs-status');
     st.textContent = '⚠ Сначала сохраните Gist ID';
     st.style.color = '#f87171';
+    showToast('⚠ Сначала сохраните Gist ID');
     return;
   }
   const url = new URL(window.location.href);
@@ -583,12 +584,10 @@ function copyShareLink(withoutChat = false) {
   if (withoutChat) url.searchParams.set('chat', '0');
   const fbKey = localStorage.getItem('travel_firebase_key') || '';
   if (fbKey) url.searchParams.set('fbkey', fbKey);
-  navigator.clipboard.writeText(url.toString()).then(() => {
-    const st = document.getElementById('cs-status');
-    st.textContent = withoutChat
-      ? '✓ Ссылка без чата скопирована! Gist должен быть публичным.'
-      : '✓ Ссылка читателя скопирована! Gist должен быть публичным.';
-    st.style.color = 'var(--green)';
+  return Promise.resolve().then(() => navigator.clipboard.writeText(url.toString())).then(() => {
+    showToast(withoutChat ? '✓ Ссылка без чата скопирована' : '✓ Ссылка читателя скопирована');
+  }).catch(() => {
+    showToast('⚠ Не удалось скопировать ссылку. Попробуйте ещё раз');
   });
 }
 

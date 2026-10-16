@@ -1708,7 +1708,7 @@ function editStop(id, day) {
         <input class="edit-input" style="width:100%" id="ei-name-${id}" value="${_escHtml(s.name)}" autocomplete="nope">
       </div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px;">
+    <div class="stop-type-time-row">
       <div class="edit-field" style="min-width:0">
         <div class="edit-label">Тип</div>
         <div id="ei-type-container-${id}">${_buildTypeDropdownHTML('ei-type-' + id, s.type)}</div>
@@ -1877,7 +1877,7 @@ function openInlineAddStop(afterId, day) {
         <input class="edit-input" style="width:100%" id="ia-name-${afterId}" placeholder="Название точки" autocomplete="nope">
       </div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px;">
+    <div class="stop-type-time-row">
       <div class="edit-field" style="min-width:0">
         <div class="edit-label">Тип</div>
         <div id="ia-type-container-${afterId}">${_buildTypeDropdownHTML('ia-type-' + afterId, 'Другое')}</div>
@@ -2005,7 +2005,7 @@ function openInlineAddFirstStop(day) {
         <input class="edit-input" style="width:100%" id="ia-name-${fakeId}" placeholder="Название точки" autocomplete="nope">
       </div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px;">
+    <div class="stop-type-time-row">
       <div class="edit-field" style="min-width:0">
         <div class="edit-label">Тип</div>
         <div id="ia-type-container-${fakeId}">${_buildTypeDropdownHTML('ia-type-' + fakeId, 'Другое')}</div>
@@ -2915,7 +2915,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.9.0';
-var APP_BUILD   = 86;
+var APP_BUILD   = 88;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 1;
 
