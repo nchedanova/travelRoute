@@ -518,7 +518,7 @@ function _writePresence() {
 // ── LISTEN ─────────────────────────────────────────────────────────────────────
 function _listenMessages() {
   if (!_chatRef) return;
-  _requestNotificationPermission();
+  // Разрешение на уведомления запрашиваем только по клику, не при подключении чата.
   const lastSeen = parseInt(localStorage.getItem('travel_chat_last_seen') || '0');
   _chatLoadTs = Date.now();
   _chatRef.limitToLast(200).on('child_added', snap => {
