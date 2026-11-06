@@ -1047,7 +1047,6 @@ function _clearNoteReactions(stopId, idx) {
 }
 
 function initNoteReactions() {
-  if (SPECTATOR_MODE) return;
   if (_noteReactDb) return;
   if (typeof isDemoMode === 'function' && isDemoMode()) return; // демо: localStorage
   var db = _noteImgDb();
@@ -1083,7 +1082,8 @@ function _listenNoteReactions(stopId, idx) {
   if (_noteReactListeners[k]) return;
   _noteReactListeners[k] = true;
   // on('value') сразу отдаёт текущее значение — первый рендер получит данные без задержки
-  _noteReactRef.child(stopId).child(String(idx)).on('value', function(snap) {
+  var target = _noteReactionTarget(stopId, idx);
+  _noteReactRef.child(target.stopId).child(String(target.noteIndex)).on('value', function(snap) {
     _noteReactData[k] = snap.val() || {};
     _reRenderNoteReactions(stopId, idx);
   });
@@ -1137,7 +1137,14 @@ function toggleNoteReaction(stopId, idx, emoji) {
   if (!_noteReactRef) return;
   // Убеждаемся что слушатель установлен (мог не сработать при раннем рендере)
   _listenNoteReactions(stopId, idx);
-  _noteReactRef.child(stopId).child(String(idx)).set(Object.keys(r).length ? r : null);
+  var target = _noteReactionTarget(stopId, idx);
+  _noteReactRef.child(target.stopId).child(String(target.noteIndex)).set(Object.keys(r).length ? r : null);
+}
+
+function _noteReactionTarget(stopId, idx) {
+  var stop = _findStop(stopId);
+  var note = stop && stop.notes && stop.notes[idx];
+  return note && note._reactionSource ? note._reactionSource : { stopId: stopId, noteIndex: idx };
 }
 
 function openNoteReactPicker(btn, stopId, idx) {
@@ -1174,7 +1181,6 @@ function closeNoteReactPicker() {
 
 // Строит HTML кнопки-реакции + ряда реакций для читателя
 function buildNoteReactHtml(stopId, idx) {
-  if (SPECTATOR_MODE) return { btn: '', row: '' };
   var k   = _noteReactKey(stopId, idx);
   var r   = _noteReactData[k] || {};
   var sid = typeof getSessionId === 'function' ? getSessionId() : '';

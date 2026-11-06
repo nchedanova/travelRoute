@@ -632,7 +632,6 @@ function renderDaySection(d) {
       <div class="stat-box"><div class="stat-val" id="d${d}-delta-val">—</div><div class="stat-key">ОТКЛОНЕНИЕ</div></div>
     </div>
     ${isAdmin() ? `<button class="publication-day-status" onclick="openPublicationManager(${d})">${publicationEntry(d) ? (publicationChanged(d) ? '👁 Зрителям: прежняя копия · есть изменения' : '👁 Зрителям: опубликованная копия') : '👁 Зрителям: не опубликован'} <span>Настроить →</span></button>` : ''}
-    ${SPECTATOR_MODE ? `<div class="publication-view-note">Опубликованная копия${data.publishedAt ? ' · ' + new Date(data.publishedAt).toLocaleDateString('ru-RU') : ''}</div>` : ''}
     <div id="d${d}-stops"></div>
   `;
   return sec;

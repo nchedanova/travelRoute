@@ -179,7 +179,12 @@ function initSpectatorPhotos() {
     firebase.initializeApp(Object.assign({}, FIREBASE_CONFIG, {apiKey: localStorage.getItem('travel_firebase_key') || ''}));
   }
   function resolvePhotos() {
+    if (typeof firebase.auth === 'function' && firebase.auth().currentUser) {
+      window._firebaseUid = firebase.auth().currentUser.uid;
+    }
     if (typeof _resolveAllNoteImgs === 'function') _resolveAllNoteImgs();
+    if (typeof initNoteReactions === 'function') initNoteReactions();
+    if (typeof _setupAllNoteReactListeners === 'function') _setupAllNoteReactListeners();
   }
   if (firebase.auth) {
     firebase.auth().onAuthStateChanged(function(user) {

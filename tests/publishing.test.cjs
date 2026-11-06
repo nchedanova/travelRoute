@@ -31,6 +31,58 @@ function day() {
   return { date:'Old trip', departA:'09:00', start:{lat:1,lng:2,name:'Start'}, stops:[{id:'d1s1',name:'Old stop',lat:3,lng:4,arrA:'10:00',notes:[{text:'Public',public:true,images:[]},{text:'Private',public:false,images:[]}]}] };
 }
 
+test('spectator follows route order regardless of publication order, including archived days',()=>{
+  const {ctx}=setup(true);
+  const payload={daysData:{18:{...day(),publicationId:'p22'},19:{...day(),publicationId:'p23'},20:{...day(),archived:true,publicationId:'p24'}},spectatorPublications:{p23:{day:{...day(),date:'23'}},p24:{day:{...day(),date:'24'}},p22:{day:{...day(),date:'22'}}}};
+  assert.deepEqual(Object.values(ctx.spectatorPayload(payload).daysData).map(d=>d.date),['22','23','24']);
+});
+
+test('legacy publication order recovers original route positions without republishing',()=>{
+  const {ctx}=setup(true);
+  const entries={};
+  for(const number of [19,20,18]) { const d=day(); d.stops[0].id='d'+number+'s1'; d.date=String(number); entries['p'+number]={day:d}; }
+  assert.deepEqual(Object.values(ctx.spectatorPayload({spectatorPublications:entries}).daysData).map(d=>d.date),['18','19','20']);
+});
+
+test('public note reactions keep original index after private notes are filtered',()=>{
+  const {ctx}=setup(true);
+  const d=day();d.stops[0].notes.unshift({text:'Private first',public:false,images:[]});
+  const copy=ctx.publicationDayCopy(d);
+  const result=ctx.spectatorPayload({spectatorPublications:{p:{day:copy}}});
+  const note=result.daysData[1].stops[0].notes[0];
+  assert.equal(note._reactionSource.stopId,'d1s1');
+  assert.equal(note._reactionSource.noteIndex,1);
+});
+
+test('already-published notes recover existing reaction paths from their original source',()=>{
+  const {ctx}=setup(true);
+  const live=day();live.stops[0].notes.unshift({text:'Private first',public:false,images:[]});
+  const legacy=structuredClone(live);legacy.stops[0].notes=legacy.stops[0].notes.filter(n=>n.public);
+  legacy.stops[0].notes[0].images=['fb:published-photo'];
+  const source=structuredClone(live);source.stops[0].notes=source.stops[0].notes.filter(n=>n.public);
+  const result=ctx.spectatorPayload({daysData:{1:live},spectatorPublications:{p:{day:legacy,source:JSON.stringify(source)}}});
+  assert.equal(result.daysData[1].stops[0].notes[0]._reactionSource.noteIndex,1);
+  assert.equal(result.daysData[1].stops[0].notes[0]._reactionSource.stopId,'d1s1');
+});
+
+test('spectator renders existing reactions and writes to the original Firebase note',()=>{
+  const subscriptions=[];const writes=[];
+  function ref(path) {return {child:k=>ref(path+'/'+k),on(event,cb){subscriptions.push(path);cb({val:()=>({'❤️':['other']})});},set(value){writes.push({path,value});}};}
+  const ctx=vm.createContext({SPECTATOR_MODE:true,isDemoMode:()=>false,_noteImgDb:()=>({ref}),_findStop:()=>({notes:[{_reactionSource:{stopId:'original-stop',noteIndex:2}}]}),getSessionId:()=> 'spectator-uid',_escN:x=>x,document:{getElementById:()=>null,removeEventListener(){}},console});
+  const notes=read('js/notes.js');vm.runInContext(notes.slice(notes.indexOf('const NOTE_REACTIONS =')),ctx);
+  const html=ctx.buildNoteReactHtml('pub1s1',0);
+  assert.match(html.btn,/Реакция/);
+  assert.match(ctx._buildReactRowHtml('pub1s1',0),/❤️ 1/);
+  ctx.toggleNoteReaction('pub1s1',0,'❤️');
+  assert.deepEqual(subscriptions,['note_reactions/original-stop/2']);
+  assert.equal(writes[0].path,'note_reactions/original-stop/2');
+  assert.ok(writes[0].value['❤️'].includes('spectator-uid'));
+});
+
+test('spectator markup has no publication metadata banner',()=>{
+  assert.doesNotMatch(read('js/render.js'),/publication-view-note|Опубликованная копия/);
+});
+
 test('publication survives source edits, archive, deletion and reload; only explicit update replaces it', async () => {
   const {ctx, values} = setup();
   ctx.DAYS_DATA[1] = day();

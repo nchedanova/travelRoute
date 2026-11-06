@@ -8,7 +8,10 @@ function publicationDayCopy(day) {
   delete copy.hidden;
   delete copy.publicationId;
   (copy.stops || []).forEach(function(stop) {
-    stop.notes = (stop.notes || []).filter(function(note) { return note.public === true; });
+    stop.notes = (stop.notes || []).map(function(note, index) {
+      if (!note._reactionSource) note._reactionSource = { stopId: stop.id, noteIndex: index };
+      return note;
+    }).filter(function(note) { return note.public === true; });
     delete stop.note;
     delete stop.noteImages;
   });
@@ -17,9 +20,48 @@ function publicationDayCopy(day) {
 
 function spectatorPayload(payload) {
   var days = {};
-  Object.values(payload.spectatorPublications || {}).forEach(function(publication, index) {
+  var routeOrder = {};
+  Object.entries(payload.daysData || {}).forEach(function(pair) {
+    if (pair[1].publicationId) routeOrder[pair[1].publicationId] = Number(pair[0]);
+  });
+  function order(pair) {
+    if (routeOrder[pair[0]] !== undefined) return routeOrder[pair[0]];
+    if (Number.isFinite(pair[1].order)) return pair[1].order;
+    // Existing publications retain original stop IDs even though the spectator
+    // DOM uses separate IDs. Recover their route position without republishing.
+    var stop = pair[1].day && pair[1].day.stops && pair[1].day.stops[0];
+    var match = stop && stop.id.match(/^d(\d+)s/);
+    return match ? Number(match[1]) : Number.MAX_SAFE_INTEGER;
+  }
+  Object.entries(payload.spectatorPublications || {}).sort(function(a,b) {
+    return order(a) - order(b);
+  }).forEach(function(pair, index) {
+    var publication = pair[1];
     if (!publication || !publication.day) return;
-    var day = publicationDayCopy(publication.day);
+    var original = publication.day;
+    var day = publicationDayCopy(original);
+    var source;
+    try { source = JSON.parse(publication.source || 'null'); } catch(e) {}
+    day.stops.forEach(function(stop, stopIndex) {
+      var oldStop = original.stops[stopIndex];
+      var sourceStop = source && source.stops.find(function(s) { return s.id === oldStop.id; });
+      var liveStops = Object.values(payload.daysData || {}).flatMap(function(d) { return d.stops || []; });
+      var liveStop = liveStops.find(function(s) { return s.id === oldStop.id; });
+      stop.notes.forEach(function(note, noteIndex) {
+        if (oldStop.notes[noteIndex]._reactionSource) return;
+        // Build 91/92 publications did not retain original note indices. Recover
+        // them by matching the original public note, never its filtered position.
+        var originalNote = sourceStop && sourceStop.notes[noteIndex];
+        var matches = [];
+        if (liveStop && originalNote) liveStop.notes.forEach(function(n, i) {
+          if (n.public && (n.text || '') === (originalNote.text || '') &&
+              JSON.stringify(n.images || []) === JSON.stringify(originalNote.images || [])) matches.push(i);
+        });
+        note._reactionSource = matches.length === 1
+          ? { stopId: liveStop.id, noteIndex: matches[0] }
+          : { stopId: 'publication_' + pair[0] + '_' + oldStop.id, noteIndex: noteIndex };
+      });
+    });
     day.publishedAt = publication.publishedAt;
     (day.stops || []).forEach(function(stop, i) { stop.id = 'pub' + (index + 1) + 's' + (i + 1); });
     days[index + 1] = day;
@@ -51,7 +93,10 @@ function publicationEntry(d) {
 
 function publicationChanged(d) {
   var entry = publicationEntry(d);
-  return !!entry && entry.source !== JSON.stringify(publicationDayCopy(DAYS_DATA[d]));
+  if (!entry) return false;
+  function comparable(day) { return JSON.stringify(day, function(key, value) { return key === '_reactionSource' ? undefined : value; }); }
+  try { return comparable(JSON.parse(entry.source)) !== comparable(publicationDayCopy(DAYS_DATA[d])); }
+  catch(e) { return true; }
 }
 
 async function freezePublicationImages(day) {
@@ -103,7 +148,7 @@ async function publishSpectatorDay(d) {
     var day = JSON.parse(source);
     await freezePublicationImages(day);
     var id = original.publicationId || ('p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8));
-    var entry = { day: day, source: source, publishedAt: Date.now() };
+    var entry = { day: day, source: source, order: Number(d), publishedAt: Date.now() };
     // Persist the full candidate first: a quota failure must leave the previous publication intact.
     var raw = JSON.parse(localStorage.getItem(routeStorageKey()) || '{}');
     raw.spectatorPublications = Object.assign({}, spectatorPublications, { [id]: entry });
