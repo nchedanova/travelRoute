@@ -111,12 +111,14 @@ test('share links distinguish ordinary reader and spectator and never include th
   assert.match(notifications.at(-1), /Не удалось скопировать/);
 });
 
-test('spectator cannot generate live-reader or spectator share links',()=>{
-  const {ctx,run}=context('?chat=0',{travel_gist_id:'route'});
-  ctx.navigator.clipboard={writeText(){assert.fail('Spectator must not copy share links');}};
-  const text=source('js/storage.js');
-  vm.runInContext(text.slice(text.indexOf('function copyShareLink('),text.indexOf('// ── CLOUD SETTINGS UI')),ctx);
-  run('copyShareLink();copyShareLink(true)');
+test('neither reader nor spectator can generate share links',()=>{
+  for(const query of ['?chat=0','?gist=route']) {
+    const {ctx,run}=context(query,{travel_gist_id:'route'});
+    ctx.navigator.clipboard={writeText(){assert.fail('Read-only roles must not copy share links');}};
+    const text=source('js/storage.js');
+    vm.runInContext(text.slice(text.indexOf('function copyShareLink('),text.indexOf('// ── CLOUD SETTINGS UI')),ctx);
+    run('copyShareLink();copyShareLink(true)');
+  }
 });
 
 test('spectator publications do not subscribe to live GPS, chat or presence', () => {

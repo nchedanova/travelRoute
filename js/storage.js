@@ -592,7 +592,7 @@ function startPolling(intervalMs = 10000) {
 }
 
 function copyShareLink(withoutChat = false) {
-  if (typeof SPECTATOR_MODE !== 'undefined' && SPECTATOR_MODE) return;
+  if (!isAdmin()) return;
   const gistId = CLOUD_CONFIG.binId;
   if (!gistId) {
     const st = document.getElementById('cs-status');
