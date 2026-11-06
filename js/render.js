@@ -566,10 +566,11 @@ function renderDaySection(d) {
       <div class="day-overflow-wrap" style="position:relative">
         <button class="nav-day-btn" onclick="toggleDayMenu(${d})" title="Ещё">···</button>
         <div class="day-overflow-menu" id="dayMenu${d}">
-          <button class="dom-item" onclick="fetchDayWeather(${d});closeDayMenus()"><span class="dom-ic">🌤️</span>Погода</button>
+          ${!SPECTATOR_MODE ? `<button class="dom-item" onclick="fetchDayWeather(${d});closeDayMenus()"><span class="dom-ic">🌤️</span>Погода</button>` : `<div class="publication-meta">Опубликованный маршрут</div>`}
           ${isAdmin() ? `
           <div class="day-overflow-divider"></div>
           <button class="dom-item" onclick="reverseDay(${d});closeDayMenus()"><span class="dom-ic">🔄</span>Обратный маршрут</button>
+          <button class="dom-item" onclick="openPublicationManager(${d})"><span class="dom-ic">👁</span>${publicationEntry(d) ? 'Публикация для зрителей' : 'Опубликовать для зрителей'}</button>
           <button class="dom-item" onclick="archiveDay(${d});closeDayMenus()"><span class="dom-ic">📦</span>В архив</button>
           <div class="day-overflow-divider"></div>
           <button class="dom-item" onclick="confirmReset(${d});closeDayMenus()"><span class="dom-ic" style="font-size:14px">↺</span>Сбросить факт</button>
@@ -630,6 +631,8 @@ function renderDaySection(d) {
       <div class="stat-box"><div class="stat-val" id="d${d}-travel-time" style="font-size:13px;">—</div><div class="stat-key" id="d${d}-travel-km" style="letter-spacing:0.06em;">В ПУТИ</div></div>
       <div class="stat-box"><div class="stat-val" id="d${d}-delta-val">—</div><div class="stat-key">ОТКЛОНЕНИЕ</div></div>
     </div>
+    ${isAdmin() ? `<button class="publication-day-status" onclick="openPublicationManager(${d})">${publicationEntry(d) ? (publicationChanged(d) ? '👁 Зрителям: прежняя копия · есть изменения' : '👁 Зрителям: опубликованная копия') : '👁 Зрителям: не опубликован'} <span>Настроить →</span></button>` : ''}
+    ${SPECTATOR_MODE ? `<div class="publication-view-note">Опубликованная копия${data.publishedAt ? ' · ' + new Date(data.publishedAt).toLocaleDateString('ru-RU') : ''}</div>` : ''}
     <div id="d${d}-stops"></div>
   `;
   return sec;
@@ -647,6 +650,12 @@ function renderAllDays() {
     updateDayRoute(d);
     updateTravelStats(d);
   });
+  if (!container.children.length) {
+    container.innerHTML = '<div class="route-empty"><div class="route-empty-icon">' + (SPECTATOR_MODE ? '👁' : '📦') + '</div><h3>'
+      + (SPECTATOR_MODE ? 'Нет опубликованных дней' : 'Нет активных дней') + '</h3><p>'
+      + (SPECTATOR_MODE ? 'Владелец ещё не опубликовал дни или снял их с публикации.' : 'Завершённые дни сохранены в архиве. Опубликованные копии по-прежнему доступны зрителям.')
+      + '</p>' + (admin ? '<button class="publication-btn" onclick="addNewDay()">＋ Новый день</button>' : '') + '</div>';
+  }
 }
 
 function updateDayRoute(d) {

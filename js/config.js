@@ -24,9 +24,27 @@ const ICON_SETS = {
 const DEP_OFFSETS = { 'Заправка': 20, 'Кафе': 60 };
 
 // ── CLOUD CONFIG ──────────────────────────────────────────────────────────────
-// Режим ссылки действует только в этой вкладке и не меняет сохранённую роль.
-// Это удобный просмотр без чата, а не серверное ограничение доступа.
-const SPECTATOR_MODE = new URLSearchParams(window.location.search).get('chat') === '0';
+// Это режим публикаций без чата, а не серверное ограничение доступа.
+// Для читательского устройства роль зрителя сохраняется по маршруту для запуска PWA.
+const LOCAL_PREVIEW = /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname) &&
+  ['admin', 'reader', 'spectator'].includes(new URLSearchParams(window.location.search).get('preview'));
+const PREVIEW_ROLE = LOCAL_PREVIEW ? new URLSearchParams(window.location.search).get('preview') : '';
+function resolveSpectatorMode() {
+  var params = new URLSearchParams(window.location.search);
+  if (LOCAL_PREVIEW) return PREVIEW_ROLE === 'spectator';
+  var explicit = params.get('chat') === '0';
+  var routeId = params.get('gist') || localStorage.getItem('travel_gist_id');
+  // A viewer's installed PWA starts without query parameters. Remember its role per route.
+  // Owner previews must not change the owner's saved role.
+  if (routeId && !localStorage.getItem('travel_gist_token')) {
+    var key = 'travel_spectator_route_' + routeId;
+    if (explicit) localStorage.setItem(key, '1');
+    else if (params.has('gist') || params.has('chat')) localStorage.removeItem(key);
+    else return localStorage.getItem(key) === '1';
+  }
+  return explicit;
+}
+const SPECTATOR_MODE = resolveSpectatorMode();
 function isChatEnabled() { return !SPECTATOR_MODE; }
 // Токен хранится только в localStorage владельца.
 // Gist ID может прийти из URL (?gist=ID) — тогда сайт открывается без токена
@@ -34,6 +52,7 @@ function isChatEnabled() { return !SPECTATOR_MODE; }
 
 // Читаем ?gist= из URL и сохраняем в localStorage при первом визите
 (function seedFromUrl() {
+  if (LOCAL_PREVIEW) return;
   const params = new URLSearchParams(window.location.search);
   const urlGist  = params.get('gist');
   const urlFbKey = params.get('fbkey');
@@ -58,8 +77,8 @@ function isChatEnabled() { return !SPECTATOR_MODE; }
 })();
 
 const CLOUD_CONFIG = {
-  get apiKey() { return localStorage.getItem('travel_gist_token') || ''; },
-  get binId()  { return localStorage.getItem('travel_gist_id')    || ''; },
+  get apiKey() { return LOCAL_PREVIEW ? '' : localStorage.getItem('travel_gist_token') || ''; },
+  get binId()  { return LOCAL_PREVIEW ? '' : localStorage.getItem('travel_gist_id')    || ''; },
   // true — есть токен, можно писать
   get canWrite() { return !SPECTATOR_MODE && !!(this.apiKey && this.binId); },
   // true — есть хотя бы gistId (читаем публичный gist без токена)
@@ -95,6 +114,7 @@ const DEMO_CHAT = [
 // isViewer() = true → Только чтение (нет gist, нет демо → никогда не бывает,
 //                     но если gist есть без токена — читатель)
 function isAdmin() {
+  if (LOCAL_PREVIEW) return PREVIEW_ROLE === 'admin';
   return !SPECTATOR_MODE && (CLOUD_CONFIG.canWrite || (typeof isDemoMode === 'function' && isDemoMode()));
 }
 function isViewer() {

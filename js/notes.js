@@ -1047,6 +1047,7 @@ function _clearNoteReactions(stopId, idx) {
 }
 
 function initNoteReactions() {
+  if (SPECTATOR_MODE) return;
   if (_noteReactDb) return;
   if (typeof isDemoMode === 'function' && isDemoMode()) return; // демо: localStorage
   var db = _noteImgDb();
@@ -1173,6 +1174,7 @@ function closeNoteReactPicker() {
 
 // Строит HTML кнопки-реакции + ряда реакций для читателя
 function buildNoteReactHtml(stopId, idx) {
+  if (SPECTATOR_MODE) return { btn: '', row: '' };
   var k   = _noteReactKey(stopId, idx);
   var r   = _noteReactData[k] || {};
   var sid = typeof getSessionId === 'function' ? getSessionId() : '';

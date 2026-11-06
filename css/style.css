@@ -1,3 +1,35 @@
+/* Publication controls use the existing theme. */
+.publication-btn {background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:7px;padding:7px 10px;font:400 11px/1.4 'JetBrains Mono',monospace;cursor:pointer;min-height:32px;touch-action:manipulation;outline:none;-webkit-tap-highlight-color:transparent}
+.publication-btn:disabled {opacity:.5;cursor:wait}
+.publication-primary {border-color:var(--accent);color:var(--accent);background:var(--accent-bg)}
+#publicationModal .publication-modal {max-width:460px;width:calc(100% - 28px);max-height:min(660px,calc(100dvh - 40px));display:flex;flex-direction:column;padding:18px;overflow:hidden}
+#publicationModal #publicationList {overflow-y:auto;min-height:0;margin-bottom:12px}
+#publicationModal .modal-actions {flex-wrap:wrap;flex-shrink:0}
+.publication-modal-header,.publication-actions {display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.publication-modal-header {justify-content:space-between}
+.publication-modal-header .modal-title {margin:0}
+.publication-help {color:var(--muted);font-size:11px;line-height:1.6;margin:10px 0}
+.publication-summary {font-size:10px;color:var(--accent);padding-bottom:8px}
+.publication-row {padding:12px 0;border-top:1px solid var(--border)}
+.publication-selected .publication-title {color:var(--accent)}
+.publication-title {font-size:11px;overflow-wrap:anywhere}
+.publication-meta {font-size:10px;color:var(--muted);margin:5px 0}
+.publication-actions {margin-top:10px}
+.publication-day-status {display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;width:100%;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--muted);font:inherit;font-size:11px;padding:10px;margin:12px 0;cursor:pointer}
+.publication-day-status span {color:var(--accent)}
+.publication-view-note {font-size:11px;color:var(--muted);margin:12px 0}
+.route-empty {padding:24px 16px;text-align:center;color:var(--muted);font-size:11px;line-height:1.6}
+.route-empty h3 {color:var(--text);font:500 12px/1.5 'JetBrains Mono',monospace;margin:8px 0}
+.route-empty p {font-size:11px;margin:6px 0 12px}
+.route-empty-icon {font-size:18px}
+.local-preview-bar {display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:8px 14px;background:var(--surface2);border-bottom:1px solid var(--accent);font-size:12px;color:var(--text)}
+.preview-roles {display:flex;gap:4px;flex-wrap:wrap}
+.preview-role-btn {font:400 11px/1.4 'JetBrains Mono',monospace;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 8px;min-height:32px;cursor:pointer}
+.preview-role-btn[aria-pressed="true"] {color:var(--accent);border-color:var(--accent);background:var(--accent-bg)}
+body.local-preview {height:100dvh;display:flex;flex-direction:column}
+body.local-preview .main {flex:1;min-height:0;height:auto}
+@media(max-width:700px){.publication-actions .publication-btn{flex:1;min-height:40px}#publicationModal .publication-modal{padding:14px}#publicationModal .modal-actions button{min-height:40px}.local-preview-bar{font-size:10px;padding:5px 8px}.local-preview-bar .publication-btn{font-size:10px;padding:5px 7px}.preview-role-btn{min-height:40px}}
+
 /* ── THEME: DEFAULT (Amber Terminal) ─────────────────────────────────────────*/
 :root,
 [data-theme="default"] {

@@ -165,6 +165,10 @@ _schedulePushRetry();
 
 // ── APPLY SAVED PAYLOAD ───────────────────────────────────────────────────────
 function applyPayload(saved) {
+  if (typeof spectatorPayload === 'function') {
+    spectatorPublications = saved.spectatorPublications || {};
+    if (SPECTATOR_MODE) saved = spectatorPayload(saved);
+  }
   state.actuals = saved.actuals || {};
 
   if (saved.daysData) {
@@ -202,14 +206,18 @@ function applyPayload(saved) {
     dayKeys().forEach(day => {
       DAYS_DATA[day].stops.forEach(s => {
         if (s.id !== id) return;
-        if (a.arrA !== undefined) s.arrA = a.arrA;
-        if (a.depA !== undefined) s.depA = a.depA;
+        // Modern payloads keep history with the stop itself. Legacy positional caches
+        // must never overwrite those values after days have been reordered.
+        if (a.arrA !== undefined && (!saved.daysData || !Object.prototype.hasOwnProperty.call(s, 'arrA'))) s.arrA = a.arrA;
+        if (a.depA !== undefined && (!saved.daysData || !Object.prototype.hasOwnProperty.call(s, 'depA'))) s.depA = a.depA;
       });
     });
   });
 
   dayKeys().forEach(day => {
-    if (saved['dep' + day]) DAYS_DATA[day].departA = saved['dep' + day];
+    if (saved['dep' + day] !== undefined && (!saved.daysData || !Object.prototype.hasOwnProperty.call(DAYS_DATA[day], 'departA'))) {
+      DAYS_DATA[day].departA = saved['dep' + day];
+    }
   });
 
   // ── Миграция note → notes[] ─────────────────────────────────────────────
@@ -253,7 +261,7 @@ async function loadState() {
 
   // 1. Сначала грузим из localStorage (мгновенно — UI не ждёт)
   try {
-    const raw = localStorage.getItem('travel_tracker_v3');
+    const raw = localStorage.getItem(typeof routeStorageKey === 'function' ? routeStorageKey() : 'travel_tracker_v3');
     if (raw) {
       applyPayload(JSON.parse(raw));
       _lastCloudHash = strHash(raw); // если облако вернёт те же данные — пропустим redraw
@@ -316,11 +324,11 @@ async function loadState() {
     // При QuotaExceeded очищаем routeCache — он восстановится через OSRM,
     // а travel_tracker_v3 важнее (без него каждый визит = прямые линии у читателя)
     try {
-      localStorage.setItem('travel_tracker_v3', json);
+      localStorage.setItem(typeof routeStorageKey === 'function' ? routeStorageKey() : 'travel_tracker_v3', json);
     } catch(e) {
       if (e.name === 'QuotaExceededError') {
         try { localStorage.removeItem('travel_route_cache_v2'); } catch {}
-        try { localStorage.setItem('travel_tracker_v3', json); } catch {}
+        try { localStorage.setItem(typeof routeStorageKey === 'function' ? routeStorageKey() : 'travel_tracker_v3', json); } catch {}
       }
     }
 
@@ -355,20 +363,33 @@ async function loadState() {
 }
 
 // ── SAVE DATA ─────────────────────────────────────────────────────────────────
+function captureActualTimeInputs() {
+  dayKeys().forEach(function(day) {
+    var data = DAYS_DATA[day];
+    var depart = document.getElementById('d' + day + '-depart');
+    if (depart) data.departA = depart.value;
+    data.stops.forEach(function(stop) {
+      var arr = document.getElementById('arr-' + stop.id);
+      var dep = document.getElementById('dep-' + stop.id);
+      if (arr) stop.arrA = arr.value;
+      if (dep) stop.depA = dep.value;
+    });
+  });
+}
+
 function saveData() {
+  if (!isAdmin()) return;
   try {
+    captureActualTimeInputs();
+    state.actuals = {};
     dayKeys().forEach(day => DAYS_DATA[day].stops.forEach(s => {
-      const aEl = document.getElementById('arr-' + s.id);
-      const dEl = document.getElementById('dep-' + s.id);
-      if (!state.actuals[s.id]) state.actuals[s.id] = {};
-      if (aEl) { s.arrA = aEl.value; state.actuals[s.id].arrA = aEl.value; }
-      if (dEl) { s.depA = dEl.value; state.actuals[s.id].depA = dEl.value; }
+      state.actuals[s.id] = { arrA: s.arrA || '', depA: s.depA || '' };
     }));
 
     const deps = {};
     dayKeys().forEach(day => {
       const el = document.getElementById('d' + day + '-depart');
-      deps['dep' + day] = el ? el.value : '';
+      deps['dep' + day] = el ? el.value : (DAYS_DATA[day].departA || '');
       DAYS_DATA[day].departA = deps['dep' + day];
     });
 
@@ -377,10 +398,11 @@ function saveData() {
       daysData[day] = JSON.parse(JSON.stringify(DAYS_DATA[day]));
     });
 
-    const payload = { _savedAt: Date.now(), actuals: state.actuals, daysData, ...deps };
+    const payload = { _savedAt: Date.now(), actuals: state.actuals, daysData,
+      spectatorPublications: typeof spectatorPublications !== 'undefined' ? spectatorPublications : {}, ...deps };
 
     // Всегда сохраняем в localStorage как кэш
-    localStorage.setItem('travel_tracker_v3', JSON.stringify(payload));
+    localStorage.setItem(typeof routeStorageKey === 'function' ? routeStorageKey() : 'travel_tracker_v3', JSON.stringify(payload));
 
     // Gist size log
     var gistBytes = new Blob([JSON.stringify(payload)]).size;
@@ -394,6 +416,7 @@ function saveData() {
   } catch(e) { console.error('saveData error', e); }
   showToast();
   updateProgress();
+  if (typeof refreshPublicationStatus === 'function') refreshPublicationStatus();
 }
 
 // ── AUTO-POLL (тихое обновление) ──────────────────────────────────────────────
@@ -452,13 +475,12 @@ function strHash(s) {
 // Выбрать currentDay с учётом скрытых дней для читателя
 function _pickVisibleDay(preferred) {
   var keys = dayKeys().filter(function(k) { return !DAYS_DATA[k].archived; });
-  if (!keys.length) keys = dayKeys(); // fallback if all archived somehow
   var viewer = typeof isViewer === 'function' && isViewer();
   if (keys.includes(preferred) && (!viewer || !DAYS_DATA[preferred]?.hidden)) return preferred;
   for (var i = 0; i < keys.length; i++) {
     if (!viewer || !DAYS_DATA[keys[i]]?.hidden) return keys[i];
   }
-  return keys[0] || 1;
+  return 0;
 }
 
 document.addEventListener('input', () => {
@@ -499,11 +521,11 @@ async function pollCloud() {
 
     applyPayload(saved);
     try {
-      localStorage.setItem('travel_tracker_v3', json);
+      localStorage.setItem(typeof routeStorageKey === 'function' ? routeStorageKey() : 'travel_tracker_v3', json);
     } catch(e) {
       if (e.name === 'QuotaExceededError') {
         try { localStorage.removeItem('travel_route_cache_v2'); } catch {}
-        try { localStorage.setItem('travel_tracker_v3', json); } catch {}
+        try { localStorage.setItem(typeof routeStorageKey === 'function' ? routeStorageKey() : 'travel_tracker_v3', json); } catch {}
       }
     }
 
@@ -585,7 +607,7 @@ function copyShareLink(withoutChat = false) {
   const fbKey = localStorage.getItem('travel_firebase_key') || '';
   if (fbKey) url.searchParams.set('fbkey', fbKey);
   return Promise.resolve().then(() => navigator.clipboard.writeText(url.toString())).then(() => {
-    showToast(withoutChat ? '✓ Ссылка без чата скопирована' : '✓ Ссылка читателя скопирована');
+    showToast(withoutChat ? '✓ Ссылка для зрителя скопирована' : '✓ Ссылка читателя скопирована');
   }).catch(() => {
     showToast('⚠ Не удалось скопировать ссылку. Попробуйте ещё раз');
   });

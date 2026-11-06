@@ -26,6 +26,7 @@ function context(search = '', initial = {}) {
     localStorage: {
       getItem: key => values.get(key) || null,
       setItem: (key, value) => values.set(key, value),
+      removeItem: key => values.delete(key),
     },
   });
   vm.runInContext(source('js/config.js'), ctx);
@@ -37,6 +38,17 @@ test('ordinary reader keeps chat and read-only access', () => {
   assert.equal(run('isChatEnabled()'), true);
   assert.equal(run('isViewer()'), true);
   assert.equal(classes.has('spectator-mode'), false);
+});
+
+test('spectator PWA launch remembers its route role; explicit reader link restores live access', () => {
+  const initial={travel_gist_id:'route',travel_spectator_route_route:'1'};
+  assert.equal(context('',initial).run('SPECTATOR_MODE'),true);
+  const reader=context('?gist=route',initial);
+  assert.equal(reader.run('SPECTATOR_MODE'),false);
+  assert.equal(reader.values.has('travel_spectator_route_route'),false);
+  const owner=context('',{...initial,travel_gist_token:'owner-token'});
+  assert.equal(owner.run('SPECTATOR_MODE'),false);
+  assert.equal(owner.run('isAdmin()'),true);
 });
 
 test('spectator URL survives cleaning and overrides an existing admin token without deleting it', () => {
@@ -81,7 +93,7 @@ test('share links distinguish ordinary reader and spectator and never include th
   const text = source('js/storage.js');
   vm.runInContext(text.slice(text.indexOf('function copyShareLink('), text.indexOf('// ── CLOUD SETTINGS UI')), ctx);
   await run('copyShareLink(true)');
-  assert.equal(notifications.at(-1), '✓ Ссылка без чата скопирована');
+  assert.equal(notifications.at(-1), '✓ Ссылка для зрителя скопирована');
   let url = new URL(copied);
   assert.equal(url.searchParams.get('chat'), '0');
   assert.equal(url.searchParams.get('gist'), 'public-route');
@@ -99,7 +111,7 @@ test('share links distinguish ordinary reader and spectator and never include th
   assert.match(notifications.at(-1), /Не удалось скопировать/);
 });
 
-test('spectator Firebase initialization preserves GPS without reading chat profiles or presence', () => {
+test('spectator publications do not subscribe to live GPS, chat or presence', () => {
   const { ctx, run } = context('?gist=public-route&chat=0');
   const paths = [];
   const db = { ref(value) { paths.push(value); return { on() {} }; } };
@@ -115,5 +127,5 @@ test('spectator Firebase initialization preserves GPS without reading chat profi
   ctx.map = { on() {} };
   vm.runInContext(source('js/gps.js'), ctx);
   run('_showEl = function() {}; initGps();');
-  assert.deepEqual(paths, ['gps']);
+  assert.deepEqual(paths, []);
 });

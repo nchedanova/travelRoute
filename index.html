@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=90">
+<link rel="stylesheet" href="css/style.css?v=91">
 <script>
 (function(){
   var t=localStorage.getItem('travel_theme');
@@ -436,9 +436,10 @@
         </div>
       </div>
       <div class="cloud-settings-actions">
+        <button class="modal-cancel admin-only" onclick="closeCloudSettings();openPublicationManager()">👁 Дни для зрителей</button>
         <div class="cloud-settings-action-row">
         <button class="modal-cancel" onclick="copyShareLink()" title="Просмотр маршрута и чат, без токена владельца">🔗 Ссылка читателя</button>
-        <button class="modal-cancel" onclick="copyShareLink(true)" title="Просмотр без чата и запроса имени">👁 Ссылка без чата</button>
+        <button class="modal-cancel" onclick="copyShareLink(true)" title="Только опубликованные копии дней, без чата">👁 Ссылка для зрителя</button>
         </div>
         <button class="modal-cancel" onclick="closeCloudSettings()">Закрыть</button>
       </div>
@@ -508,6 +509,22 @@
   <div class="map-toggle-wrap">
     <button class="map-toggle-btn" id="toggleBtn" onclick="toggleSidebar()">☰</button>
     <div class="mode-badge" id="modeBadge"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="publicationModal" role="dialog" aria-modal="true" aria-labelledby="publicationHeading" onclick="if(event.target===this)closePublicationManager()">
+  <div class="modal publication-modal">
+    <div class="publication-modal-header">
+      <div class="modal-title" id="publicationHeading">👁 Дни для зрителей</div>
+      <button class="publication-btn" onclick="closePublicationManager()" aria-label="Закрыть публикации">✕</button>
+    </div>
+    <p class="publication-help">Зрители видят только опубликованные копии дней. Правки маршрута и перенос в архив их не меняют. Читатели по-прежнему видят актуальный маршрут.</p>
+    <div class="publication-summary">Опубликовано дней: <span id="publicationCount">0</span></div>
+    <div id="publicationList" class="modal-body"></div>
+    <div class="modal-actions">
+      <button class="publication-btn" onclick="previewSpectatorPublications()">Вид зрителя ↗</button>
+      <button class="modal-cancel" onclick="closePublicationManager()">Готово</button>
+    </div>
   </div>
 </div>
 
@@ -581,23 +598,25 @@
 
 <!-- Scripts: порядок важен — config и data первыми -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="js/config.js?v=19"></script>
-<script src="js/data.js?v=90"></script>
-<script src="js/storage.js?v=90"></script>
+<script src="js/config.js?v=91"></script>
+<script src="js/data.js?v=91"></script>
+<script src="js/publishing.js?v=91"></script>
+<script src="js/storage.js?v=91"></script>
 <script src="js/offline.js?v=19"></script>
 <script src="js/map.js?v=19"></script>
-<script src="js/render.js?v=90"></script>
-<script src="js/app.js?v=90"></script>
-<script src="js/gps.js?v=90"></script>
-<script src="js/chat.js?v=90"></script>
-<script src="js/notes.js?v=90"></script>
+<script src="js/render.js?v=91"></script>
+<script src="js/app.js?v=91"></script>
+<script src="js/gps.js?v=91"></script>
+<script src="js/chat.js?v=91"></script>
+<script src="js/notes.js?v=91"></script>
 <script src="js/import.js?v=19"></script>
 <script src="js/gpx.js?v=19"></script>
+<script src="js/local-preview.js?v=91"></script>
 <script>
   window._swReg         = null;
   window._swReg = null;
 
-  if ('serviceWorker' in navigator) {
+  if ('serviceWorker' in navigator && !LOCAL_PREVIEW) {
     // Запоминаем ДО регистрации — если контроллера не было, это первый визит
     var _hadController = !!navigator.serviceWorker.controller;
 

@@ -1050,10 +1050,13 @@ document.addEventListener('click', function(e) {
 var _tabDragSource = null;
 
 function swapDays(fromDay, toDay) {
+  if (!isAdmin()) return;
   var keys = dayKeys();
   var fromIdx = keys.indexOf(fromDay);
   var toIdx   = keys.indexOf(toDay);
   if (fromIdx < 0 || toIdx < 0) return;
+  captureActualTimeInputs();
+  var selectedKey = currentDay;
 
   // Reorder keys array
   keys.splice(fromIdx, 1);
@@ -1070,10 +1073,9 @@ function swapDays(fromDay, toDay) {
   Object.keys(DAYS_DATA).forEach(function(k) { delete DAYS_DATA[k]; });
   Object.keys(newData).forEach(function(k) { DAYS_DATA[Number(k)] = newData[k]; });
 
-  // Reassign stop IDs to avoid conflicts
+  // A stop's identity belongs to the trip, never to its current tab position.
   dayKeys().forEach(function(d) {
     DAYS_DATA[d].stops.forEach(function(s, i) {
-      s.id = 'd' + d + 's' + (i + 1);
       s.num = i + 1;
     });
   });
@@ -1093,7 +1095,7 @@ function swapDays(fromDay, toDay) {
   renderTabs();
   renderAllDays();
   updateProgress();
-  switchDay(dayKeys().includes(currentDay) ? currentDay : dayKeys()[0] || 1);
+  switchDay(_pickVisibleDay(keys.indexOf(selectedKey) + 1));
   // Обновляем хэши чтобы ближайший pollCloud не счёл это внешним изменением
   if (typeof _buildGeoHash === 'function') {
     _lastGeoHash    = _buildGeoHash();
@@ -1106,14 +1108,14 @@ function swapDays(fromDay, toDay) {
 // ── ARCHIVE ────────────────────────────────────────────────────────────────────
 function archiveDay(d) {
   if (!isAdmin()) return;
+  captureActualTimeInputs();
   var keys = dayKeys().filter(function(k) { return !DAYS_DATA[k].archived; });
-  if (keys.length <= 1) { showToast('Нельзя архивировать последний активный день'); return; }
   snapshotForUndo('Архивирование дня');
   DAYS_DATA[d].archived = true;
   // Если текущий день архивируется — переключиться
   if (currentDay === d) {
     var next = keys.find(function(k) { return k !== d; });
-    if (next) switchDay(next);
+    switchDay(next || 0);
   }
   renderTabs();
   renderAllDays();
@@ -2503,6 +2505,7 @@ function _wmoDesc(code) {
 }
 
 function _getWeatherDb() {
+  if (SPECTATOR_MODE) return null;
   if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length) {
     return firebase.database();
   }
@@ -2809,13 +2812,15 @@ async function fetchStartWeather(day) {
 
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
+initializePublicationView();
+currentDay = _pickVisibleDay(currentDay);
 initMap();
 // OSRM НЕ включаем здесь — init рисует только placeholder (прямые линии).
 // loadState() — единственная точка включения OSRM и авторитетной перерисовки.
 // Это исключает гонку: init ставит OSRM в очередь → loadState пересоздаёт слои
 // → колбэки init'а ссылаются на уничтоженные полилинии → линии не обновляются.
 dayKeys().forEach(d => redrawDay(d));
-layers[currentDay].addTo(map);
+if (layers[currentDay]) layers[currentDay].addTo(map);
 renderTabs();
 renderAllDays();
 updateProgress();
@@ -2895,7 +2900,7 @@ function switchSidebarTab(tab) {
 // toggleStopNote removed — replaced by addStopNote + notes[] in notes.js
 
 // ── DEMO: подгрузить заметки к точкам из localStorage при старте ───────────────
-if (typeof isDemoMode === 'function' && isDemoMode()) {
+if (typeof isDemoMode === 'function' && isDemoMode() && isAdmin()) {
   document.addEventListener('DOMContentLoaded', () => {
     if (typeof loadDemoStopNotes === 'function') loadDemoStopNotes();
   });
@@ -2915,7 +2920,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.9.0';
-var APP_BUILD   = 90;
+var APP_BUILD   = 91;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 1;
 
@@ -3097,6 +3102,7 @@ function closeChangelog() {
 
 // Админ и демо: при новой версии. Зритель без чата: один раз при первом входе.
 function shouldShowChangelogOnLoad() {
+  if (typeof LOCAL_PREVIEW !== 'undefined' && LOCAL_PREVIEW) return false;
   try {
     if (!isChatEnabled()) return !localStorage.getItem('changelog_spectator_seen');
     return isAdmin() && localStorage.getItem('changelog_seen') !== APP_VERSION;

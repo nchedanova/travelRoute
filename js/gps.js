@@ -26,6 +26,8 @@ let _keepAliveOsc   = null;
 
 // ── INIT ───────────────────────────────────────────────────────────────────────
 function initGps() {
+  // Published trips never subscribe to the current vehicle position or live Firebase data.
+  if (SPECTATOR_MODE) return;
   // ── ДЕМО-РЕЖИМ ──────────────────────────────────────────────────────────────
   if (typeof isDemoMode === 'function' && isDemoMode()) {
     initChat && initChat();
