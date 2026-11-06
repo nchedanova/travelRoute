@@ -1,4 +1,4 @@
-// Published days are independent snapshots. Archive/reorder/delete never mutates them.
+// Active published days are live. Archived/deleted days retain their final snapshot.
 var spectatorPublications = {};
 var _publicationBusy = false;
 
@@ -21,8 +21,12 @@ function publicationDayCopy(day) {
 function spectatorPayload(payload) {
   var days = {};
   var routeOrder = {};
+  var liveDays = {};
   Object.entries(payload.daysData || {}).forEach(function(pair) {
-    if (pair[1].publicationId) routeOrder[pair[1].publicationId] = Number(pair[0]);
+    if (pair[1].publicationId) {
+      routeOrder[pair[1].publicationId] = Number(pair[0]);
+      liveDays[pair[1].publicationId] = pair[1];
+    }
   });
   function order(pair) {
     if (routeOrder[pair[0]] !== undefined) return routeOrder[pair[0]];
@@ -38,7 +42,9 @@ function spectatorPayload(payload) {
   }).forEach(function(pair, index) {
     var publication = pair[1];
     if (!publication || !publication.day) return;
-    var original = publication.day;
+    var live = liveDays[pair[0]];
+    var isLive = !!live && !live.archived;
+    var original = isLive ? live : (publication.status === 'completed' ? publication.day : live || publication.day);
     var day = publicationDayCopy(original);
     var source;
     try { source = JSON.parse(publication.source || 'null'); } catch(e) {}
@@ -48,7 +54,7 @@ function spectatorPayload(payload) {
       var liveStops = Object.values(payload.daysData || {}).flatMap(function(d) { return d.stops || []; });
       var liveStop = liveStops.find(function(s) { return s.id === oldStop.id; });
       stop.notes.forEach(function(note, noteIndex) {
-        if (oldStop.notes[noteIndex]._reactionSource) return;
+        if (isLive || original !== publication.day || oldStop.notes[noteIndex]._reactionSource) return;
         // Build 91/92 publications did not retain original note indices. Recover
         // them by matching the original public note, never its filtered position.
         var originalNote = sourceStop && sourceStop.notes[noteIndex];
@@ -63,6 +69,8 @@ function spectatorPayload(payload) {
       });
     });
     day.publishedAt = publication.publishedAt;
+    day.spectatorPublicationId = pair[0];
+    day.spectatorLive = isLive;
     (day.stops || []).forEach(function(stop, i) { stop.id = 'pub' + (index + 1) + 's' + (i + 1); });
     days[index + 1] = day;
   });
@@ -91,50 +99,27 @@ function publicationEntry(d) {
   return day && day.publicationId ? spectatorPublications[day.publicationId] : null;
 }
 
-function publicationChanged(d) {
-  var entry = publicationEntry(d);
-  if (!entry) return false;
-  function comparable(day) { return JSON.stringify(day, function(key, value) { return key === '_reactionSource' ? undefined : value; }); }
-  try { return comparable(JSON.parse(entry.source)) !== comparable(publicationDayCopy(DAYS_DATA[d])); }
-  catch(e) { return true; }
+function syncSpectatorPublications() {
+  dayKeys().forEach(function(d) {
+    var day = DAYS_DATA[d];
+    var entry = publicationEntry(d);
+    if (!entry) return;
+    if (day.archived && entry.status === 'completed') return;
+    entry.day = publicationDayCopy(day);
+    entry.source = JSON.stringify(entry.day);
+    entry.order = Number(d);
+    entry.status = day.archived ? 'completed' : 'live';
+    if (day.archived) entry.completedAt = Date.now();
+    else delete entry.completedAt;
+  });
 }
 
-async function freezePublicationImages(day) {
-  var refs = new Map();
-  (day.stops || []).forEach(function(stop) {
-    stop.notes.forEach(function(note) {
-      (note.images || []).forEach(function(ref) { if (ref.startsWith('fb:')) refs.set(ref, null); });
+function isPublicationImagePinned(ref) {
+  return Object.values(spectatorPublications).some(function(entry) {
+    return entry.day.stops.some(function(stop) {
+      return stop.notes.some(function(note) { return (note.images || []).includes(ref); });
     });
   });
-  for (var ref of refs.keys()) {
-    var key = ref.slice(3);
-    var cached = typeof _fbImgCache !== 'undefined' && _fbImgCache[key];
-    if (!cached) cached = sessionStorage.getItem('ni_' + key);
-    if (!cached) {
-      var db = typeof _noteImgDb === 'function' && _noteImgDb();
-      if (!db) throw new Error('Для публикации фотографий подключитесь к Firebase');
-      cached = await new Promise(function(resolve, reject) {
-        var timeout = setTimeout(function() { reject(new Error('Не удалось загрузить фото. Попробуйте снова')); }, 10000);
-        db.ref('note_imgs/' + key).once('value').then(function(snap) {
-          clearTimeout(timeout);
-          var value = snap.val();
-          if (value && value.data) resolve(value.data);
-          else reject(new Error('Фото недоступно. Публикация не изменена'));
-        }, function(error) { clearTimeout(timeout); reject(error); });
-      });
-    }
-    // Preserve the snapshot independently of deletable originals, but keep photo
-    // bytes in Firebase. Only already-offline data: images remain embedded.
-    if (typeof _uploadNoteImgRetry !== 'function') throw new Error('Загрузка фото в Firebase недоступна');
-    var publishedRef = await _uploadNoteImgRetry(cached);
-    if (typeof publishedRef !== 'string' || !publishedRef.startsWith('fb:')) {
-      throw new Error('Фото не сохранено в Firebase. Публикация не изменена');
-    }
-    refs.set(ref, publishedRef);
-  }
-  day.stops.forEach(function(stop) { stop.notes.forEach(function(note) {
-    note.images = (note.images || []).map(function(ref) { return refs.get(ref) || ref; });
-  }); });
 }
 
 async function publishSpectatorDay(d) {
@@ -146,9 +131,9 @@ async function publishSpectatorDay(d) {
     var original = DAYS_DATA[d];
     var source = JSON.stringify(publicationDayCopy(original));
     var day = JSON.parse(source);
-    await freezePublicationImages(day);
     var id = original.publicationId || ('p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8));
-    var entry = { day: day, source: source, order: Number(d), publishedAt: Date.now() };
+    var entry = { day: day, source: source, order: Number(d), publishedAt: Date.now(), status: original.archived ? 'completed' : 'live' };
+    if (original.archived) entry.completedAt = Date.now();
     // Persist the full candidate first: a quota failure must leave the previous publication intact.
     var raw = JSON.parse(localStorage.getItem(routeStorageKey()) || '{}');
     raw.spectatorPublications = Object.assign({}, spectatorPublications, { [id]: entry });
@@ -157,7 +142,7 @@ async function publishSpectatorDay(d) {
     original.publicationId = id;
     spectatorPublications[id] = entry;
     saveData();
-    showToast('👁 Копия дня опубликована для зрителей');
+    showToast('👁 День открыт зрителям');
   } catch(e) {
     showToast('⚠ ' + (e.name === 'QuotaExceededError' ? 'Недостаточно места для сохранения публикации' : e.message));
   } finally {
@@ -191,14 +176,6 @@ document.addEventListener('keydown', function(event) {
   if (event.key === 'Escape') closePublicationManager();
 });
 
-function refreshPublicationStatus() {
-  if (!isAdmin()) return;
-  document.querySelectorAll('.publication-day-status').forEach(function(button) {
-    var d = Number(button.closest('.day-section').dataset.day);
-    button.innerHTML = (publicationEntry(d) ? (publicationChanged(d) ? '👁 Зрителям: прежняя копия · есть изменения' : '👁 Зрителям: опубликованная копия') : '👁 Зрителям: не опубликован')
-      + ' <span>Настроить →</span>';
-  });
-}
 function renderPublicationManager(selected) {
   var body = document.getElementById('publicationList');
   if (!body || !isAdmin()) return;
@@ -207,14 +184,13 @@ function renderPublicationManager(selected) {
     var day = DAYS_DATA[d];
     var entry = publicationEntry(d);
     if (entry) linked.add(day.publicationId);
-    var changed = publicationChanged(d);
     return '<article class="publication-row' + (selected === d ? ' publication-selected' : '') + '">'
       + '<div class="publication-title">' + _escHtml((day.dateISO || _dayLabel(d)) + (day.date ? ' · ' + day.date : '')) + '</div>'
       + '<div class="publication-meta">' + (day.archived ? '📦 В архиве · ' : '')
-      + (!entry ? 'Не виден зрителям' : changed ? 'Есть изменения · зритель видит прежнюю копию' : '👁 Опубликованная копия актуальна') + '</div>'
+      + (!entry ? 'Не виден зрителям' : day.archived ? '👁 Доступен завершённый день' : '👁 Изменения и движение видны автоматически') + '</div>'
       + (entry ? '<div class="publication-meta">Опубликовано ' + new Date(entry.publishedAt).toLocaleString('ru-RU') + '</div>' : '')
-      + '<div class="publication-actions"><button class="publication-btn publication-primary" onclick="publishSpectatorDay(' + d + ')"' + (_publicationBusy ? ' disabled' : '') + '>'
-      + (_publicationBusy ? 'Подождите…' : entry ? 'Обновить копию' : 'Опубликовать день') + '</button>'
+      + '<div class="publication-actions">' + (!entry ? '<button class="publication-btn publication-primary" onclick="publishSpectatorDay(' + d + ')"' + (_publicationBusy ? ' disabled' : '') + '>'
+      + (_publicationBusy ? 'Подождите…' : 'Опубликовать день') + '</button>' : '')
       + (entry ? '<button class="publication-btn" onclick="unpublishSpectatorDay(\'' + day.publicationId + '\')"' + (_publicationBusy ? ' disabled' : '') + '>Снять с публикации</button>' : '') + '</div></article>';
   }).join('');
   Object.entries(spectatorPublications).forEach(function(pair) {

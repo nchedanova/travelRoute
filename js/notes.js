@@ -551,6 +551,7 @@ async function _uploadNoteImagesBatch(dataUrls) {
 
 function _deleteNoteImg(ref) {
   if (!ref || !ref.startsWith('fb:')) return;
+  if (typeof isPublicationImagePinned === 'function' && isPublicationImagePinned(ref)) return;
   var db = _noteImgDb();
   if (!db) return;
   var key = ref.slice(3);

@@ -570,7 +570,6 @@ function renderDaySection(d) {
           ${isAdmin() ? `
           <div class="day-overflow-divider"></div>
           <button class="dom-item" onclick="reverseDay(${d});closeDayMenus()"><span class="dom-ic">🔄</span>Обратный маршрут</button>
-          <button class="dom-item" onclick="openPublicationManager(${d})"><span class="dom-ic">👁</span>${publicationEntry(d) ? 'Публикация для зрителей' : 'Опубликовать для зрителей'}</button>
           <button class="dom-item" onclick="archiveDay(${d});closeDayMenus()"><span class="dom-ic">📦</span>В архив</button>
           <div class="day-overflow-divider"></div>
           <button class="dom-item" onclick="confirmReset(${d});closeDayMenus()"><span class="dom-ic" style="font-size:14px">↺</span>Сбросить факт</button>
@@ -631,7 +630,6 @@ function renderDaySection(d) {
       <div class="stat-box"><div class="stat-val" id="d${d}-travel-time" style="font-size:13px;">—</div><div class="stat-key" id="d${d}-travel-km" style="letter-spacing:0.06em;">В ПУТИ</div></div>
       <div class="stat-box"><div class="stat-val" id="d${d}-delta-val">—</div><div class="stat-key">ОТКЛОНЕНИЕ</div></div>
     </div>
-    ${isAdmin() ? `<button class="publication-day-status" onclick="openPublicationManager(${d})">${publicationEntry(d) ? (publicationChanged(d) ? '👁 Зрителям: прежняя копия · есть изменения' : '👁 Зрителям: опубликованная копия') : '👁 Зрителям: не опубликован'} <span>Настроить →</span></button>` : ''}
     <div id="d${d}-stops"></div>
   `;
   return sec;

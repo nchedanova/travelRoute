@@ -9,8 +9,8 @@ function setup() {
   const fields=new Map();
   const ctx=vm.createContext({
     console:{log(){},error(e){throw e;}}, Blob, Date, JSON, Object, Number,
-    DAYS_DATA:{},state:{actuals:{}},currentDay:1,layers:{},segmentLayers:{},DAY_COLORS:['red'],
-    document:{getElementById:id=>fields.has(id)?{value:fields.get(id)}:null,querySelectorAll:()=>[]},
+    SPECTATOR_MODE:false,DAYS_DATA:{},state:{actuals:{}},currentDay:1,layers:{},segmentLayers:{},DAY_COLORS:['red'],
+    document:{addEventListener(){},getElementById:id=>fields.has(id)?{value:fields.get(id)}:null,querySelectorAll:()=>[]},
     localStorage:{setItem(k,v){saved=JSON.parse(v);}},
     isAdmin:()=>true,isViewer:()=>false,CLOUD_CONFIG:{canWrite:false},
     map:{hasLayer:()=>false,removeLayer(){}},L:{layerGroup:()=>({})},
@@ -19,6 +19,7 @@ function setup() {
     switchDay(d){ctx.currentDay=d;},
     dayKeys(){return Object.keys(ctx.DAYS_DATA).map(Number);},
   });
+  vm.runInContext(read('js/publishing.js'),ctx);
   const storage=read('js/storage.js');
   vm.runInContext(storage.slice(storage.indexOf('function applyPayload('),storage.indexOf('// ── LOAD STATE')),ctx);
   vm.runInContext(storage.slice(storage.indexOf('function captureActualTimeInputs('),storage.indexOf('// ── AUTO-POLL')),ctx);
@@ -64,6 +65,23 @@ test('archiving last active day preserves time including not-yet-blurred inputs'
   assert.equal(ctx.currentDay,0);
   ctx.applyPayload(saved());
   assert.equal(ctx.DAYS_DATA[1].departA,'04:12');
+});
+
+test('real archive action captures final unsaved facts for spectators and keeps them frozen',()=>{
+  const {ctx,fields,saved}=setup();ctx.DAYS_DATA={1:fixtures()[1]};
+  ctx.DAYS_DATA[1].publicationId='p';
+  ctx.spectatorPublications={p:{day:structuredClone(ctx.DAYS_DATA[1]),status:'live'}};
+  fields.set('d1-depart','04:12');fields.set('arr-original0','12:34');fields.set('dep-original0','12:56');
+  ctx.archiveDay(1);
+  assert.equal(saved().spectatorPublications.p.status,'completed');
+  const finalDay=ctx.spectatorPayload(saved()).daysData[1];
+  assert.equal(finalDay.departA,'04:12');assert.equal(finalDay.stops[0].arrA,'12:34');
+  assert.equal(finalDay.spectatorLive,false);
+  ctx.DAYS_DATA[1].stops[0].arrA='23:59';ctx.saveData();
+  assert.equal(ctx.spectatorPayload(saved()).daysData[1].stops[0].arrA,'12:34');
+  ctx.restoreDay(1);
+  assert.equal(ctx.spectatorPayload(saved()).daysData[1].stops[0].arrA,'23:59');
+  assert.equal(ctx.spectatorPayload(saved()).daysData[1].spectatorLive,true);
 });
 test('cleared modern facts stay cleared; legacy missing fields still migrate',()=>{
   const {ctx}=setup();

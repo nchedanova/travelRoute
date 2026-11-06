@@ -23,7 +23,7 @@ function setup(spectator = false) {
   const storage = read('js/storage.js');
   vm.runInContext(storage.slice(storage.indexOf('function applyPayload('), storage.indexOf('// ── LOAD STATE')), ctx);
   vm.runInContext(storage.slice(storage.indexOf('function _pickVisibleDay('), storage.indexOf("document.addEventListener('input'")), ctx);
-  ctx.saveData = () => values.set('travel_preview_v1', JSON.stringify({ daysData: ctx.DAYS_DATA, spectatorPublications: ctx.spectatorPublications, actuals: ctx.state.actuals }));
+  ctx.saveData = () => {ctx.syncSpectatorPublications();values.set('travel_preview_v1', JSON.stringify({ daysData: ctx.DAYS_DATA, spectatorPublications: ctx.spectatorPublications, actuals: ctx.state.actuals }));};
   return {ctx, values};
 }
 
@@ -33,7 +33,7 @@ function day() {
 
 test('spectator follows route order regardless of publication order, including archived days',()=>{
   const {ctx}=setup(true);
-  const payload={daysData:{18:{...day(),publicationId:'p22'},19:{...day(),publicationId:'p23'},20:{...day(),archived:true,publicationId:'p24'}},spectatorPublications:{p23:{day:{...day(),date:'23'}},p24:{day:{...day(),date:'24'}},p22:{day:{...day(),date:'22'}}}};
+  const payload={daysData:{18:{...day(),date:'22',publicationId:'p22'},19:{...day(),date:'23',publicationId:'p23'},20:{...day(),date:'24',archived:true,publicationId:'p24'}},spectatorPublications:{p23:{day:{...day(),date:'23'}},p24:{day:{...day(),date:'24'}},p22:{day:{...day(),date:'22'}}}};
   assert.deepEqual(Object.values(ctx.spectatorPayload(payload).daysData).map(d=>d.date),['22','23','24']);
 });
 
@@ -83,19 +83,25 @@ test('spectator markup has no publication metadata banner',()=>{
   assert.doesNotMatch(read('js/render.js'),/publication-view-note|Опубликованная копия/);
 });
 
-test('publication survives source edits, archive, deletion and reload; only explicit update replaces it', async () => {
+test('active publication updates automatically; archive freezes the final day and deletion preserves it', async () => {
   const {ctx, values} = setup();
   ctx.DAYS_DATA[1] = day();
   await ctx.publishSpectatorDay(1);
   const id = ctx.DAYS_DATA[1].publicationId;
   assert.equal(Object.keys(ctx.spectatorPublications).length, 1);
   ctx.DAYS_DATA[1].stops[0].name = 'Changed stop';
+  ctx.saveData();
+  let projected=ctx.spectatorPayload(JSON.parse(values.get('travel_preview_v1')));
+  assert.equal(projected.daysData[1].stops[0].name,'Changed stop');
+  assert.equal(projected.daysData[1].spectatorLive,true);
   ctx.DAYS_DATA[1].archived = true;
-  assert.equal(ctx.publicationChanged(1), true);
-  assert.equal(ctx.spectatorPublications[id].day.stops[0].name, 'Old stop');
-  await ctx.publishSpectatorDay(1);
+  ctx.saveData();
   assert.equal(ctx.spectatorPublications[id].day.stops[0].name, 'Changed stop');
-  assert.equal(ctx.publicationChanged(1), false);
+  ctx.DAYS_DATA[1].stops[0].name='Edited after archive';
+  ctx.saveData();
+  projected=ctx.spectatorPayload(JSON.parse(values.get('travel_preview_v1')));
+  assert.equal(projected.daysData[1].stops[0].name,'Changed stop');
+  assert.equal(projected.daysData[1].spectatorLive,false);
   delete ctx.DAYS_DATA[1];
   ctx.saveData();
   const viewer = setup(true).ctx;
@@ -131,7 +137,7 @@ test('reader retains live days and archived flags without publication filtering'
   assert.equal(ctx._pickVisibleDay(2),0);
 });
 
-test('published photos are independent of removable Firebase originals', async () => {
+test('publishing pins Firebase references without downloading or embedding photos', async () => {
   const {ctx} = setup();
   const item = day();
   item.stops[0].notes[0].images = ['fb:photo'];
@@ -141,8 +147,10 @@ test('published photos are independent of removable Firebase originals', async (
   ctx.DAYS_DATA[1]=item;
   await ctx.publishSpectatorDay(1);
   const entry = Object.values(ctx.spectatorPublications)[0];
-  assert.equal(entry.day.stops[0].notes[0].images[0],'fb:published-photo');
-  assert.deepEqual(uploads,['data:image/png;base64,example']);
+  assert.equal(entry.day.stops[0].notes[0].images[0],'fb:photo');
+  assert.deepEqual(uploads,[]);
+  assert.equal(ctx.isPublicationImagePinned('fb:photo'),true);
+  assert.equal(ctx.isPublicationImagePinned('fb:other'),false);
   assert.doesNotMatch(JSON.stringify(entry),/data:image/);
   assert.equal(item.stops[0].notes[0].images[0],'fb:photo');
 });
@@ -156,25 +164,47 @@ test('explicitly offline photos stay offline without Firebase conversion', async
   assert.equal(Object.values(ctx.spectatorPublications)[0].day.stops[0].notes[0].images[0],'data:image/png;base64,offline');
 });
 
-test('Firebase upload failure never falls back to embedded photo data', async () => {
+test('publication works offline with existing Firebase references and never embeds cached bytes', async () => {
   const {ctx}=setup();
   ctx.DAYS_DATA[1]=day();
   await ctx.publishSpectatorDay(1);
-  const before=JSON.stringify(ctx.spectatorPublications);
   ctx.DAYS_DATA[1].stops[0].notes[0].images=['fb:photo'];
   ctx._fbImgCache={photo:'data:image/png;base64,example'};
   ctx._uploadNoteImgRetry=async()=>{throw new Error('Firebase unavailable');};
   await ctx.publishSpectatorDay(1);
-  assert.equal(JSON.stringify(ctx.spectatorPublications),before);
+  assert.equal(Object.values(ctx.spectatorPublications)[0].day.stops[0].notes[0].images[0],'fb:photo');
   assert.doesNotMatch(JSON.stringify(ctx.spectatorPublications),/data:image/);
 });
 
-test('unavailable photo leaves an existing publication unchanged', async () => {
+test('original photo deletion is prevented while a completed publication references it', async () => {
   const {ctx} = setup();
   ctx.DAYS_DATA[1]=day();
   await ctx.publishSpectatorDay(1);
-  const before = JSON.stringify(ctx.spectatorPublications);
-  ctx.DAYS_DATA[1].stops[0].notes[0].images=['fb:missing'];
+  ctx.DAYS_DATA[1].stops[0].notes[0].images=['fb:photo'];
+  ctx.DAYS_DATA[1].archived=true;ctx.saveData();
+  delete ctx.DAYS_DATA[1];ctx.saveData();
+  let deletes=0;
+  ctx._noteImgDb=()=>({ref:()=>({remove:()=>{deletes++;return Promise.resolve();}})});
+  ctx._fbImgCache={};
+  const notes=read('js/notes.js');
+  vm.runInContext(notes.slice(notes.indexOf('function _deleteNoteImg('),notes.indexOf('// Вызывается из render.js._resolveImgsInEl')),ctx);
+  ctx._deleteNoteImg('fb:photo');assert.equal(deletes,0);
+  ctx._deleteNoteImg('fb:other');assert.equal(deletes,1);
+});
+
+test('publication controls exist only in settings and no manual copy update remains',()=>{
+  assert.doesNotMatch(read('js/render.js'),/openPublicationManager|publication-day-status/);
+  assert.doesNotMatch(read('js/publishing.js'),/Обновить копию/);
+  assert.match(read('index.html'),/closeCloudSettings\(\);openPublicationManager\(\)/);
+});
+
+test('active published changes are visible even when hidden from ordinary readers',async()=>{
+  const {ctx,values}=setup();ctx.DAYS_DATA[1]=day();ctx.DAYS_DATA[1].hidden=true;
   await ctx.publishSpectatorDay(1);
-  assert.equal(JSON.stringify(ctx.spectatorPublications),before);
+  ctx.DAYS_DATA[1].stops[0].arrA='11:22';ctx.DAYS_DATA[2]={...day(),date:'Unpublished'};
+  ctx.saveData();
+  const projected=ctx.spectatorPayload(JSON.parse(values.get('travel_preview_v1')));
+  assert.equal(Object.keys(projected.daysData).length,1);
+  assert.equal(projected.daysData[1].hidden,undefined);
+  assert.equal(projected.daysData[1].stops[0].arrA,'11:22');
 });

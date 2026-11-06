@@ -121,11 +121,12 @@ test('neither reader nor spectator can generate share links',()=>{
   }
 });
 
-test('spectator publications do not subscribe to live GPS, chat or presence', () => {
+test('spectator subscribes only to published GPS, never private GPS, chat or presence', () => {
   const { ctx, run } = context('?gist=public-route&chat=0');
   const paths = [];
   let photoResolutions = 0;
   ctx._resolveAllNoteImgs = () => { photoResolutions++; };
+  ctx.setInterval=()=>0;
   const db = { ref(value) { paths.push(value); return { on() {} }; } };
   ctx.firebase = {
     apps: [{}], database: () => db,
@@ -139,6 +140,6 @@ test('spectator publications do not subscribe to live GPS, chat or presence', ()
   ctx.map = { on() {} };
   vm.runInContext(source('js/gps.js'), ctx);
   run('_showEl = function() {}; initGps();');
-  assert.deepEqual(paths, []);
+  assert.deepEqual(paths, ['gps/spectator']);
   assert.equal(photoResolutions, 1);
 });

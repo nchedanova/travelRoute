@@ -233,6 +233,7 @@ function applyPayload(saved) {
       delete s.noteImages;
     });
   });
+  if (typeof refreshSpectatorGpsVisibility === 'function') refreshSpectatorGpsVisibility();
 }
 
 // ── LOAD STATE ────────────────────────────────────────────────────────────────
@@ -394,6 +395,7 @@ function saveData() {
     });
 
     const daysData = {};
+    if (typeof syncSpectatorPublications === 'function') syncSpectatorPublications();
     dayKeys().forEach(day => {
       daysData[day] = JSON.parse(JSON.stringify(DAYS_DATA[day]));
     });
@@ -412,11 +414,11 @@ function saveData() {
 
     // Дополнительно — в облако (с дебаунсом), только если есть токен
     if (CLOUD_CONFIG.canWrite) scheduleCloudSave(payload);
+    if (typeof refreshSpectatorGpsVisibility === 'function') refreshSpectatorGpsVisibility();
 
   } catch(e) { console.error('saveData error', e); }
   showToast();
   updateProgress();
-  if (typeof refreshPublicationStatus === 'function') refreshPublicationStatus();
 }
 
 // ── AUTO-POLL (тихое обновление) ──────────────────────────────────────────────
@@ -510,7 +512,7 @@ async function pollCloud() {
   if (window._inlineAddOpen || window._mapPickIsEdit || window._mapPickIsEditStart) return;
   // Есть несинхронизированные офлайн-правки — не тянем устаревший облачный
   // снепшот поверх них, пробуем допушить вместо обычного поллинга
-  if (_cloudDirty) { _tryFlushPendingPush(); return; }
+  if (_cloudDirty && CLOUD_CONFIG.canWrite) { _tryFlushPendingPush(); return; }
 
   try {
     const saved = await fetchCloudData();

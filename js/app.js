@@ -38,6 +38,7 @@ function switchDay(d) {
     }
   });
   switchMapDay(d);
+  if (typeof refreshSpectatorGpsVisibility === 'function') refreshSpectatorGpsVisibility();
   listenWeather(d);
   // Update Еду/Иду button label based on day mode
   var _btn = document.getElementById('drivingBtn');
@@ -2920,7 +2921,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '2.9.0';
-var APP_BUILD   = 95;
+var APP_BUILD   = 96;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 1;
 

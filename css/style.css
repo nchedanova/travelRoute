@@ -15,8 +15,6 @@
 .publication-title {font-size:11px;overflow-wrap:anywhere}
 .publication-meta {font-size:10px;color:var(--muted);margin:5px 0}
 .publication-actions {margin-top:10px}
-.publication-day-status {display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;width:100%;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--muted);font:inherit;font-size:11px;padding:10px;margin:12px 0;cursor:pointer}
-.publication-day-status span {color:var(--accent)}
 .route-empty {padding:24px 16px;text-align:center;color:var(--muted);font-size:11px;line-height:1.6}
 .route-empty h3 {color:var(--text);font:500 12px/1.5 'JetBrains Mono',monospace;margin:8px 0}
 .route-empty p {font-size:11px;margin:6px 0 12px}

@@ -23,10 +23,13 @@ let _userPanned     = false;  // пользователь двигал карт�
 let _nearestStopId  = null;   // id ближайшей остановки
 let _keepAliveCtx   = null;   // AudioContext для keep-alive
 let _keepAliveOsc   = null;
+var _lastSpectatorPosition = null;
+var _lastOwnerPosition = null;
+var _spectatorGpsListening = false;
 
 // ── INIT ───────────────────────────────────────────────────────────────────────
 function initGps() {
-  // Spectators use Firebase only to resolve published photos, never live GPS/chat.
+  // Spectators receive only the published-day GPS branch, photos and reactions.
   if (SPECTATOR_MODE) { initSpectatorPhotos(); return; }
   // ── ДЕМО-РЕЖИМ ──────────────────────────────────────────────────────────────
   if (typeof isDemoMode === 'function' && isDemoMode()) {
@@ -157,6 +160,10 @@ function initGps() {
 
   // Пауза слежения при ручном drag-е карты — автовозврат через 7 сек после отпускания
   // dragstart/dragend — Leaflet-события, НЕ срабатывают на программный panTo
+  _initFollowPause();
+}
+
+function _initFollowPause() {
   let _followPauseTimer = null;
   map.on('dragstart', () => {
     if (!_followCamera) return;
@@ -185,6 +192,17 @@ function initSpectatorPhotos() {
     if (typeof _resolveAllNoteImgs === 'function') _resolveAllNoteImgs();
     if (typeof initNoteReactions === 'function') initNoteReactions();
     if (typeof _setupAllNoteReactListeners === 'function') _setupAllNoteReactListeners();
+    _db = firebase.database();
+    if (!_spectatorGpsListening) {
+      _spectatorGpsListening = true;
+      _followCamera = true;
+      _initFollowPause();
+      _db.ref('gps/spectator').on('value', function(snap) {
+        _lastSpectatorPosition = snap.val();
+        refreshSpectatorGpsVisibility();
+      });
+      setInterval(refreshSpectatorGpsVisibility, 5000);
+    }
   }
   if (firebase.auth) {
     firebase.auth().onAuthStateChanged(function(user) {
@@ -254,7 +272,44 @@ function _listenRemotePosition() {
 // ── FIREBASE WRITE — владелец едет ────────────────────────────────────────────
 function _writePosition(lat, lng, speed, accuracy) {
   if (!_db) return;
-  _db.ref('gps').set({ lat, lng, speed, accuracy, ts: Date.now() });
+  _lastOwnerPosition = { lat, lng, speed, accuracy, ts: Date.now() };
+  _db.ref('gps').set(Object.assign({}, _lastOwnerPosition, { spectator: spectatorGpsPayload(_lastOwnerPosition) }));
+}
+
+function spectatorGpsPayload(point) {
+  var day = DAYS_DATA[currentDay];
+  if (!_drivingMode || !day || day.archived || !day.publicationId || !publicationEntry(currentDay)) return null;
+  return Object.assign({}, point, { publicationId: day.publicationId, walkMode: !!day.walkMode });
+}
+
+function refreshSpectatorGpsVisibility() {
+  if (!SPECTATOR_MODE) {
+    if (CLOUD_CONFIG.canWrite && _db && _lastOwnerPosition) {
+      _db.ref('gps/spectator').set(spectatorGpsPayload(_lastOwnerPosition));
+    }
+    return;
+  }
+  var point = _lastSpectatorPosition;
+  var day = DAYS_DATA[currentDay];
+  var visible = !!point && !!day && day.spectatorLive &&
+    day.spectatorPublicationId === point.publicationId &&
+    Number.isFinite(point.lat) && Number.isFinite(point.lng) && Date.now() - point.ts < 120000;
+  if (!visible) {
+    if (_gpsMarker && map) map.removeLayer(_gpsMarker);
+    if (_accuracyCircle && map) map.removeLayer(_accuracyCircle);
+    _gpsMarker = null; _accuracyCircle = null;
+    document.body.classList.remove('driving-active');
+    _updateSpeedDisplay(null);
+    ['gpsFollowBtn','speedDisplay'].forEach(function(id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; });
+    document.querySelectorAll('.stop-card.gps-nearest').forEach(function(el) { el.classList.remove('gps-nearest'); el.style.borderLeftColor = ''; el.style.background = ''; });
+    return;
+  }
+  _showEl('gpsFollowBtn'); _showEl('speedDisplay');
+  document.body.classList.add('driving-active');
+  _updateGpsMarker(point.lat, point.lng, point.accuracy, true);
+  _highlightNearest(point.lat, point.lng);
+  _updateSpeedDisplay(point.speed);
+  if (_followCamera && !_userPanned) _panTo(point.lat, point.lng);
 }
 
 // ── GPS МАРКЕР ─────────────────────────────────────────────────────────────────
@@ -326,6 +381,7 @@ function toggleDrivingMode() {
     return;
   }
   _drivingMode  = !_drivingMode;
+  _lastOwnerPosition = null;
   _followCamera = _drivingMode;
   _userPanned   = false;
 
