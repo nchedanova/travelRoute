@@ -84,11 +84,37 @@ test('published photos are independent of removable Firebase originals', async (
   const item = day();
   item.stops[0].notes[0].images = ['fb:photo'];
   ctx._fbImgCache = {photo:'data:image/png;base64,example'};
+  const uploads=[];
+  ctx._uploadNoteImgRetry=async data=>{uploads.push(data);return 'fb:published-photo';};
   ctx.DAYS_DATA[1]=item;
   await ctx.publishSpectatorDay(1);
   const entry = Object.values(ctx.spectatorPublications)[0];
-  assert.equal(entry.day.stops[0].notes[0].images[0],'data:image/png;base64,example');
+  assert.equal(entry.day.stops[0].notes[0].images[0],'fb:published-photo');
+  assert.deepEqual(uploads,['data:image/png;base64,example']);
+  assert.doesNotMatch(JSON.stringify(entry),/data:image/);
   assert.equal(item.stops[0].notes[0].images[0],'fb:photo');
+});
+
+test('explicitly offline photos stay offline without Firebase conversion', async () => {
+  const {ctx}=setup();
+  ctx.DAYS_DATA[1]=day();
+  ctx.DAYS_DATA[1].stops[0].notes[0].images=['data:image/png;base64,offline'];
+  ctx._uploadNoteImgRetry=async()=>assert.fail('Offline images should not upload');
+  await ctx.publishSpectatorDay(1);
+  assert.equal(Object.values(ctx.spectatorPublications)[0].day.stops[0].notes[0].images[0],'data:image/png;base64,offline');
+});
+
+test('Firebase upload failure never falls back to embedded photo data', async () => {
+  const {ctx}=setup();
+  ctx.DAYS_DATA[1]=day();
+  await ctx.publishSpectatorDay(1);
+  const before=JSON.stringify(ctx.spectatorPublications);
+  ctx.DAYS_DATA[1].stops[0].notes[0].images=['fb:photo'];
+  ctx._fbImgCache={photo:'data:image/png;base64,example'};
+  ctx._uploadNoteImgRetry=async()=>{throw new Error('Firebase unavailable');};
+  await ctx.publishSpectatorDay(1);
+  assert.equal(JSON.stringify(ctx.spectatorPublications),before);
+  assert.doesNotMatch(JSON.stringify(ctx.spectatorPublications),/data:image/);
 });
 
 test('unavailable photo leaves an existing publication unchanged', async () => {

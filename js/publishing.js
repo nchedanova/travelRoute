@@ -78,7 +78,14 @@ async function freezePublicationImages(day) {
         }, function(error) { clearTimeout(timeout); reject(error); });
       });
     }
-    refs.set(ref, cached);
+    // Preserve the snapshot independently of deletable originals, but keep photo
+    // bytes in Firebase. Only already-offline data: images remain embedded.
+    if (typeof _uploadNoteImgRetry !== 'function') throw new Error('Загрузка фото в Firebase недоступна');
+    var publishedRef = await _uploadNoteImgRetry(cached);
+    if (typeof publishedRef !== 'string' || !publishedRef.startsWith('fb:')) {
+      throw new Error('Фото не сохранено в Firebase. Публикация не изменена');
+    }
+    refs.set(ref, publishedRef);
   }
   day.stops.forEach(function(stop) { stop.notes.forEach(function(note) {
     note.images = (note.images || []).map(function(ref) { return refs.get(ref) || ref; });
@@ -107,7 +114,7 @@ async function publishSpectatorDay(d) {
     saveData();
     showToast('👁 Копия дня опубликована для зрителей');
   } catch(e) {
-    showToast('⚠ ' + (e.name === 'QuotaExceededError' ? 'Недостаточно места для копии с фото' : e.message));
+    showToast('⚠ ' + (e.name === 'QuotaExceededError' ? 'Недостаточно места для сохранения публикации' : e.message));
   } finally {
     _publicationBusy = false;
     renderPublicationManager();

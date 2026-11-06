@@ -26,8 +26,8 @@ let _keepAliveOsc   = null;
 
 // ── INIT ───────────────────────────────────────────────────────────────────────
 function initGps() {
-  // Published trips never subscribe to the current vehicle position or live Firebase data.
-  if (SPECTATOR_MODE) return;
+  // Spectators use Firebase only to resolve published photos, never live GPS/chat.
+  if (SPECTATOR_MODE) { initSpectatorPhotos(); return; }
   // ── ДЕМО-РЕЖИМ ──────────────────────────────────────────────────────────────
   if (typeof isDemoMode === 'function' && isDemoMode()) {
     initChat && initChat();
@@ -171,6 +171,22 @@ function initGps() {
       if (_userPanned) resumeGpsFollow();
     }, 7000);
   });
+}
+
+function initSpectatorPhotos() {
+  if (isDemoMode() || typeof firebase === 'undefined') return;
+  if (!firebase.apps.length) {
+    firebase.initializeApp(Object.assign({}, FIREBASE_CONFIG, {apiKey: localStorage.getItem('travel_firebase_key') || ''}));
+  }
+  function resolvePhotos() {
+    if (typeof _resolveAllNoteImgs === 'function') _resolveAllNoteImgs();
+  }
+  if (firebase.auth) {
+    firebase.auth().onAuthStateChanged(function(user) {
+      if (user) resolvePhotos();
+      else firebase.auth().signInAnonymously().catch(function(error) { console.warn('Published photo auth:', error); });
+    });
+  } else resolvePhotos();
 }
 
 // ── GPS WATCH — только владелец ───────────────────────────────────────────────

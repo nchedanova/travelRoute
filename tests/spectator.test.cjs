@@ -114,6 +114,8 @@ test('share links distinguish ordinary reader and spectator and never include th
 test('spectator publications do not subscribe to live GPS, chat or presence', () => {
   const { ctx, run } = context('?gist=public-route&chat=0');
   const paths = [];
+  let photoResolutions = 0;
+  ctx._resolveAllNoteImgs = () => { photoResolutions++; };
   const db = { ref(value) { paths.push(value); return { on() {} }; } };
   ctx.firebase = {
     apps: [{}], database: () => db,
@@ -128,4 +130,5 @@ test('spectator publications do not subscribe to live GPS, chat or presence', ()
   vm.runInContext(source('js/gps.js'), ctx);
   run('_showEl = function() {}; initGps();');
   assert.deepEqual(paths, []);
+  assert.equal(photoResolutions, 1);
 });
