@@ -6,6 +6,14 @@ const vm = require('node:vm');
 const root = path.join(__dirname, '..');
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const storage = fs.readFileSync(path.join(root, 'js/storage.js'), 'utf8');
+const css = fs.readFileSync(path.join(root, 'css/style.css'), 'utf8');
+
+test('spectator settings hide sharing; both read-only roles hide admin-only controls',()=>{
+  assert.match(css,/body\.viewer-mode \.admin-only[,\s]/);
+  assert.match(css,/body\.spectator-mode #csShareLinks\s*\{\s*display:none !important/);
+  assert.match(html,/<div class="cloud-settings-action-row" id="csShareLinks">/);
+  assert.match(html,/<button class="modal-cancel admin-only"[^>]*openPublicationManager/);
+});
 
 test('connection fields and destructive reset are inside collapsed settings section', () => {
   const section = html.match(/<details class="cloud-connection-settings"[^>]*>([\s\S]*?)<\/details>/)[0];

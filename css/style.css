@@ -391,7 +391,9 @@ input.time-in.late   { color:var(--red);    border-color:rgba(248,113,113,0.4); 
 
 /* ── VIEWER MODE ─────────────────────────────────────── */
 body.viewer-mode .admin-only-el,
+body.viewer-mode .admin-only,
 body.viewer-mode #undoBtn { display:none !important; }
+body.spectator-mode #csShareLinks { display:none !important; }
 
 /* ── UNDO BUTTON ─────────────────────────────────────── */
 .undo-btn {

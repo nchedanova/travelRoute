@@ -80,7 +80,7 @@ test('spectator also disables demo chat and nickname/notification/presence initi
 });
 
 test('share links distinguish ordinary reader and spectator and never include the admin token', async () => {
-  const { ctx, run } = context('?chat=0', {
+  const { ctx, run } = context('?chat=1', {
     travel_gist_id: 'public-route', travel_gist_token: 'secret', travel_firebase_key: 'public-key',
   });
   const status = { style: {} };
@@ -109,6 +109,14 @@ test('share links distinguish ordinary reader and spectator and never include th
   ctx.navigator.clipboard = undefined;
   await run('copyShareLink()');
   assert.match(notifications.at(-1), /Не удалось скопировать/);
+});
+
+test('spectator cannot generate live-reader or spectator share links',()=>{
+  const {ctx,run}=context('?chat=0',{travel_gist_id:'route'});
+  ctx.navigator.clipboard={writeText(){assert.fail('Spectator must not copy share links');}};
+  const text=source('js/storage.js');
+  vm.runInContext(text.slice(text.indexOf('function copyShareLink('),text.indexOf('// ── CLOUD SETTINGS UI')),ctx);
+  run('copyShareLink();copyShareLink(true)');
 });
 
 test('spectator publications do not subscribe to live GPS, chat or presence', () => {
