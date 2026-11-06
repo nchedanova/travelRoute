@@ -389,27 +389,27 @@ function makeStopCard(s, day) {
 
   div.innerHTML = `
     ${isAdmin() ? `<div class="drag-handle" title="Перетащить">⠿</div>` : ''}
-    ${isAdmin() ? `<button class="dots-btn" id="dots-${s.id}" onclick="toggleStopMenu('${s.id}', ${day}); event.stopPropagation();">···</button>` : ''}
     <div class="stop-dropdown" id="dd-${s.id}">
       ${isAdmin() ? `
-      <button class="stop-dropdown-item new-stop" onclick="closeStopMenus(); openInlineAddStop('${s.id}', ${day});"><span class="di-icon">＋</span> Добавить точку</button>
+      <button class="stop-dropdown-item new-stop" onclick="closeStopMenus(); openInlineAddStop('${s.id}', ${day});">${dayActionIcon('plus')} Добавить точку</button>
       <div class="stop-dropdown-divider"></div>
-      <button class="stop-dropdown-item" onclick="closeStopMenus(); editStop('${s.id}', ${day});"><span class="di-icon">✏️</span> Редактировать</button>
-      <button class="stop-dropdown-item" onclick="closeStopMenus(); editStopTime('${s.id}', ${day});"><span class="di-icon">🕒</span> Изменить время</button>
-      <button class="stop-dropdown-item" onclick="closeStopMenus(); addStopNote('${s.id}', ${day});"><span class="di-icon">📝</span> Добавить заметку</button>
+      <button class="stop-dropdown-item" onclick="closeStopMenus(); editStop('${s.id}', ${day});">${dayActionIcon('edit')} Редактировать</button>
+      <button class="stop-dropdown-item" onclick="closeStopMenus(); editStopTime('${s.id}', ${day});">${dayActionIcon('clock')} Изменить время</button>
+      <button class="stop-dropdown-item" onclick="closeStopMenus(); addStopNote('${s.id}', ${day});">${dayActionIcon('note')} Добавить заметку</button>
       <div class="stop-dropdown-divider"></div>
-      <button class="stop-dropdown-item danger" onclick="closeStopMenus(); deleteStop(${day}, '${s.id}');"><span class="di-icon">×</span> Удалить точку</button>` : ''}
+      <button class="stop-dropdown-item danger" onclick="closeStopMenus(); deleteStop(${day}, '${s.id}');">${dayActionIcon('delete')} Удалить точку</button>` : ''}
     </div>
     <div class="stop-main" id="stop-main-${s.id}">
       <div class="stop-num">${s.num}</div>
       <div class="stop-info">
         <div class="stop-name">
-          <span class="stop-icon" id="stop-icon-disp-${s.id}">${s.icon}</span>
+          <span class="stop-icon" id="stop-icon-disp-${s.id}">${pointIconMarkup(s.icon, s.type)}</span>
           <span class="stop-name-text" id="stop-name-disp-${s.id}">${s.name}</span>
           <span class="stop-type" id="stop-type-disp-${s.id}">${s.type}</span>
           <span class="weather-badge" id="wb-${s.id}" style="display:none" onclick="event.stopPropagation();toggleWeatherStrip('${s.id}')"></span>
         </div>
       </div>
+      ${isAdmin() ? `<button class="dots-btn" id="dots-${s.id}" aria-label="Действия с точкой" onclick="toggleStopMenu('${s.id}', ${day}); event.stopPropagation();">${dayActionIcon('dots')}</button>` : ''}
     </div>
     <div class="time-grid" id="stop-timegrid-${s.id}">
       <div class="time-block">
@@ -453,6 +453,7 @@ function makeStopCard(s, day) {
           html += '<div class="stop-note-item" id="stop-note-item-'+s.id+'-'+i+'">';
           html += '<div class="stop-note-edit" id="stop-note-edit-'+s.id+'-'+i+'" style="display:'+(hasContent?'none':'block')+'">';
           html += '<div class="stop-note-bubble">';
+          html += '<button type="button" class="stop-note-close-btn" onmousedown="event.preventDefault()" onclick="cancelStopNoteEdit(\''+s.id+'\','+day+','+i+')" title="Закрыть без сохранения" aria-label="Закрыть заметку без сохранения">'+dayActionIcon('close')+'</button>';
           html += '<textarea class="stop-note-input" id="stop-note-'+s.id+'-'+i+'" placeholder="Заметка к точке…" style="touch-action:auto" oninput="autoResizeNote(this)" onfocus="var c=this.closest(\'.stop-card\');if(c)c.draggable=false" ontouchstart="event.stopPropagation()" ontouchmove="event.stopPropagation()" onmousedown="event.stopPropagation()">'+_e(n.text||'')+'</textarea>';
           html += '<div class="note-images-inline" id="stop-note-edit-images-'+s.id+'-'+i+'">';
           if (n.images && n.images.length) n.images.forEach(function(url,j){
@@ -461,14 +462,14 @@ function makeStopCard(s, day) {
           html += '</div>';
           html += '<div class="stop-note-toolbar">';
           html += '<button class="note-vis-btn '+(n.public?'note-vis-on':'')+'" onmousedown="event.preventDefault()" onclick="toggleNotePublic(\''+s.id+'\','+i+','+day+')" title="'+(n.public?'Видна читателю':'Скрыта от читателя')+'">'+(n.public?eyeOn:eyeOff)+'</button>';
-          html += '<button class="stop-note-photo-btn" onmousedown="event.preventDefault()" onclick="triggerStopNotePhoto(\''+s.id+'\','+day+','+i+')" title="Добавить фото">📷</button>';
+          html += '<button class="stop-note-photo-btn" onmousedown="event.preventDefault()" onclick="triggerStopNotePhoto(\''+s.id+'\','+day+','+i+')" title="Добавить фото">'+dayActionIcon('camera')+'</button>';
           var _hasOfflineImgs = n.images && n.images.some(function(r){return r&&r.startsWith('data:');});
           var _offChk = (_hasOfflineImgs || (typeof _pendingStopOffline !== 'undefined' && _pendingStopOffline[s.id+'-'+i])) ? ' checked' : '';
           var _offHintStyle = _offChk ? '' : 'display:none';
           html += '<label class="stop-note-offline-label" onmousedown="event.preventDefault()"><input type="checkbox" onchange="setStopNoteOffline(\''+s.id+'\','+i+',this.checked);var h=document.getElementById(\'offline-hint-'+s.id+'-'+i+'\');if(h)h.style.display=this.checked?\'block\':\'none\'"'+_offChk+'>Фото офлайн</label>';
           html += '<div style="flex:1"></div>';
-          html += '<button class="stop-note-del-btn" onmousedown="event.preventDefault()" onclick="deleteStopNote(\''+s.id+'\','+day+','+i+')" title="Удалить заметку">🗑️</button>';
-          html += '<button class="stop-note-save-btn" onmousedown="event.preventDefault()" onclick="commitStopNote(\''+s.id+'\','+day+','+i+')" title="Сохранить">✓</button>';
+          html += '<button class="stop-note-del-btn" onmousedown="event.preventDefault()" onclick="deleteStopNote(\''+s.id+'\','+day+','+i+')" title="Удалить заметку" aria-label="Удалить заметку">'+dayActionIcon('delete')+'<span>Удалить</span></button>';
+          html += '<button class="stop-note-save-btn" onmousedown="event.preventDefault()" onclick="commitStopNote(\''+s.id+'\','+day+','+i+')" title="Сохранить" aria-label="Сохранить заметку">'+dayActionIcon('check')+'</button>';
           html += '</div>';
           html += '<div id="offline-hint-'+s.id+'-'+i+'" class="stop-note-offline-hint" style="'+_offHintStyle+'">⚠️ Фото в Gist: 800px, сжатие. Лимит ~14 фото.</div>';
           html += '</div></div>';
@@ -522,13 +523,14 @@ function makeStopCard(s, day) {
 }
 
 function renderStops(day) {
+  if (typeof discardInlinePlanTimeForDay === 'function') discardInlinePlanTimeForDay(day);
   const container = document.getElementById('d' + day + '-stops');
   container.innerHTML = '';
   DAYS_DATA[day].stops.forEach((s, i) => { s.num = i + 1; });
   if (DAYS_DATA[day].stops.length === 0 && typeof isAdmin === 'function' && isAdmin()) {
     var emptyBtn = document.createElement('div');
     emptyBtn.style.cssText = 'padding:12px 14px;';
-    emptyBtn.innerHTML = '<button style="width:100%;height:34px;border-radius:6px;border:1px dashed var(--border);background:transparent;color:var(--amber);font-family:\'JetBrains Mono\',monospace;font-size:12px;cursor:pointer;" onclick="openInlineAddFirstStop(' + day + ')">＋ Добавить первую точку</button>';
+    emptyBtn.innerHTML = '<button style="width:100%;height:34px;border-radius:6px;border:1px dashed var(--border);background:transparent;color:var(--amber);font-family:var(--font-ui);font-size:12px;cursor:pointer;" onclick="openInlineAddFirstStop(' + day + ')">＋ Добавить первую точку</button>';
     container.appendChild(emptyBtn);
   } else {
     DAYS_DATA[day].stops.forEach(s => container.appendChild(makeStopCard(s, day)));
@@ -539,7 +541,154 @@ function renderStops(day) {
 }
 
 // ── DAY SECTION ───────────────────────────────────────────────────────────────
+function dayActionIcon(name) {
+  const paths = {
+    weather:'<circle cx="9" cy="8" r="3"/><path d="M9 1v1M2 8H1M3 2l1 1M15 2l-1 1M18 12a5 5 0 0 0-9-1 4 4 0 1 0-1 8h10a3.5 3.5 0 0 0 0-7Z"/>',
+    reverse:'<path d="m8 3-4 4 4 4M4 7h16M16 13l4 4-4 4M20 17H4"/>',
+    archive:'<path d="M4 8v12h16V8M3 3h18v5H3zM9 12h6"/>',
+    import:'<path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/>',
+    reset:'<path d="M3 10a9 9 0 1 1 1 8M3 3v7h7"/>',
+    delete:'<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/>',
+    navigate:'<path d="m21 3-7 18-3-8-8-3Z"/>',
+    more:'<path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="2"/><circle cx="15" cy="17" r="2"/>',
+    car:'<path d="M3 16H2v-4l4-1 3-5h7l3 6 3 1v4h-3M7 17h8M6 11h13M13 6v5"/><circle cx="5" cy="17" r="2"/><circle cx="17" cy="17" r="2"/>',
+    walk:'<circle cx="14" cy="4" r="2"/><path d="m7 21 3-7m6 7-2-6-3-3 2-5 3 4h4M7 12l2-4 4-1"/>',
+    plus:'<path d="M12 5v14M5 12h14"/>',
+    edit:'<path d="m16 3 5 5-12 12-6 1 1-6Z M13 6l5 5"/>',
+    clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    note:'<path d="M14 3H5v18h14V8ZM14 3v5h5M8 12h8M8 16h6"/>',
+    map:'<path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2ZM9 3v16M15 5v16"/>',
+    arrow:'<path d="M7 17 17 7M7 7h10v10"/>',
+    copy:'<rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V3H3v13h5"/>',
+    stop:'<rect x="5" y="5" width="14" height="14" rx="3"/>',
+    dots:'<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
+    camera:'<path d="M8 6l2-3h4l2 3h5v15H3V6Z"/><circle cx="12" cy="13" r="4"/>',
+    send:'<path d="m22 2-7 20-4-9-9-4ZM11 13 22 2"/>',
+    smile:'<circle cx="12" cy="12" r="9"/><path d="M8 14s1 3 4 3 4-3 4-3M8 8h.01M16 8h.01"/>',
+    bell:'<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>',
+    mute:'<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18M10 21h4M3 3l18 18"/>',
+    pin:'<path d="m16 3 5 5-4 2-2 5-6-6 5-2ZM9 15l-6 6"/>',
+    cart:'<path d="M2 3h3l3 12h11l3-8H6M9 21h.01M18 21h.01"/>',
+    box:'<path d="m3 6 9-4 9 4v12l-9 4-9-4ZM3 6l9 4 9-4M12 10v12M8 4l9 4"/>',
+    check:'<path d="m5 12 4 4L20 5"/>',
+    reply:'<path d="m9 4-6 6 6 6M3 10h10a7 7 0 0 1 7 7v3"/>',
+    chat:'<path d="M21 11a8 8 0 0 1-8 8H7l-4 3V11a9 9 0 0 1 18 0ZM7 10h10M7 14h6"/>',
+    palette:'<path d="M12 3a9 9 0 1 0 0 18h1a2 2 0 0 0 1-4c-1-1 0-3 2-3h2a3 3 0 0 0 3-3 9 9 0 0 0-9-8Z"/><circle cx="7" cy="9" r=".8" fill="currentColor"/><circle cx="11" cy="6.5" r=".8" fill="currentColor"/><circle cx="16" cy="8" r=".8" fill="currentColor"/><circle cx="6.5" cy="14" r=".8" fill="currentColor"/>',
+    settings:'<path fill="currentColor" fill-rule="evenodd" stroke="none" d="M19.43 12.98a7.2 7.2 0 0 0 0-1.96l2.11-1.65a.5.5 0 0 0 .12-.64l-2-3.46a.5.5 0 0 0-.6-.22l-2.49 1a7.8 7.8 0 0 0-1.68-.98l-.38-2.65a.5.5 0 0 0-.49-.42h-4a.5.5 0 0 0-.49.42l-.38 2.65a7.8 7.8 0 0 0-1.68.98l-2.49-1a.5.5 0 0 0-.6.22l-2 3.46a.5.5 0 0 0 .12.64l2.11 1.65a7.2 7.2 0 0 0 0 1.96l-2.11 1.65a.5.5 0 0 0-.12.64l2 3.46a.5.5 0 0 0 .6.22l2.49-1c.52.4 1.07.73 1.68.98l.38 2.65a.5.5 0 0 0 .49.42h4a.5.5 0 0 0 .49-.42l.38-2.65a7.8 7.8 0 0 0 1.68-.98l2.49 1a.5.5 0 0 0 .6-.22l2-3.46a.5.5 0 0 0-.12-.64ZM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z"/>',
+    close:'<path d="m6 6 12 12M6 18 18 6"/>',
+    fuel:'<path d="M4 21V4h10v17M2 21h14M4 11h10M17 5l4 4v8a2 2 0 0 1-4 0v-4h-3M18 6v4h3"/>',
+    cafe:'<path d="M4 8h13v8a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4ZM17 9h2a3 3 0 0 1 0 6h-2M7 3v2M11 2v3M15 3v2"/>',
+    hotel:'<path d="M4 22V3h16v19M9 22v-5h6v5M8 7h1M15 7h1M8 11h1M15 11h1M2 22h20"/>',
+    home:'<path d="m3 11 9-8 9 8M5 10v11h14V10M9 21v-7h6v7"/>',
+    location:'<path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/>'
+  };
+  return '<svg class="day-action-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + paths[name] + '</svg>';
+}
+// Category-specific vector choices. Tokens remain stable in saved routes and publications.
+const POINT_GRAPHICS = {
+  charging:['Заправка','Зарядка','⚡','<path d="m13 2-8 12h6l-1 8 9-13h-6Z"/>'],
+  service:['Заправка','Автосервис','🔧','<path d="M21 3a6 6 0 0 1-8 8L5 20a2 2 0 0 1-3-3l9-8a6 6 0 0 1 8-8l-4 4 4 2Z"/>'],
+  parking:['Заправка','Парковка','🅿️','<rect x="3" y="3" width="18" height="18" rx="4"/><path d="M9 17V7h4a3 3 0 0 1 0 6H9"/>'],
+  dining:['Кафе','Ресторан','🍽️','<path d="M4 3v5a3 3 0 0 0 6 0V3M7 3v18M17 21V3c-4 3-4 9 0 9"/>'],
+  bakery:['Кафе','Пекарня','🥐','<path d="m3 13 4-7 5-2 5 2 4 7-3 5-4-3h-4l-4 3ZM7 6l3 9M17 6l-3 9"/>'],
+  takeaway:['Кафе','Еда с собой','🥤','<path d="M5 7h14M7 7l1 14h8l1-14M11 7l2-5h5M5 4h12"/>'],
+  bag:['Магазин','Покупки','🛍️','<path d="M5 8h14l2 13H3ZM8 8V6a4 4 0 0 1 8 0v2"/>'],
+  groceries:['Магазин','Продукты','🥑','<path d="M12 7c-8-6-12 6-6 13 2 2 4 0 6 0s4 2 6 0c6-7 2-19-6-13ZM12 7c0-4 2-5 5-5"/>'],
+  pharmacy:['Магазин','Аптека','💊','<rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 7v10M7 12h10"/>'],
+  bed:['Отель','Ночлег','🛏️','<path d="M3 20V5M21 20V9H9v6M3 15h18M3 18h18"/><circle cx="6" cy="11" r="2"/>'],
+  key:['Отель','Заселение','🔑','<circle cx="8" cy="8" r="5"/><path d="m12 12 9 9M16 16l3-3M19 19l3-3"/>'],
+  bellhop:['Отель','Ресепшен','🛎️','<path d="M3 18h18M5 15a7 7 0 0 1 14 0ZM12 8V5M10 5h4M3 21h18"/>'],
+  apartment:['Жильё','Квартира','🏢','<path d="M5 21V3h14v18M9 7h1M14 7h1M9 11h1M14 11h1M10 21v-5h4v5"/>'],
+  cottage:['Жильё','Загородный дом','🏡','<path d="m3 11 9-8 9 8M5 10v11h14V10M9 21v-7h6v7M16 5V2"/>'],
+  camping:['Жильё','Кемпинг','⛺','<path d="m12 3-10 18h20ZM12 3v18M7 21l5-9 5 9"/>'],
+  park:['Другое','Парк','🌳','<path d="m12 2-6 7h3l-5 6h6v7h4v-7h6l-5-6h3Z"/>'],
+  tree:['Другое','Дерево','🌳','<path d="M12 14v8M8 22h8"/><path d="M7 16a4 4 0 0 1-3-7 5 5 0 0 1 8-6 5 5 0 0 1 8 6 4 4 0 0 1-3 7Z"/>'],
+  leaves:['Другое','Листья','🍃','<path d="M4 20 19 5M9 15C2 15 2 5 20 3c0 13-4 17-11 12ZM10 14v-4M14 10h4"/>'],
+  promenade:['Другое','Набережная','🌊','<path d="M3 3v8M11 3v8M19 3v8M3 5h16M3 9h16M2 13h20M2 17q2-2 4 0t4 0 4 0 4 0 4 0M2 21q2-2 4 0t4 0 4 0 4 0 4 0"/>'],
+  museum:['Другое','Музей','🏛️','<path d="m2 7 10-5 10 5ZM4 10v8M9 10v8M15 10v8M20 10v8M3 18h18M2 22h20"/>'],
+  pool:['Другое','Бассейн','🏊','<path d="M7 15V5a2 2 0 0 1 4 0M15 15V5a2 2 0 0 1 4 0M7 7h8M7 11h8M2 17q2-2 4 0t4 0 4 0 4 0 4 0M2 21q2-2 4 0t4 0 4 0 4 0 4 0"/>'],
+  beach:['Другое','Море / пляж','🏖️','<path d="M3 11a9 9 0 0 1 18 0ZM12 2c-3 3-3 6-3 9M12 2c3 3 3 6 3 9M12 11v8M3 21q5-4 10-2t8 0"/>'],
+  mountains:['Другое','Горы','⛰️','<path d="m2 21 8-18 8 18ZM7 10l3 3 3-3M15 14l3-7 5 14"/>'],
+  concert:['Другое','Концерт','🎤','<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8M10 6h4M10 9h4"/>']
+};
+const POINT_GRAPHIC_PAINT = {
+  charging:['#ffd166'], service:['#c5d2de'], parking:['#79baff'],
+  dining:['#edf2f7'], bakery:['#edb565'], takeaway:['#f294ac'],
+  bag:['#c5a4f5'], groceries:['#8bd17c'], pharmacy:['#77d6af'],
+  bed:['#9ebcfa'], key:['#f4ce77'], bellhop:['#f4ce77'],
+  apartment:['#ced8e4'], cottage:['#90d5a4'],
+  tree:['#83d18b'], leaves:['#96d98b'],
+  promenade:['#dce6ed','<path d="M3 3v8M11 3v8M19 3v8M3 5h16M3 9h16M2 13h20"/><path stroke="#72cffa" d="M2 17q2-2 4 0t4 0 4 0 4 0 4 0M2 21q2-2 4 0t4 0 4 0 4 0 4 0"/>'],
+  camping:['#edb565','<path d="m12 3-10 18h20Z"/><path stroke="#d9edf4" d="M12 3v18M7 21l5-9 5 9"/>'],
+  park:['#83d18b',
+    '<path stroke="#d2a67e" d="M12 15v7"/><path fill="#83d18b" fill-opacity=".22" d="m12 2-6 7h3l-5 6h16l-5-6h3Z"/>'],
+  museum:['#edf2f7'],
+  pool:['#edf2f7',
+    '<path d="M7 15V5a2 2 0 0 1 4 0M15 15V5a2 2 0 0 1 4 0M7 7h8M7 11h8"/><path stroke="#72cffa" d="M2 17q2-2 4 0t4 0 4 0 4 0 4 0M2 21q2-2 4 0t4 0 4 0 4 0 4 0"/>'],
+  beach:['#f4ce77',
+    '<path stroke="#ed9c86" d="M3 11a9 9 0 0 1 18 0ZM12 2c-3 3-3 6-3 9M12 2c3 3 3 6 3 9"/><path d="M12 11v8"/><path stroke="#72cffa" d="M3 21q5-4 10-2t8 0"/>'],
+  mountains:['#9fc1b1',
+    '<path d="m2 21 8-18 8 18ZM15 14l3-7 5 14"/><path stroke="#edf2f7" d="m7 10 3 3 3-3M16.5 10.5l1.5 1.5 1.5-1.5"/>'],
+  concert:['#c5a4f5',
+    '<rect stroke="#edf2f7" x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8"/><path stroke="#aebbd0" d="M10 6h4M10 9h4"/>']
+};
+function pointIconSvg(content, color) {
+  return '<span class="stop-type-icon" style="color:' + color + '"><svg class="stop-type-glyph" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + content + '</svg></span>';
+}
+function pointGraphicIcon(key) {
+  const graphic = POINT_GRAPHICS[key];
+  if (!graphic) return stopTypeIcon('Другое');
+  const paint = POINT_GRAPHIC_PAINT[key];
+  return pointIconSvg(paint[1] || graphic[3], paint[0]);
+}
+function pointIconLabel(icon) {
+  const value = String(icon || '📍');
+  if (value.startsWith('graphic:')) return (POINT_GRAPHICS[value.slice(8)] || [null,'Место'])[1];
+  return value.startsWith('type:') ? value.slice(5) : pointIconText(value);
+}
+function pointIconChoices(type) {
+  const category = TYPE_ICONS[type] ? type : 'Другое';
+  return ['type:' + category].concat(Object.keys(POINT_GRAPHICS)
+    .filter(key => POINT_GRAPHICS[key][0] === category).map(key => 'graphic:' + key),
+    (ICON_SETS[category] || []).slice(0, category === 'Другое' ? ICON_SETS[category].length : 6).map(emoji => 'emoji:' + emoji));
+}
+function stopTypeIcon(type) {
+  const icons = {
+    'Заправка':['fuel','#ff9393'], 'Кафе':['cafe','#f4c16c'],
+    'Магазин':['cart','#83c5f5'], 'Отель':['hotel','#c6acff'],
+    'Жильё':['home','#7edbb4'], 'Другое':['location','#e8a2b5']
+  };
+  const icon = icons[type] || icons['Другое'];
+  const details = {
+    fuel:'<path stroke="#edf2f7" d="M6 6h6v4H6"/>',
+    cafe:'<path stroke="#edf2f7" d="M4 8h13v8a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4ZM17 9h2a3 3 0 0 1 0 6h-2"/>',
+    cart:'<circle stroke="#edf2f7" cx="9" cy="21" r="1"/><circle stroke="#edf2f7" cx="18" cy="21" r="1"/>',
+    hotel:'<path stroke="#edf2f7" d="M8 7h1M15 7h1M8 11h1M15 11h1"/>',
+    home:'',
+    location:'<circle stroke="#edf2f7" cx="12" cy="10" r="3"/>'
+  };
+  return '<span class="stop-type-icon" style="color:' + icon[1] + '">' + dayActionIcon(icon[0]).replace('class="day-action-icon"','class="stop-type-glyph"').replace('</svg>',details[icon[0]] + '</svg>') + '</span>';
+}
+function pointIconText(icon) {
+  const value = String(icon || '📍');
+  if (value.startsWith('graphic:')) return (POINT_GRAPHICS[value.slice(8)] || [null,null,'📍'])[2];
+  if (value.startsWith('type:')) return TYPE_ICONS[value.slice(5)] || '📍';
+  return value.startsWith('emoji:') ? value.slice(6) : value;
+}
+function pointIconMarkup(icon, type) {
+  const value = String(icon || '📍');
+  if (value.startsWith('graphic:')) return pointGraphicIcon(value.slice(8));
+  if (value.startsWith('type:')) return stopTypeIcon(value.slice(5));
+  if (!value.startsWith('emoji:') && type && value === TYPE_ICONS[type]) return stopTypeIcon(type);
+  return pointIconText(value).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('[data-ui-icon]').forEach(function(el) {
+    el.innerHTML = dayActionIcon(el.dataset.uiIcon);
+  });
+});
 function renderDaySection(d) {
+  if (typeof discardInlinePlanTimeForDay === 'function') discardInlinePlanTimeForDay(d);
   const data    = DAYS_DATA[d];
   const sec     = document.createElement('div');
   sec.className  = 'day-section' + (d === currentDay ? ' visible' : '');
@@ -547,61 +696,67 @@ function renderDaySection(d) {
   sec.id          = 'day' + d;
 
   sec.innerHTML = `
-    <div class="day-header" style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;">
+    <div class="day-header">
       <div style="flex:1;min-width:0">
         <div class="day-label" style="color:${data.color};">
-          ${isAdmin() ? `<span class="day-icon-wrap" id="d${d}-day-icon-wrap" onclick="editDayIcon(${d}, this)" title="Иконка дня"><span class="day-icon-val" id="d${d}-day-icon">${data.icon || '📅'}</span><span class="day-date-edit-icon">✏️</span></span> · ` : (data.icon ? `<span class="day-icon-val">${data.icon}</span> · ` : '')}
+          ${isAdmin() ? `<span class="day-icon-wrap" id="d${d}-day-icon-wrap" onclick="editDayIcon(${d}, this)" title="Иконка дня"><span class="day-icon-val" id="d${d}-day-icon">${data.icon || '📅'}</span><span class="day-date-edit-icon">${dayActionIcon('edit')}</span></span> · ` : (data.icon ? `<span class="day-icon-val">${data.icon}</span> · ` : '')}
           <span class="day-date-wrap" ${isAdmin() ? `onclick="editDayDate(${d}, this)" title="Нажмите для изменения даты"` : ''}>
             <span class="day-date-text">${data.dateISO || 'Дата'}</span>
-            ${isAdmin() ? `<span class="day-date-edit-icon">✏️</span>` : ''}
+            ${isAdmin() ? `<span class="day-date-edit-icon">${dayActionIcon('edit')}</span>` : ''}
           </span>
           ${data.date ? ` · <span class="day-desc-wrap" ${isAdmin() ? `onclick="editDesc(${d}, this)" title="Нажмите для изменения описания"` : ''}>
             <span class="day-desc-text">${data.date}</span>
-            ${isAdmin() ? `<span class="day-date-edit-icon">✏️</span>` : ''}
-          </span>` : (isAdmin() ? ` · <span class="day-desc-wrap" onclick="editDesc(${d}, this)" title="Добавить описание"><span class="day-desc-text" style="color:var(--muted);font-style:italic">описание</span><span class="day-date-edit-icon">✏️</span></span>` : '')}
+            ${isAdmin() ? `<span class="day-date-edit-icon">${dayActionIcon('edit')}</span>` : ''}
+          </span>` : (isAdmin() ? ` · <span class="day-desc-wrap" onclick="editDesc(${d}, this)" title="Добавить описание"><span class="day-desc-text" style="color:var(--muted);font-style:italic">описание</span><span class="day-date-edit-icon">${dayActionIcon('edit')}</span></span>` : '')}
         </div>
-        <div class="day-route" id="d${d}-route"></div>
       </div>
-      <button class="nav-day-btn" onclick="openShareDay(${d})" title="Открыть маршрут в навигаторе">🗺️ НАВИГАТОР</button>
+      <div class="day-header-actions">
+      <button class="nav-day-btn day-navigate-btn" onclick="openShareDay(${d})" title="Открыть маршрут в навигаторе" aria-label="Открыть маршрут в навигаторе">${dayActionIcon('navigate')}</button>
+      ${isAdmin() ? `
       <div class="day-overflow-wrap" style="position:relative">
-        <button class="nav-day-btn" onclick="toggleDayMenu(${d})" title="Ещё">···</button>
-        <div class="day-overflow-menu" id="dayMenu${d}">
-          ${!SPECTATOR_MODE ? `<button class="dom-item" onclick="fetchDayWeather(${d});closeDayMenus()"><span class="dom-ic">🌤️</span>Погода</button>` : `<div class="publication-meta">Опубликованный маршрут</div>`}
+        <button class="nav-day-btn day-menu-trigger" id="dayMenuTrigger${d}" onclick="toggleDayMenu(${d})" title="Ещё" aria-label="Действия с днём" aria-haspopup="dialog" aria-expanded="false" aria-controls="dayMenu${d}">${dayActionIcon('more')}</button>
+        <div class="day-overflow-menu" id="dayMenu${d}" role="dialog" aria-label="Действия с днём">
+          <div class="day-actions-heading"><span>Действия с днём</span><button class="day-actions-close" onclick="closeDayMenus(true)" aria-label="Закрыть действия с днём">✕</button></div>
+          <div class="day-actions-grid">
+          <button class="dom-item" onclick="closeDayMenus();fetchDayWeather(${d})">${dayActionIcon('weather')}<span>Погода</span></button>
           ${isAdmin() ? `
-          <div class="day-overflow-divider"></div>
-          <button class="dom-item" onclick="reverseDay(${d});closeDayMenus()"><span class="dom-ic">🔄</span>Обратный маршрут</button>
-          <button class="dom-item" onclick="archiveDay(${d});closeDayMenus()"><span class="dom-ic">📦</span>В архив</button>
-          <div class="day-overflow-divider"></div>
-          <button class="dom-item" onclick="confirmReset(${d});closeDayMenus()"><span class="dom-ic" style="font-size:14px">↺</span>Сбросить факт</button>
-          <button class="dom-item dom-red" onclick="confirmDeleteDay(${d});closeDayMenus()"><span class="dom-ic">🗑️</span>Удалить день</button>` : ''}
+          <button class="dom-item" onclick="closeDayMenus();reverseDay(${d})">${dayActionIcon('reverse')}<span>Обратный маршрут</span></button>
+          <button class="dom-item" onclick="closeDayMenus();archiveDay(${d})">${dayActionIcon('archive')}<span>В архив</span></button>
+          <button class="dom-item" onclick="closeDayMenus();openImportModal(${d})">${dayActionIcon('import')}<span>Импорт из карт</span></button>` : ''}
+          </div>
           ${isAdmin() ? `<div class="day-overflow-divider"></div>
           <div class="day-mode-row">
             <div class="day-mode-group" id="dayVisRow${d}">
-              <div class="day-mode-label">ЧИТАТЕЛЬ</div>
+              <div class="day-mode-label">Читатель</div>
               <div class="day-mode-pills">
-                <button class="day-mode-pill ${!data.hidden ? 'active' : ''}" onclick="setDayVisibility(${d},true)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
-                <button class="day-mode-pill ${data.hidden ? 'active' : ''}" onclick="setDayVisibility(${d},false)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg></button>
+                <button class="day-mode-pill ${!data.hidden ? 'active' : ''}" aria-label="День виден читателю" onclick="setDayVisibility(${d},true)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                <button class="day-mode-pill ${data.hidden ? 'active' : ''}" aria-label="День скрыт от читателя" onclick="setDayVisibility(${d},false)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg></button>
               </div>
             </div>
             <div class="day-mode-group" id="dayModeRow${d}">
-              <div class="day-mode-label">РЕЖИМ</div>
+              <div class="day-mode-label">Передвижение</div>
               <div class="day-mode-pills">
-                <button class="day-mode-pill ${!data.walkMode ? 'active' : ''}" onclick="setDayMode(${d},'auto')">🚗</button>
-                <button class="day-mode-pill ${data.walkMode ? 'active' : ''}" onclick="setDayMode(${d},'walk')">🚶</button>
+                <button class="day-mode-pill ${!data.walkMode ? 'active' : ''}" aria-label="На машине" onclick="setDayMode(${d},'auto')">${dayActionIcon('car')}</button>
+                <button class="day-mode-pill ${data.walkMode ? 'active' : ''}" aria-label="Пешком" onclick="setDayMode(${d},'walk')">${dayActionIcon('walk')}</button>
               </div>
             </div>
           </div>
-          <div class="day-overflow-divider"></div>
-          <button class="day-overflow-import" onclick="closeDayMenus();openImportModal(${d})">↓ Импорт из карт</button>` : ''}
+          <div class="day-actions-footer">
+          <button class="dom-item" onclick="closeDayMenus();confirmReset(${d})">${dayActionIcon('reset')}<span>Сбросить факт</span></button>
+          <button class="dom-item dom-red" onclick="closeDayMenus();confirmDeleteDay(${d})">${dayActionIcon('delete')}<span>Удалить день</span></button>
+          </div>` : ''}
         </div>
       </div>
+      ` : `<button class="nav-day-btn day-weather-btn" onclick="fetchDayWeather(${d})" title="Погода на маршруте" aria-label="Погода на маршруте">${dayActionIcon('weather')}</button>`}
+      </div>
+      <div class="day-route" id="d${d}-route"></div>
     </div>
     <div class="depart-row">
-      <div class="depart-icon" id="d${d}-depart-icon">${data.walkMode ? '🚶' : '🚗'}</div>
+      <div class="depart-icon" id="d${d}-depart-icon">${dayActionIcon(data.walkMode ? 'walk' : 'car')}</div>
       <div class="depart-label" style="${isAdmin() ? 'cursor:pointer' : ''}"
            ${isAdmin() ? `onclick="openEditStart(${d})" title="Изменить точку старта"` : ''}>
-        <span id="d${d}-start-name">${data.start.icon} ${data.start.name}</span>
-        ${isAdmin() ? `<span style="font-size:9px;color:var(--border)">✏️</span>` : ''}
+        <span id="d${d}-start-name">${pointIconMarkup(data.start.icon)} ${data.start.name}</span>
+        ${isAdmin() ? `<span style="font-size:9px;color:var(--border)">${dayActionIcon('edit')}</span>` : ''}
       </div>
       <span class="weather-badge" id="wb-d${d}-start" style="display:none" onclick="event.stopPropagation();toggleWeatherStrip('d${d}-start')"></span>
       <div class="depart-times">
@@ -720,7 +875,11 @@ function renderTabs() {
     const btn  = document.createElement('button');
     btn.className  = 'day-tab' + (d === currentDay ? ' active' : '') + (data.hidden ? ' day-hidden' : '');
     btn.dataset.day = d;
-    btn.textContent = (data.icon ? data.icon + ' ' : '') + (data.dateISO ? fmtDateShort(data.dateISO) : (typeof _dayLabel === 'function' ? _dayLabel(d) : 'День ' + d));
+    var shortDate = data.dateISO ? fmtDateShort(data.dateISO) : (typeof _dayLabel === 'function' ? _dayLabel(d) : 'День ' + d);
+    var dateParts = shortDate.split(' ');
+    btn.innerHTML = '<span class="day-tab-number">' + _escHtml((data.icon ? data.icon + ' ' : '') + dateParts[0]) + '</span>'
+      + '<span class="day-tab-month">' + _escHtml(dateParts.slice(1).join(' ')) + '</span>';
+    btn.setAttribute('aria-label', (data.icon ? data.icon + ' ' : '') + shortDate);
     btn.onclick = () => switchDay(d);
     btn.style.setProperty('--dc', data.color);
     if (d === currentDay) {

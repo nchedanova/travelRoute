@@ -43,7 +43,7 @@ function switchDay(d) {
   // Update Еду/Иду button label based on day mode
   var _btn = document.getElementById('drivingBtn');
   if (_btn && !_btn.classList.contains('active')) {
-    _btn.innerHTML = DAYS_DATA[d]?.walkMode ? '🚶 Иду' : '🚗 Еду';
+    _btn.innerHTML = dayActionIcon(DAYS_DATA[d]?.walkMode ? 'walk' : 'car') + (DAYS_DATA[d]?.walkMode ? ' Иду' : ' Еду');
   }
   // Обновить иконку GPS-маркера (🚗/🚶) при смене дня — без этого залипает
   if (typeof refreshGpsMarkerIcon === 'function') refreshGpsMarkerIcon();
@@ -482,11 +482,11 @@ var _typeKeys = Object.keys(TYPE_ICONS);
 
 function _buildTypeDropdownHTML(inputId, selectedType) {
   var sel = selectedType || 'Другое';
-  var icon = TYPE_ICONS[sel] || '📍';
+  var icon = stopTypeIcon(sel);
   var items = _typeKeys.map(function(t) {
     var active = t === sel;
     return '<div class="type-dropdown-item' + (active ? ' active' : '') + '" data-type="' + t + '" onmousedown="event.preventDefault()" onclick="_selectTypeItem(\'' + inputId + '\',\'' + t + '\')">'
-      + '<span class="type-dropdown-icon">' + (TYPE_ICONS[t] || '📍') + '</span>'
+      + '<span class="type-dropdown-icon">' + stopTypeIcon(t) + '</span>'
       + '<span>' + t + '</span>'
       + (active ? '<span class="type-dropdown-check">✓</span>' : '')
       + '</div>';
@@ -527,7 +527,7 @@ function _closeAllTypeDropdowns() {
 function _selectTypeItem(inputId, type) {
   var input = document.getElementById(inputId);
   input.value = type;
-  document.getElementById(inputId + '-icon').textContent = TYPE_ICONS[type] || '📍';
+  document.getElementById(inputId + '-icon').innerHTML = stopTypeIcon(type);
   document.getElementById(inputId + '-label').textContent = type;
   // Update active state
   var menu = document.getElementById(inputId + '-menu');
@@ -577,41 +577,37 @@ function openIconPicker(inputId, typeInputId) {
   if (!formEl) return;
 
   var type = typeInputId ? (document.getElementById(typeInputId) || {}).value : null;
-  var icons;
-  if (!type) {
-    var startFirst = (ICON_SETS['Отель'] || []).concat(ICON_SETS['Жильё'] || []);
-    var rest = [];
-    Object.keys(ICON_SETS).forEach(function(k) {
-      if (k !== 'Отель' && k !== 'Жильё') rest = rest.concat(ICON_SETS[k]);
-    });
-    icons = startFirst.concat(rest).filter(function(v, i, a) { return a.indexOf(v) === i; });
-  } else {
-    icons = ICON_SETS[type] || ICON_SETS['Другое'];
-  }
+  var icons = type ? pointIconChoices(type)
+    : pointIconChoices('Отель').filter(function(ic) { return !ic.startsWith('emoji:'); })
+      .concat(pointIconChoices('Жильё'));
 
   var current = inputEl.value;
+  var selected = current.startsWith('type:') || current.startsWith('graphic:') || current.startsWith('emoji:') ? current
+    : (type && current === TYPE_ICONS[type] ? 'type:' + type : 'emoji:' + current);
   var picker = document.createElement('div');
   picker.id = 'iconPickerInline';
   picker.className = 'icon-picker-stop';
   picker.dataset.forInput = inputId;
-  picker.innerHTML = icons.map(function(ic) {
-    var sel = ic === current ? ' ip-sel' : '';
-    return '<button class="icon-pick-stop-btn' + sel + '" onmousedown="event.preventDefault()" onclick="selectIconFromPicker(\'' + inputId + '\',\'' + ic + '\')">' + ic + '</button>';
-  }).join('');
+  var iconList = document.createElement('div');
+  iconList.className = 'ip-icon-list';
+  iconList.innerHTML = '<div class="ip-icon-grid" id="ipCategoryIcons">' + icons.map(function(ic) {
+    var choice = ic;
+    var sel = choice === selected ? ' ip-sel' : '';
+    var label = ic.startsWith('emoji:') ? 'Эмодзи ' + pointIconText(ic) : pointIconLabel(ic);
+    return '<button class="icon-pick-stop-btn' + sel + '" title="' + label + '" aria-label="' + label + '" onmousedown="event.preventDefault()" onclick="selectIconFromPicker(\'' + inputId + '\',\'' + choice + '\')">' + pointIconMarkup(choice) + '</button>';
+  }).join('') + '</div><div class="ip-icon-grid" id="ipSearchResults" style="display:none"></div>';
+  picker.appendChild(iconList);
 
-  // Строка «свой / поиск» — занимает всю ширину
+  // Footer stays outside the scrolling icon list, including while searching.
   var customRow = document.createElement('div');
   customRow.className = 'ip-custom-row';
-  customRow.style.cssText = 'grid-column:1/-1;border-top:1px solid var(--border);margin-top:3px;padding-top:3px;';
   customRow.innerHTML =
-    '<div style="display:flex;align-items:center;gap:4px;padding:0 2px">'
-    + '<span style="font-size:9px;color:var(--muted);white-space:nowrap;letter-spacing:0.04em">Свой или поиск:</span>'
-    + '<input id="ipCustomInput" class="edit-input" type="text" maxlength="40" placeholder="🚗 или автомойка"'
-    + ' style="flex:1;height:26px;font-size:13px;padding:0 6px;min-width:0"'
+    '<label class="ip-search-field">'
+    + '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/></svg>'
+    + '<input id="ipCustomInput" type="text" maxlength="40" placeholder="Найти или вставить эмодзи" aria-label="Поиск значка или свой эмодзи"'
     + ' autocomplete="nope" oninput="_ipCustomInput(this,\'' + inputId + '\')"'
     + ' onmousedown="event.stopPropagation()">'
-    + '</div>'
-    + '<div id="ipSearchResults" style="display:none;flex-wrap:wrap;gap:1px;padding:2px 2px 0"></div>';
+    + '</label>';
   picker.appendChild(customRow);
 
   // Позиция: bottom иконки относительно formEl
@@ -630,22 +626,7 @@ function openIconPicker(inputId, typeInputId) {
   picker.style.left  = (refRect.left  - formRect.left)  + 'px';
   picker.style.right = (formRect.right - refRect.right) + 'px';
 
-  // Колонки: ширина референса минус padding пикера минус скроллбар
-  var cols = Math.max(1, Math.floor((refRect.width - 10 - 4) / 34));
-  picker.style.gridTemplateColumns = 'repeat(' + cols + ',34px)';
-  picker.style.display = 'grid';
-  // Динамическая высота: если ≤2 строк — без скролла, иначе ограничиваем 2 строками
-  var rows = Math.ceil(icons.length / cols);
-  var btnRow = 33; // 32px кнопка + 1px gap
-  var pickerPad = 10; // 5px top + 5px bottom
-  var customRowH = 42; // строка поиска
-  if (rows <= 2) {
-    picker.style.maxHeight = 'none';
-    picker.style.overflowY = 'visible';
-  } else {
-    picker.style.maxHeight = (2 * btnRow + pickerPad + customRowH) + 'px';
-    picker.style.overflowY = 'auto';
-  }
+  picker.style.display = 'flex';
 
   formEl.appendChild(picker);
 
@@ -656,9 +637,11 @@ function openIconPicker(inputId, typeInputId) {
 
 function _ipCustomInput(el, inputId) {
   var val = el.value.trim();
+  var sr = document.getElementById('ipSearchResults');
+  var category = document.getElementById('ipCategoryIcons');
   if (!val) {
-    var sr = document.getElementById('ipSearchResults');
     if (sr) sr.style.display = 'none';
+    if (category) category.style.display = '';
     return;
   }
   // Определяем: эмодзи (unicode >= U+1F300) или текстовый запрос
@@ -669,26 +652,48 @@ function _ipCustomInput(el, inputId) {
   }
   // Текстовый поиск по словарю
   var results = typeof searchEmoji === 'function' ? searchEmoji(val) : [];
-  var sr = document.getElementById('ipSearchResults');
   if (!sr) return;
-  if (!results.length) {
-    sr.style.display = 'none';
-    return;
-  }
-  sr.style.display = 'flex';
+  if (category) category.style.display = 'none';
+  sr.style.display = 'grid';
   sr.innerHTML = results.map(function(ic) {
-    return '<button class="icon-pick-stop-btn" onmousedown="event.preventDefault()" onclick="selectIconFromPicker(\'' + inputId + '\',\'' + ic + '\')">' + ic + '</button>';
-  }).join('');
-  // Доскроллить пикер к результатам
-  var picker2 = document.getElementById('iconPickerInline');
-  if (picker2) picker2.scrollTop = picker2.scrollHeight;
+    return '<button class="icon-pick-stop-btn" aria-label="Эмодзи ' + ic + '" onmousedown="event.preventDefault()" onclick="selectIconFromPicker(\'' + inputId + '\',\'' + ic + '\')">' + ic + '</button>';
+  }).join('') || '<span class="ip-search-empty">Нет совпадений</span>';
+  var list = sr.parentElement;
+  list.scrollTop = 0;
 }
 
 function selectIconFromPicker(inputId, icon) {
   var el = document.getElementById(inputId);
-  if (el) el.value = icon;
+  if (el) el.value = icon.startsWith('type:') || icon.startsWith('graphic:') || icon.startsWith('emoji:') ? icon : 'emoji:' + icon;
+  refreshPointIconInputs();
   _closeIconPicker();
 }
+
+function refreshPointIconInputs() {
+  document.querySelectorAll('input[readonly][onclick*="openIconPicker"]').forEach(function(input) {
+    if (!input.value || !input.getBoundingClientRect().width) return;
+    var match = (input.getAttribute('onclick') || '').match(/openIconPicker\('[^']+',\s*'([^']+)'/);
+    var type = match ? document.getElementById(match[1])?.value : null;
+    var parent = input.parentElement;
+    parent.classList.add('point-icon-input-field');
+    var preview = parent.querySelector('.point-icon-input-preview');
+    if (!preview) {
+      preview = document.createElement('span');
+      preview.className = 'point-icon-input-preview';
+      preview.setAttribute('aria-hidden','true');
+      parent.appendChild(preview);
+    }
+    input.classList.add('point-icon-input-value');
+    input.setAttribute('aria-label','Иконка: ' + pointIconLabel(input.value));
+    preview.innerHTML = pointIconMarkup(input.value, type);
+    preview.style.left = input.offsetLeft + 'px';
+    preview.style.top = input.offsetTop + 'px';
+    preview.style.width = input.offsetWidth + 'px';
+    preview.style.height = input.offsetHeight + 'px';
+  });
+}
+document.addEventListener('click', function() { setTimeout(refreshPointIconInputs, 0); });
+window.addEventListener('resize', refreshPointIconInputs);
 
 function _closeIconPicker() {
   var existing = document.getElementById('iconPickerInline');
@@ -864,7 +869,7 @@ function doEditStart() {
   DAYS_DATA[day].departP = document.getElementById('edit-start-departP').value.trim();
   closeEditStart();
   const nameEl = document.getElementById('d' + day + '-start-name');
-  if (nameEl) nameEl.textContent = icon + ' ' + name;
+  if (nameEl) nameEl.innerHTML = pointIconMarkup(icon) + ' ' + _escHtml(name);
   const planTimeEl = document.querySelector(`#day${day} .depart-row .time-pair:first-child .time-val`);
   if (planTimeEl) planTimeEl.textContent = DAYS_DATA[day].departP || '—';
   updateDayRoute(day);
@@ -920,7 +925,7 @@ function editDayDate(day, wrapEl) {
     newWrap.className = 'day-date-wrap';
     newWrap.title = 'Нажмите для изменения даты';
     newWrap.onclick = function() { editDayDate(day, newWrap); };
-    newWrap.innerHTML = '<span class="day-date-text">' + (val || 'Дата') + '</span><span class="day-date-edit-icon">✏️</span>';
+    newWrap.innerHTML = '<span class="day-date-text">' + (val || 'Дата') + '</span><span class="day-date-edit-icon">' + dayActionIcon('edit') + '</span>';
     inp.replaceWith(newWrap);
     renderTabs();
     saveData();
@@ -952,9 +957,9 @@ function editDesc(day, wrapEl) {
     newWrap.title = 'Нажмите для изменения описания';
     newWrap.onclick = function() { editDesc(day, newWrap); };
     if (val) {
-      newWrap.innerHTML = '<span class="day-desc-text">' + val + '</span><span class="day-date-edit-icon">✏️</span>';
+      newWrap.innerHTML = '<span class="day-desc-text">' + val + '</span><span class="day-date-edit-icon">' + dayActionIcon('edit') + '</span>';
     } else {
-      newWrap.innerHTML = '<span class="day-desc-text" style="color:var(--muted);font-style:italic">описание</span><span class="day-date-edit-icon">✏️</span>';
+      newWrap.innerHTML = '<span class="day-desc-text" style="color:var(--muted);font-style:italic">описание</span><span class="day-date-edit-icon">' + dayActionIcon('edit') + '</span>';
     }
     inp.replaceWith(newWrap);
     saveData();
@@ -993,7 +998,7 @@ function editDayIcon(d, triggerEl) {
   var customRow =
     '<div class="dip-custom-row">' +
       '<input id="dipCustom" class="edit-input" type="text" maxlength="4" placeholder="Свой…"' +
-      ' style="width:60px;height:28px;font-size:14px;font-family:\'JetBrains Mono\',monospace;text-align:center;padding:0 6px"' +
+      ' style="width:60px;height:28px;font-size:14px;font-family:var(--font-ui);text-align:center;padding:0 6px"' +
       ' onmousedown="event.stopPropagation()"' +
       ' oninput="if(this.value.trim())selectDayIcon(' + d + ',this.value.trim())">' +
       '<button class="dip-clear-btn" onmousedown="event.preventDefault()" onclick="selectDayIcon(' + d + ',\'\')">Убрать иконку</button>' +
@@ -1038,14 +1043,59 @@ function toggleDayMenu(d) {
   if (!menu) return;
   var wasOpen = menu.classList.contains('show');
   closeDayMenus();
-  if (!wasOpen) menu.classList.add('show');
+  if (!wasOpen) {
+    var trigger = document.getElementById('dayMenuTrigger' + d);
+    menu._home = menu.parentNode;
+    menu._trigger = trigger;
+    document.body.appendChild(menu);
+    menu.classList.add('show');
+    trigger.setAttribute('aria-expanded', 'true');
+    var backdrop = document.createElement('div');
+    backdrop.className = 'day-actions-backdrop';
+    backdrop.id = 'dayActionsBackdrop';
+    backdrop.onclick = function() { closeDayMenus(true); };
+    document.body.appendChild(backdrop);
+    if (window.innerWidth > 700) {
+      var rect = trigger.getBoundingClientRect();
+      menu.style.left = Math.max(12, Math.min(rect.right - menu.offsetWidth, window.innerWidth - menu.offsetWidth - 12)) + 'px';
+      menu.style.top = Math.max(12, Math.min(rect.bottom + 8, window.innerHeight - menu.offsetHeight - 12)) + 'px';
+    }
+    var first = menu.querySelector('button');
+    if (first) first.focus({preventScroll:true});
+  }
 }
-function closeDayMenus() {
-  document.querySelectorAll('.day-overflow-menu').forEach(function(m) { m.classList.remove('show'); });
+function closeDayMenus(restoreFocus) {
+  document.querySelectorAll('.day-overflow-menu').forEach(function(m) {
+    m.classList.remove('show');
+    if (m._home) {
+      if (m._home.isConnected) m._home.appendChild(m);
+      else m.remove();
+      m.style.left = ''; m.style.top = '';
+      if (m._trigger) {
+        m._trigger.setAttribute('aria-expanded','false');
+        if (restoreFocus && m._trigger.isConnected) m._trigger.focus({preventScroll:true});
+      }
+      m._home = null;
+    }
+  });
+  var backdrop = document.getElementById('dayActionsBackdrop');
+  if (backdrop) backdrop.remove();
 }
 document.addEventListener('click', function(e) {
-  if (!e.target.closest('.day-overflow-wrap')) closeDayMenus();
+  if (!e.target.closest('.day-overflow-wrap, .day-overflow-menu')) closeDayMenus();
 });
+document.addEventListener('keydown', function(e) {
+  var menu = document.querySelector('.day-overflow-menu.show');
+  if (!menu) return;
+  if (e.key === 'Escape') { e.preventDefault(); closeDayMenus(true); }
+  if (e.key === 'Tab') {
+    var buttons = menu.querySelectorAll('button:not([disabled])');
+    var first = buttons[0], last = buttons[buttons.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  }
+});
+window.addEventListener('resize', function() { closeDayMenus(); });
 
 // ── SWAP DAYS (drag-and-drop tabs) ────────────────────────────────────────────
 var _tabDragSource = null;
@@ -1152,18 +1202,24 @@ function renderArchiveBtn() {
     dropdown.innerHTML = '<div class="archive-empty">Архив пуст</div>';
     return;
   }
-  dropdown.innerHTML = archived.map(function(d) {
+  dropdown.innerHTML = '<div class="archive-panel-heading"><span>Архив дней <span class="archive-total">' + archived.length + '</span></span><button type="button" class="archive-close" aria-label="Закрыть архив" onclick="closeArchive()">✕</button></div>' + archived.map(function(d) {
     var data = DAYS_DATA[d];
     var date = data.dateISO || _dayLabel(d);
     var title = data.date || '';
     return '<div class="archive-item">'
       + '<div class="archive-item-info">'
-      + '<div class="archive-item-date">' + date + '</div>'
+      + '<div class="archive-item-date">' + _escHtml(date) + '</div>'
       + (title ? '<div class="archive-item-title">' + _escHtml(title) + '</div>' : '')
       + '</div>'
-      + '<button class="archive-restore-btn" onmousedown="event.preventDefault()" onclick="restoreDay(' + d + ')" title="Восстановить">↩</button>'
+      + '<button class="archive-restore-btn" onmousedown="event.preventDefault()" onclick="restoreDay(' + d + ')" title="Восстановить день" aria-label="Восстановить день ' + _escHtml(date) + '">↩</button>'
       + '</div>';
   }).join('');
+}
+
+function closeArchive() {
+  var dd = document.getElementById('archiveDropdown');
+  if (dd) dd.classList.remove('show');
+  document.removeEventListener('click', _archiveOutsideClick);
 }
 
 function toggleArchive() {
@@ -1176,7 +1232,7 @@ function toggleArchive() {
   renderArchiveBtn();
   // Position below button, clamped to screen
   var rect = btn.getBoundingClientRect();
-  var ddW = 240; // min-width
+  var ddW = Math.min(340, window.innerWidth - 24);
   dd.style.top = (rect.bottom + 4) + 'px';
   dd.style.setProperty('--archive-top', dd.style.top);
   dd.style.left = 'auto';
@@ -1226,7 +1282,7 @@ function reverseDay(d) {
     var badge = i === 0 ? '<span class="rev-badge">старт</span>'
                : i === points.length - 1 ? '<span class="rev-badge">финиш</span>' : '';
     return '<label class="rev-item"><input type="checkbox" class="rev-cb" data-idx="' + i + '" ' + checked + '>' +
-           '<span class="rev-icon">' + p.icon + '</span>' +
+           '<span class="rev-icon">' + pointIconMarkup(p.icon) + '</span>' +
            '<span class="rev-name">' + (p.name || '—') + '</span>' + badge + '</label>';
   }).join('');
 
@@ -1318,7 +1374,7 @@ function setDayMode(day, mode) {
 
   // Update depart icon in sidebar
   var departIcon = document.getElementById('d' + day + '-depart-icon');
-  if (departIcon) departIcon.textContent = data.walkMode ? '🚶' : '🚗';
+  if (departIcon) departIcon.innerHTML = dayActionIcon(data.walkMode ? 'walk' : 'car');
 
   // Update start marker emoji on map (if start has lat/lng)
   // Redraw resets the marker — just redraw the day
@@ -1337,7 +1393,7 @@ function setDayMode(day, mode) {
   // Refresh Еду/Иду button
   var _btn = document.getElementById('drivingBtn');
   if (_btn && !_btn.classList.contains('active')) {
-    _btn.innerHTML = data.walkMode ? '🚶 Иду' : '🚗 Еду';
+    _btn.innerHTML = dayActionIcon(data.walkMode ? 'walk' : 'car') + (data.walkMode ? ' Иду' : ' Еду');
   }
   saveData();
   showToast(data.walkMode ? '🚶 Режим: пешком' : '🚗 Режим: авто');
@@ -1483,43 +1539,119 @@ document.addEventListener('click', e => {
 });
 
 // ── EDIT STOP TIME (plan only) ─────────────────────────────────────────────────
+const _inlinePlanEdits = new Map();
 function editStopTime(id, day) {
-  const s    = DAYS_DATA[day].stops.find(x => x.id === id);
-  if (!s) return;
-  const main = document.getElementById('stop-main-' + id);
-  const tg   = document.getElementById('stop-timegrid-' + id);
-  const form = document.getElementById('edit-form-' + id);
-  if (!main || !tg || !form) return;
-
-  main.style.display = 'none';
-  tg.style.display   = 'none';
-  form.style.display = 'block';
-
-  // Disable drag while editing
+  if (!isAdmin()) return;
+  const stop = DAYS_DATA[day]?.stops.find(s => s.id === id);
   const card = document.getElementById('card-' + id);
-  if (card) card.draggable = false;
+  const main = document.getElementById('stop-main-' + id);
+  if (!stop || !card || !main || _inlinePlanEdits.has(id)) return;
+  const entry = { day, card, fields:[], draggable:card.draggable };
+  _inlinePlanEdits.set(id, entry);
+  card.draggable = false;
+  ['arr', 'dep'].forEach(function(kind) {
+    const container = document.getElementById('planned-' + kind + '-' + id);
+    if (!container) return;
+    const field = kind + 'P';
+    const input = document.createElement('input');
+    input.className = 'planned-time-edit-input';
+    input.id = 'et-' + field + '-' + id;
+    input.value = stop[field] || '';
+    input.maxLength = 5;
+    input.inputMode = 'numeric';
+    input.autocomplete = 'off';
+    input.placeholder = '--:--';
+    input.setAttribute('aria-label', kind === 'arr' ? 'Плановое время прибытия' : 'Плановое время отправления');
+    input.addEventListener('input', function() { applyMask(input); input.removeAttribute('aria-invalid'); });
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') { e.preventDefault(); finishInlinePlanTime(id, true); }
+      if (e.key === 'Escape') { e.preventDefault(); finishInlinePlanTime(id, false); }
+    });
+    container.textContent = '';
+    container.classList.add('editing-plan');
+    container.appendChild(input);
+    entry.fields.push({field, input, container});
+  });
+  const departure = document.getElementById('dep-block-' + id);
+  if (departure) departure.style.display = '';
+  const dots = document.getElementById('dots-' + id);
+  if (dots) dots.style.display = 'none';
+  const actions = document.createElement('div');
+  actions.className = 'plan-edit-actions';
+  [['check','Сохранить плановое время',true],['close','Отменить изменение времени',false]].forEach(function(action) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = action[2] ? 'plan-edit-save' : 'plan-edit-cancel';
+    button.innerHTML = dayActionIcon(action[0]);
+    button.setAttribute('aria-label', action[1]);
+    button.title = action[1];
+    button.addEventListener('click', function() { finishInlinePlanTime(id, action[2]); });
+    actions.appendChild(button);
+  });
+  entry.actions = actions;
+  main.appendChild(actions);
+  const panel = document.getElementById('tabPanelRoute');
+  const header = card.closest('.day-section')?.querySelector('.day-header');
+  if (panel && header) {
+    const visibleTop = Math.max(panel.getBoundingClientRect().top, header.getBoundingClientRect().bottom) + 6;
+    const bounds = main.getBoundingClientRect();
+    if (bounds.top < visibleTop || bounds.bottom > panel.getBoundingClientRect().bottom) panel.scrollTop += bounds.top - visibleTop;
+  }
+  entry.fields[0]?.input.focus({preventScroll:true});
+  entry.fields[0]?.input.select();
+}
 
-  form.innerHTML = `
-    <div class="edit-row" style="align-items:center;gap:16px;flex-wrap:wrap;">
-      <div class="edit-field">
-        <div class="edit-label">Приб. план</div>
-        <input class="edit-input edit-input-time" id="et-arrP-${id}" value="${s.arrP}" maxlength="5"
-          inputmode="numeric" oninput="applyMask(this)" onblur="padTime(this)" placeholder="--:--">
-      </div>
-      ${`
-      <div class="edit-field">
-        <div class="edit-label">Отпр. план</div>
-        <input class="edit-input edit-input-time" id="et-depP-${id}" value="${s.depP}" maxlength="5"
-          inputmode="numeric" oninput="applyMask(this)" onblur="padTime(this)" placeholder="--:--">
-      </div>`}
-    </div>
-    <div style="font-size:9px;color:var(--muted);margin-bottom:8px;">Фактическое время остаётся без изменений</div>
-    <div class="edit-actions-row">
-      <button class="edit-cancel-btn" onclick="cancelStopEdit('${id}')">✕ Отмена</button>
-      <button class="edit-save-btn" onclick="saveStopTime('${id}', ${day})">✓ Сохранить</button>
-    </div>`;
+function normalizePlanTime(value) {
+  const raw = value.trim();
+  if (!raw) return '';
+  const digits = raw.replace(/\D/g, '');
+  const normalized = digits.length === 3 ? '0' + digits : digits;
+  if (normalized.length !== 4) return null;
+  const h = Number(normalized.slice(0,2)), m = Number(normalized.slice(2));
+  return h < 24 && m < 60 ? normalized.slice(0,2) + ':' + normalized.slice(2) : null;
+}
 
-  setTimeout(() => document.getElementById('et-arrP-' + id)?.focus(), 50);
+function finishInlinePlanTime(id, save) {
+  const entry = _inlinePlanEdits.get(id);
+  if (!entry) return;
+  if (!save) { cancelStopEdit(id); return; }
+  const stop = DAYS_DATA[entry.day]?.stops.find(s => s.id === id);
+  if (!stop) { cancelStopEdit(id); return; }
+  const values = entry.fields.map(f => normalizePlanTime(f.input.value));
+  const invalid = values.indexOf(null);
+  if (invalid !== -1) {
+    entry.fields[invalid].input.setAttribute('aria-invalid','true');
+    entry.fields[invalid].input.focus({preventScroll:true});
+    showToast('Введите время от 00:00 до 23:59');
+    return;
+  }
+  if (entry.fields.every((f,i) => values[i] === (stop[f.field] || ''))) { cancelStopEdit(id); return; }
+  entry.fields.forEach((f,i) => { f.input.value = values[i]; });
+  saveStopTime(id, entry.day);
+}
+
+function restoreInlinePlanTime(id) {
+  const entry = _inlinePlanEdits.get(id);
+  if (!entry) return false;
+  _inlinePlanEdits.delete(id);
+  const stop = DAYS_DATA[entry.day]?.stops.find(s => s.id === id);
+  entry.fields.forEach(function(f) {
+    f.container.classList.remove('editing-plan');
+    f.container.textContent = stop?.[f.field] || '—';
+  });
+  entry.actions.remove();
+  entry.card.draggable = entry.draggable;
+  const dots = document.getElementById('dots-' + id);
+  if (dots) dots.style.display = '';
+  const departure = document.getElementById('dep-block-' + id);
+  if (departure) departure.style.display = stop && (stop.depP || stop.depA) ? '' : 'none';
+  return true;
+}
+
+function discardInlinePlanTimeForDay(day) {
+  Array.from(_inlinePlanEdits.entries()).forEach(function(pair) {
+    if (pair[1].day === day) restoreInlinePlanTime(pair[0]);
+  });
 }
 
 function saveStopTime(id, day) {
@@ -1742,8 +1874,8 @@ function editStop(id, day) {
       </div>
     </div>
     <div class="edit-actions-row">
-      <button class="edit-cancel-btn" onclick="cancelStopEdit('${id}')">✕ Отмена</button>
-      <button class="edit-save-btn" onclick="saveStopEdit('${id}', ${day})">✓ Сохранить</button>
+      <button class="edit-cancel-btn" onclick="cancelStopEdit('${id}')">${dayActionIcon('close')}Отмена</button>
+      <button class="edit-save-btn" onclick="saveStopEdit('${id}', ${day})">${dayActionIcon('check')}Сохранить</button>
     </div>`;
 
   setTimeout(() => document.getElementById('ei-search-' + id)?.focus(), 50);
@@ -1809,6 +1941,7 @@ function editStopSearch(q, id) {
 }
 
 function cancelStopEdit(id) {
+  if (restoreInlinePlanTime(id)) return;
   if (typeof removeEditDragMarker === 'function') removeEditDragMarker();
   clearTimeout(_editDragGeoTimer);
   const main = document.getElementById('stop-main-' + id);
@@ -1912,7 +2045,7 @@ function openInlineAddStop(afterId, day) {
     </div>
     <div style="font-size:9px;color:var(--green);margin:4px 0 8px;">⚡ Пустые времена — OSRM заполнит автоматически</div>
     <div class="edit-actions-row">
-      <button class="edit-cancel-btn" onclick="cancelInlineAddStop('${afterId}')">✕ Отмена</button>
+      <button class="edit-cancel-btn" onclick="cancelInlineAddStop('${afterId}')">${dayActionIcon('close')}Отмена</button>
       <button class="edit-save-btn" onclick="doInlineAddStop('${afterId}', ${day}, ${isFirst})">${saveLabel}</button>
     </div>`;
 
@@ -2040,8 +2173,8 @@ function openInlineAddFirstStop(day) {
     </div>
     <div style="font-size:9px;color:var(--green);margin:4px 0 8px;">⚡ Пустые времена — OSRM заполнит автоматически</div>
     <div class="edit-actions-row">
-      <button class="edit-cancel-btn" onclick="renderStops(${day})">✕ Отмена</button>
-      <button class="edit-save-btn" onclick="doInlineAddFirstStop('${fakeId}', ${day})">✓ Сохранить</button>
+      <button class="edit-cancel-btn" onclick="renderStops(${day})">${dayActionIcon('close')}Отмена</button>
+      <button class="edit-save-btn" onclick="doInlineAddFirstStop('${fakeId}', ${day})">${dayActionIcon('check')}Сохранить</button>
     </div>`;
   setTimeout(function() { document.getElementById('ia-search-' + fakeId)?.focus(); }, 50);
 }
@@ -2386,7 +2519,7 @@ function saveStopEdit(id, day) {
   const typeEl  = document.getElementById('stop-type-disp-' + id);
   const arrPEl  = document.getElementById('planned-arr-' + id);
   const depPEl  = document.getElementById('planned-dep-' + id);
-  if (iconEl) iconEl.textContent = s.icon;
+  if (iconEl) iconEl.innerHTML = pointIconMarkup(s.icon, s.type);
   if (nameEl) nameEl.textContent = s.name;
   if (typeEl) typeEl.textContent = s.type;
   if (arrPEl) arrPEl.textContent = s.arrP || '—';
@@ -2439,9 +2572,12 @@ function openShareDay(day) {
     (points.length > 1 ? ` → ${points[points.length-1].name}` : '');
 
   document.getElementById('share-yandex-link').href = yandexUrl;
-  document.getElementById('share-yandex-sub').textContent = yandexUrl.slice(0, 60) + '…';
+  document.getElementById('share-yandex-sub').textContent = 'Все точки маршрута';
   document.getElementById('share-google-link').href = googleUrl;
-  document.getElementById('share-google-sub').textContent = googleUrl.slice(0, 60) + '…';
+  document.getElementById('share-google-sub').textContent = 'До 10 точек маршрута';
+  modal.querySelectorAll('[data-action-icon]').forEach(function(el) {
+    el.innerHTML = dayActionIcon(el.dataset.actionIcon);
+  });
 
   // Store text for copy
   modal.dataset.textList = textList;
@@ -2457,9 +2593,10 @@ function copyShareText() {
   const text  = modal.dataset.textList || '';
   navigator.clipboard.writeText(text).then(() => {
     const btn = document.getElementById('copy-coords-btn');
-    btn.textContent = '✓ Скопировано!';
+    const original = btn.innerHTML;
+    btn.textContent = 'Скопировано';
     btn.classList.add('copy-ok');
-    setTimeout(() => { btn.textContent = '📋 Копировать координаты'; btn.classList.remove('copy-ok'); }, 2000);
+    setTimeout(() => { btn.innerHTML = original; btn.classList.remove('copy-ok'); }, 2000);
   });
 }
 
@@ -2920,12 +3057,27 @@ document.addEventListener('click', e => {
 });
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
-var APP_VERSION = '2.9.0';
-var APP_BUILD   = 96;
+var APP_VERSION = '2.9.1';
+var APP_BUILD   = 1;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 1;
 
 var APP_CHANGELOG = [
+  { ver: '2.9.1 build 1', date: '06.11.2026', items: [
+    'Обновлены кнопки, вкладки маршрута, заметок и чата, настройки и оформление: акцентный цвет используется для основных действий, остальные кнопки спокойнее.',
+    'В оформлении доступны два варианта шрифтов: «По умолчанию» и «Unbounded + Onest». Выбор шрифта сохраняется отдельно от цветовой темы; оба варианта поддерживают кириллицу.',
+    'Компактная панель действий с днём, обновлённые архив и навигатор. Даты в верхней панели помещаются в одну строку; кнопки навигатора и меню занимают меньше места на телефоне.',
+    'У читателя и зрителя погода открывается отдельной кнопкой рядом с навигатором, меню редактирования дня скрыто.',
+    'Обновлены формы добавления и редактирования точек и точки старта, импорт маршрута, меню остановки и значки редактирования. Поля остаются различимыми при наведении.',
+    'Плановое время теперь редактируется прямо в текущих полях: галочка сохраняет, крестик отменяет. Нажатие вне поля ничего не сохраняет; фактическое время не меняется.',
+    'В заметке к точке появился отдельный крестик для выхода без сохранения. Удаление подписано явно; удалённые из черновика фотографии сохраняются до подтверждения изменений.',
+    'Фотографии в заметках аккуратно подстраиваются под количество: до пяти фото к точке помещаются в один ряд. В общей вкладке заметок количество фото не ограничено.',
+    'Типы остановок получили более заметные цветные рисованные значки. Они доступны в выборе иконки и отображаются в карточке и на карте; обычные эмодзи и свой выбор сохранены.',
+    'У каждого типа — подходящий набор значков. Для прогулок добавлены парк, дерево, листья, набережная, музей, бассейн, пляж, горы и концерт, а также быстрый выбор зелени, цветов и птиц.',
+    'Поиск значков закреплён снизу: прокручиваются только иконки. Можно найти эмодзи по названию или вставить свой.',
+    'Обновлены оформление заметок и чата, меню сообщений и кнопки уведомлений. Цветовые обозначения категорий заметок сохранены.',
+    'Мобильные панели, поля, прокрутка и компактные элементы проверены на узких экранах. В локальном просмотре статус версии больше не выдаётся за проверку опубликованной сборки.'
+  ]},
   { ver: '2.9.0', date: '16.10.2026', items: [
     '👁 Ссылка зрителя — без чата, уведомлений и запроса имени; обычный читатель остаётся с чатом.',
     '📱 Ровные кнопки настроек и навигатора; понятный «Сброс подключения»; компактная история обновлений.'
@@ -3073,6 +3225,8 @@ function getCompactReleaseHistory() {
 }
 
 function showChangelog() {
+  // Readers keep the route/chat flow without a release-notes dialog.
+  if (typeof isAdmin === 'function' && !isAdmin() && isChatEnabled()) return;
   var body = document.getElementById('changelogBody');
   if (!body) return;
   var html = '';

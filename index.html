@@ -12,13 +12,15 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=96">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&family=Onest:wght@400;500;600;700&family=Unbounded:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css?v=2.9.1-1">
 <script>
 (function(){
   var t=localStorage.getItem('travel_theme');
   if(t&&['default','emerald','violet'].indexOf(t)!==-1)
     document.documentElement.setAttribute('data-theme',t);
+  var f=localStorage.getItem('travel_font');
+  document.documentElement.setAttribute('data-font',['onest','golos','mix'].includes(f)?'onest':'default');
 })();
 </script>
 <!-- Firebase SDK -->
@@ -37,22 +39,22 @@
   <div class="header-right">
     <div class="day-tabs" id="dayTabs"></div>
     <div class="archive-wrap admin-only" id="archiveWrap" style="display:none">
-      <button class="archive-btn" id="archiveBtn" onclick="toggleArchive()" title="Архив дней">📦 <span id="archiveCount" class="arc-count">0</span></button>
+      <button class="archive-btn" id="archiveBtn" onclick="toggleArchive()" title="Архив дней" aria-label="Архив дней"><span data-ui-icon="archive"></span><span id="archiveCount" class="arc-count">0</span></button>
     </div>
     <button class="undo-btn" id="undoBtn" onclick="undoAction()" disabled title="Отменить последнее действие">↩ отмена</button>
     <span id="syncStatus" title="Статус облачного сохранения" style="font-size:10px;color:var(--muted);white-space:nowrap;flex-shrink:0;cursor:default;min-width:88px;text-align:center;display:inline-block;">☁ —</span>
-    <button onclick="openCloudSettings()" title="Настройки" class="settings-btn">⚙</button>
-    <button class="theme-btn" onclick="toggleThemePicker()" title="Сменить тему" id="themeBtn">🎨</button>
-    <button id="drivingBtn" class="driving-btn" onclick="toggleDrivingMode()" style="display:none">🚗 Еду</button>
+    <button onclick="openCloudSettings()" title="Настройки" aria-label="Настройки" class="settings-btn"><span data-ui-icon="settings"></span></button>
+    <button class="theme-btn" onclick="toggleThemePicker()" title="Оформление" aria-label="Оформление" aria-haspopup="dialog" aria-expanded="false" id="themeBtn"><span data-ui-icon="palette"></span></button>
+    <button id="drivingBtn" class="driving-btn" onclick="toggleDrivingMode()" style="display:none">Еду</button>
   </div>
 </header>
 
 <div class="main">
   <div class="sidebar" id="sidebar">
     <div class="sidebar-tabs" id="sidebarTabs">
-    <button class="sidebar-tab active" id="tabRoute" onclick="switchSidebarTab('route')"><span class="icon-mobile">🗺️</span><span class="icon-desktop">🗺️</span> <span class="tab-label">Маршрут</span></button>
-    <button class="sidebar-tab admin-only" id="tabNotes" onclick="switchSidebarTab('notes')">📝 <span class="tab-label">Заметки</span></button>
-    <button class="sidebar-tab" id="tabChat" onclick="switchSidebarTab('chat')">💬 <span class="tab-label">Чат</span><span class="tab-dot" id="chatTabDot" style="display:none"></span></button>
+    <button class="sidebar-tab active" id="tabRoute" onclick="switchSidebarTab('route')"><span data-ui-icon="map"></span> <span class="tab-label">Маршрут</span></button>
+    <button class="sidebar-tab admin-only" id="tabNotes" onclick="switchSidebarTab('notes')"><span data-ui-icon="note"></span> <span class="tab-label">Заметки</span></button>
+    <button class="sidebar-tab" id="tabChat" onclick="switchSidebarTab('chat')"><span data-ui-icon="chat"></span> <span class="tab-label">Чат</span><span class="tab-dot" id="chatTabDot" style="display:none"></span></button>
   </div>
 
   <!-- ── МАРШРУТ ── -->
@@ -67,10 +69,10 @@
         <span class="notes-section-label">Фильтр</span>
         <div class="notes-filters">
           <button class="notes-filter-btn active" data-type="all" onclick="setNotesFilter('all')">Все</button>
-          <button class="notes-filter-btn" data-type="buy" onclick="setNotesFilter('buy')">🛒</button>
-          <button class="notes-filter-btn" data-type="take" onclick="setNotesFilter('take')">📦</button>
-          <button class="notes-filter-btn" data-type="todo" onclick="setNotesFilter('todo')">✔️</button>
-          <button class="notes-filter-btn" data-type="other" onclick="setNotesFilter('other')">📝</button>
+          <button class="notes-filter-btn" data-type="buy" onclick="setNotesFilter('buy')" aria-label="Купить" title="Купить"><span data-ui-icon="cart"></span></button>
+          <button class="notes-filter-btn" data-type="take" onclick="setNotesFilter('take')" aria-label="Взять" title="Взять"><span data-ui-icon="box"></span></button>
+          <button class="notes-filter-btn" data-type="todo" onclick="setNotesFilter('todo')" aria-label="Сделать" title="Сделать"><span data-ui-icon="check"></span></button>
+          <button class="notes-filter-btn" data-type="other" onclick="setNotesFilter('other')" aria-label="Другое" title="Другое"><span data-ui-icon="note"></span></button>
         </div>
       </div>
       <div id="notesList" class="notes-list"></div>
@@ -78,15 +80,15 @@
         <div class="notes-type-row-wrap">
           <span class="notes-section-label">Тип</span>
           <div class="note-type-row">
-            <button class="note-type-btn type-buy" data-type="buy" onclick="setNoteType('buy')">🛒</button>
-            <button class="note-type-btn type-take" data-type="take" onclick="setNoteType('take')">📦</button>
-            <button class="note-type-btn type-todo" data-type="todo" onclick="setNoteType('todo')">✔️</button>
-            <button class="note-type-btn type-other active" data-type="other" onclick="setNoteType('other')">📝</button>
+            <button class="note-type-btn type-buy" data-type="buy" onclick="setNoteType('buy')" aria-label="Купить" title="Купить"><span data-ui-icon="cart"></span></button>
+            <button class="note-type-btn type-take" data-type="take" onclick="setNoteType('take')" aria-label="Взять" title="Взять"><span data-ui-icon="box"></span></button>
+            <button class="note-type-btn type-todo" data-type="todo" onclick="setNoteType('todo')" aria-label="Сделать" title="Сделать"><span data-ui-icon="check"></span></button>
+            <button class="note-type-btn type-other active" data-type="other" onclick="setNoteType('other')" aria-label="Другое" title="Другое"><span data-ui-icon="note"></span></button>
           </div>
         </div>
         <div id="noteEditBanner" class="chat-edit-banner" style="display:none">
           <div class="edit-banner-inner">
-            <span class="edit-banner-label">✏️ Редактирование заметки</span>
+            <span class="edit-banner-label"><span data-ui-icon="edit"></span>Редактирование заметки</span>
             <span class="edit-banner-preview" id="noteEditPreview"></span>
           </div>
           <button class="edit-banner-cancel" onclick="cancelEditNote()" title="Отмена">×</button>
@@ -96,8 +98,8 @@
         </div>
         <div style="display:flex;gap:6px;align-items:flex-start">
           <textarea id="noteInput" class="notes-textarea" placeholder="Текст заметки…" onkeydown="noteInputKeydown(event)" oninput="autoResizeNote(this)"></textarea>
-          <button class="notes-photo-btn" onclick="triggerNoteTabPhoto()" title="Добавить фото">📷</button>
-          <button class="notes-add-btn" id="noteAddBtn" onclick="addNote()">+</button>
+          <button class="notes-photo-btn" onclick="triggerNoteTabPhoto()" title="Добавить фото" aria-label="Добавить фото"><span data-ui-icon="camera"></span></button>
+          <button class="notes-add-btn" id="noteAddBtn" onclick="addNote()" aria-label="Добавить заметку" title="Добавить заметку"><span data-ui-icon="plus"></span></button>
         </div>
       </div>
     </div>
@@ -108,10 +110,10 @@
     <div class="chat-panel">
       <div class="chat-header-bar">
         <span id="chatNameDisplay" class="chat-name-display"></span>
-        <button class="chat-change-name-btn" onclick="changeChatName()" title="Изменить имя">✏️</button>
+        <button class="chat-change-name-btn" onclick="changeChatName()" title="Изменить имя" aria-label="Изменить имя"><span data-ui-icon="edit"></span></button>
         <button class="chat-google-btn" id="chatGoogleBtn" onclick="signInWithGoogle()" title="Войти через Google" style="display:none">G</button>
         <button class="chat-sound-btn" id="chatSoundBtn" onclick="toggleChatSound()" title="Звук уведомлений">🔔</button>
-        <button class="chat-clear-btn" id="chatClearBtn" onclick="openClearChatConfirm()" title="Очистить чат" style="display:none">🗑️</button>
+        <button class="chat-clear-btn" id="chatClearBtn" onclick="openClearChatConfirm()" title="Очистить чат" style="display:none" aria-label="Очистить чат"><span data-ui-icon="delete"></span></button>
       </div>
       <div class="chat-room-tabs" id="chatRoomTabs" style="display:none"></div>
       <div id="chatMessages" class="chat-messages"></div>
@@ -125,7 +127,7 @@
       <!-- Edit banner -->
       <div id="chatEditBanner" class="chat-edit-banner" style="display:none">
         <div class="edit-banner-inner">
-          <span class="edit-banner-label">✏️ Редактирование</span>
+          <span class="edit-banner-label"><span data-ui-icon="edit"></span>Редактирование</span>
           <span class="edit-banner-preview"></span>
         </div>
         <button class="edit-banner-cancel" onclick="cancelEdit()" title="Отмена">×</button>
@@ -144,11 +146,11 @@
       <div class="chat-input-bar">
         <div class="pending-images-bar" id="chatPendingImages" style="display:none"></div>
         <div class="chat-input-row">
-          <button class="chat-emoji-btn" onclick="toggleEmojiPicker()" title="Смайлики">😊</button>
-          <button class="chat-emoji-btn" onclick="triggerPhotoUpload()" title="Фото">🏞️</button>
+          <button class="chat-emoji-btn" onclick="toggleEmojiPicker()" title="Смайлики" aria-label="Смайлики"><span data-ui-icon="smile"></span></button>
+          <button class="chat-emoji-btn" onclick="triggerPhotoUpload()" title="Фото" aria-label="Фото"><span data-ui-icon="camera"></span></button>
           <textarea id="chatInput" class="chat-textarea" placeholder="Сообщение…" rows="1"
             onkeydown="chatInputKeydown(event)" oninput="autoResizeChatInput(this)"></textarea>
-          <button class="chat-send-btn" onclick="sendChatMessage()" title="Отправить">➤</button>
+          <button class="chat-send-btn" onclick="sendChatMessage()" title="Отправить" aria-label="Отправить"><span data-ui-icon="send"></span></button>
         </div>
       </div>
     </div>
@@ -210,7 +212,7 @@
       </div>
       <div class="modal-actions">
         <button class="modal-cancel" onclick="closeAddStop()">Отмена</button>
-        <button class="modal-confirm" style="border-color:var(--green);color:var(--green);background:rgba(74,222,128,0.1);"
+        <button class="modal-confirm"
           onclick="doAddStop()">Добавить</button>
       </div>
     </div>
@@ -345,43 +347,43 @@
   <!-- Share / Nav Modal -->
   <div class="modal-overlay" id="shareModal" onclick="if(event.target===this)closeShareModal()">
     <div class="modal modal-lg">
-      <button class="modal-close-x" onclick="closeShareModal()">✕</button>
-      <div class="modal-title">🗺️ Открыть в навигаторе</div>
+      <button class="modal-close-x" onclick="closeShareModal()" aria-label="Закрыть выбор навигатора">✕</button>
+      <div class="modal-title">Открыть в навигаторе</div>
       <div class="modal-body" id="share-day-title" style="margin-bottom:14px;font-size:11px;color:var(--muted);"></div>
       <div class="nav-option">
 
-        <div class="nav-link-row">
-          <div class="nav-link-icon">🟡</div>
+        <a id="share-yandex-link" href="#" target="_blank" rel="noopener" class="nav-link-row">
+          <span class="nav-link-icon" data-action-icon="navigate"></span>
           <div class="nav-link-info">
             <div class="nav-link-title">Яндекс Карты</div>
             <div class="nav-link-sub" id="share-yandex-sub"></div>
           </div>
-          <a id="share-yandex-link" href="#" target="_blank" class="nav-link-btn">Открыть →</a>
-        </div>
+          <span class="nav-open-arrow" data-action-icon="arrow" aria-hidden="true"></span>
+        </a>
 
-        <div class="nav-link-row">
-          <div class="nav-link-icon">🔵</div>
+        <a id="share-google-link" href="#" target="_blank" rel="noopener" class="nav-link-row">
+          <span class="nav-link-icon" data-action-icon="map"></span>
           <div class="nav-link-info">
-            <div class="nav-link-title">Google Maps <span style="font-size:9px;color:var(--muted);">(макс. 10 точек)</span></div>
+            <div class="nav-link-title">Google Maps</div>
             <div class="nav-link-sub" id="share-google-sub"></div>
           </div>
-          <a id="share-google-link" href="#" target="_blank" class="nav-link-btn">Открыть →</a>
-        </div>
+          <span class="nav-open-arrow" data-action-icon="arrow" aria-hidden="true"></span>
+        </a>
 
-        <div class="nav-link-row">
-          <div class="nav-link-icon">🟢</div>
+        <button class="nav-link-row" id="organic-maps-btn" onclick="exportGpxAndOpen(currentDay)">
+          <span class="nav-link-icon" data-action-icon="map"></span>
           <div class="nav-link-info">
             <div class="nav-link-title">Organic Maps / OsmAnd</div>
             <div class="nav-link-sub" id="organic-maps-sub">На телефоне откроет маршрут прямо в приложении</div>
           </div>
-          <button class="nav-link-btn" id="organic-maps-btn" onclick="exportGpxAndOpen(currentDay)">📲 Открыть</button>
-        </div>
+          <span class="nav-open-arrow" data-action-icon="arrow" aria-hidden="true"></span>
+        </button>
 
       </div>
       <div class="nav-admin-grid admin-only-el">
-        <button class="nav-link-btn" onclick="prefetchRouteTiles(currentDay)">📥 Скачать карту</button>
-        <button class="nav-link-btn" onclick="clearTileCache()">🗑️ Удалить кэш</button>
-        <button id="copy-coords-btn" class="nav-link-btn" onclick="copyShareText()">📋 Координаты</button>
+        <button class="nav-link-btn" onclick="prefetchRouteTiles(currentDay)"><span data-action-icon="import"></span>Скачать карту</button>
+        <button class="nav-link-btn" onclick="clearTileCache()"><span data-action-icon="delete"></span>Удалить кэш</button>
+        <button id="copy-coords-btn" class="nav-link-btn" onclick="copyShareText()"><span data-action-icon="copy"></span>Координаты</button>
       </div>
     </div>
   </div>
@@ -389,7 +391,10 @@
   <!-- Cloud Settings Modal -->
   <div class="modal-overlay" id="cloudSettingsModal" onclick="if(event.target===this)closeCloudSettings()">
     <div class="modal modal-lg">
-      <div class="modal-title">⚙ Настройки</div>
+      <div class="cs-heading">
+        <div class="modal-title">Настройки</div>
+        <button class="cs-close-icon" onclick="closeCloudSettings()" aria-label="Закрыть настройки">✕</button>
+      </div>
       <details class="cloud-connection-settings" id="cloudConnectionSettings">
       <summary>☁ Настройки облака</summary>
       <div class="cloud-connection-body">
@@ -412,36 +417,29 @@
       <div id="cs-status" style="font-size:10px;min-height:16px;margin-bottom:10px;"></div>
       <div class="cloud-settings-actions">
         <button class="modal-cancel cloud-settings-reset" onclick="clearCloudSettings()" title="Удаляет настройки подключения только в этом браузере. Данные в облаке остаются.">Сбросить подключение</button>
-        <button class="modal-confirm" style="border-color:var(--green);color:var(--green);background:rgba(74,222,128,0.1);" onclick="saveCloudSettings()">Сохранить подключение</button>
+        <button class="modal-confirm" onclick="saveCloudSettings()">Сохранить подключение</button>
       </div>
       </div>
       </details>
 
-      <div style="height:1px;background:var(--border);margin:4px 0 14px"></div>
-      <div class="modal-label" style="margin-bottom:6px">Версия приложения</div>
       <div class="cs-ver-block" id="csVerBlock">
-        <div class="cs-ver-row">
-          <span class="cs-ver-key">Установлена</span>
+        <div class="cs-version-info">
+          <div class="modal-label">Версия приложения</div>
           <span class="cs-ver-val" id="csVerCurrent">—</span>
-        </div>
-        <div class="cs-ver-row">
-          <span class="cs-ver-key">Статус</span>
           <span class="cs-ver-badge" id="csVerBadge">⟳ проверяю…</span>
         </div>
+        <button class="cs-update-btn" id="csUpdateBtn" onclick="applySwUpdate()" aria-label="Перезагрузить приложение и применить обновление"><span aria-hidden="true">↻</span> Обновить</button>
         <div class="cs-ver-hint" id="csVerHint" style="display:none">
           <span id="csVerHintText"></span>
         </div>
-        <div style="margin-top:10px">
-          <button class="cs-update-btn" id="csUpdateBtn" onclick="applySwUpdate()">↺ Перезагрузить / применить обновление</button>
-        </div>
       </div>
       <div class="cloud-settings-actions">
-        <button class="modal-cancel admin-only" onclick="closeCloudSettings();openPublicationManager()">👁 Дни для зрителей</button>
+        <button class="modal-cancel admin-only" id="csPublishBtn" onclick="closeCloudSettings();openPublicationManager()">Дни для зрителей <span aria-hidden="true">↗</span></button>
         <div class="cloud-settings-action-row admin-only" id="csShareLinks">
-        <button class="modal-cancel" onclick="copyShareLink()" title="Просмотр маршрута и чат, без токена владельца">🔗 Ссылка читателя</button>
-        <button class="modal-cancel" onclick="copyShareLink(true)" title="Только опубликованные копии дней, без чата">👁 Ссылка для зрителя</button>
+        <button class="modal-cancel" onclick="copyShareLink()" title="Просмотр маршрута и чат, без токена владельца">Ссылка читателя</button>
+        <button class="modal-cancel" onclick="copyShareLink(true)" title="Только опубликованные копии дней, без чата">Ссылка для зрителя</button>
         </div>
-        <button class="modal-cancel" onclick="closeCloudSettings()">Закрыть</button>
+        <button class="modal-cancel" id="csCloseBtn" onclick="closeCloudSettings()">Закрыть</button>
       </div>
     </div>
   </div>
@@ -547,9 +545,9 @@
 
     <div id="importFormArea">
       <div class="modal-label">Ссылка на маршрут</div>
-      <textarea class="modal-input modal-input-url" id="importUrlInput" rows="3"
+      <input type="url" inputmode="url" class="modal-input modal-input-url" id="importUrlInput"
         placeholder="https://yandex.com/maps/?rtext=…"
-        oninput="onImportInput()"></textarea>
+        oninput="onImportInput()">
       <div class="import-error" id="importError" style="display:none"></div>
 
       <div class="import-preview" id="importPreview" style="display:none">
@@ -598,20 +596,20 @@
 
 <!-- Scripts: порядок важен — config и data первыми -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="js/config.js?v=96"></script>
-<script src="js/data.js?v=96"></script>
-<script src="js/publishing.js?v=96"></script>
-<script src="js/storage.js?v=96"></script>
-<script src="js/offline.js?v=19"></script>
-<script src="js/map.js?v=19"></script>
-<script src="js/render.js?v=96"></script>
-<script src="js/app.js?v=96"></script>
-<script src="js/gps.js?v=96"></script>
-<script src="js/chat.js?v=96"></script>
-<script src="js/notes.js?v=96"></script>
-<script src="js/import.js?v=19"></script>
-<script src="js/gpx.js?v=19"></script>
-<script src="js/local-preview.js?v=96"></script>
+<script src="js/config.js?v=2.9.1-1"></script>
+<script src="js/data.js?v=2.9.1-1"></script>
+<script src="js/publishing.js?v=2.9.1-1"></script>
+<script src="js/storage.js?v=2.9.1-1"></script>
+<script src="js/offline.js?v=2.9.1-1"></script>
+<script src="js/map.js?v=2.9.1-1"></script>
+<script src="js/render.js?v=2.9.1-1"></script>
+<script src="js/app.js?v=2.9.1-1"></script>
+<script src="js/gps.js?v=2.9.1-1"></script>
+<script src="js/chat.js?v=2.9.1-1"></script>
+<script src="js/notes.js?v=2.9.1-1"></script>
+<script src="js/import.js?v=2.9.1-1"></script>
+<script src="js/gpx.js?v=2.9.1-1"></script>
+<script src="js/local-preview.js?v=2.9.1-1"></script>
 <script>
   window._swReg         = null;
   window._swReg = null;
@@ -655,6 +653,7 @@
   // applySwUpdate: force the waiting SW (if any) to activate, then auto-reload fires.
   // If no waiting SW, just reload — new cached files will be served.
   function applySwUpdate() {
+    if (LOCAL_PREVIEW) { window.location.reload(); return; }
     if (!('serviceWorker' in navigator)) { window.location.reload(); return; }
     navigator.serviceWorker.ready.then(function(reg) {
       if (reg.waiting) {
@@ -679,72 +678,102 @@
 
 <!-- ── THEME PICKER ─────────────────────────────────────────────────────── -->
 <div class="theme-picker-overlay" id="themePickerOverlay" onclick="closeThemePicker()"></div>
-<div class="theme-picker-dropdown" id="themePickerDropdown" style="display:none;">
-  <div class="theme-picker-label">Тема оформления</div>
+<div class="theme-picker-dropdown" id="themePickerDropdown" style="display:none;" role="dialog" aria-label="Оформление" aria-modal="true">
+  <div class="appearance-heading"><span>Оформление</span><button type="button" class="appearance-close" onclick="closeThemePicker()" aria-label="Закрыть оформление">✕</button></div>
+  <div class="theme-picker-label">Цветовая тема</div>
 
-  <div class="theme-option" id="topt-default" onclick="setTheme('default')">
-    <div class="theme-swatch">
-      <div class="theme-swatch-bg" style="background:#0e0f13;"></div>
-      <div class="theme-swatch-dot" style="background:#f5a623;"></div>
-    </div>
-    <div>
-      <div class="theme-name">Amber Terminal</div>
-      <div class="theme-desc">Текущая, тёплый янтарь</div>
-    </div>
-    <div class="theme-check">✓</div>
-  </div>
+  <button type="button" class="theme-option color-option" id="topt-default" onclick="setTheme('default')" aria-pressed="false">
+    <span class="theme-swatch">
+      <span class="theme-swatch-bg" style="background:#0e0f13;"></span>
+      <span class="theme-swatch-dot" style="background:#f5a623;"></span>
+    </span>
+    <span>
+      <span class="theme-name">Amber Terminal</span>
+      <span class="theme-desc">Тёплый янтарь</span>
+    </span>
+    <span class="theme-check" aria-hidden="true">✓</span>
+  </button>
 
-  <div class="theme-option" id="topt-emerald" onclick="setTheme('emerald')">
-    <div class="theme-swatch">
-      <div class="theme-swatch-bg" style="background:#0f0f0f;"></div>
-      <div class="theme-swatch-dot" style="background:#FF7A5C;"></div>
-    </div>
-    <div>
-      <div class="theme-name">Ink + Warm White</div>
-      <div class="theme-desc">Чёрный, тёплый акцент</div>
-    </div>
-    <div class="theme-check">✓</div>
-  </div>
+  <button type="button" class="theme-option color-option" id="topt-emerald" onclick="setTheme('emerald')" aria-pressed="false">
+    <span class="theme-swatch">
+      <span class="theme-swatch-bg" style="background:#0f0f0f;"></span>
+      <span class="theme-swatch-dot" style="background:#FF7A5C;"></span>
+    </span>
+    <span>
+      <span class="theme-name">Ink + Warm White</span>
+      <span class="theme-desc">Чёрный, тёплый акцент</span>
+    </span>
+    <span class="theme-check" aria-hidden="true">✓</span>
+  </button>
 
-  <div class="theme-option" id="topt-violet" onclick="setTheme('violet')">
-    <div class="theme-swatch">
-      <div class="theme-swatch-bg" style="background:#0a0a0d;"></div>
-      <div class="theme-swatch-dot" style="background:#a78bfa;"></div>
-    </div>
-    <div>
-      <div class="theme-name">Deep Violet</div>
-      <div class="theme-desc">Фиолетовый, мессенджер</div>
-    </div>
-    <div class="theme-check">✓</div>
-  </div>
-  <div class="theme-option" id="topt-crystal" onclick="setTheme('crystal')">
-    <div class="theme-swatch">
-      <div class="theme-swatch-bg" style="background:#0a0a0a;"></div>
-      <div class="theme-swatch-dot" style="background:#AFEEEE;"></div>
-    </div>
-    <div>
-      <div class="theme-name">Crystal</div>
-      <div class="theme-desc">Чёрный, бирюзовый</div>
-    </div>
-    <div class="theme-check">✓</div>
-  </div>
+  <button type="button" class="theme-option color-option" id="topt-violet" onclick="setTheme('violet')" aria-pressed="false">
+    <span class="theme-swatch">
+      <span class="theme-swatch-bg" style="background:#0a0a0d;"></span>
+      <span class="theme-swatch-dot" style="background:#a78bfa;"></span>
+    </span>
+    <span>
+      <span class="theme-name">Deep Violet</span>
+      <span class="theme-desc">Фиолетовый, мессенджер</span>
+    </span>
+    <span class="theme-check" aria-hidden="true">✓</span>
+  </button>
+  <button type="button" class="theme-option color-option" id="topt-crystal" onclick="setTheme('crystal')" aria-pressed="false">
+    <span class="theme-swatch">
+      <span class="theme-swatch-bg" style="background:#0a0a0a;"></span>
+      <span class="theme-swatch-dot" style="background:#AFEEEE;"></span>
+    </span>
+    <span>
+      <span class="theme-name">Crystal</span>
+      <span class="theme-desc">Чёрный, бирюзовый</span>
+    </span>
+    <span class="theme-check" aria-hidden="true">✓</span>
+  </button>
 
-  <div class="theme-option" id="topt-taiga" onclick="setTheme('taiga')">
-    <div class="theme-swatch">
-      <div class="theme-swatch-bg" style="background:#010810;"></div>
-      <div class="theme-swatch-dot" style="background:#3aa87a;"></div>
-    </div>
-    <div>
-      <div class="theme-name">Deep Forest</div>
-      <div class="theme-desc">Синий, зелёный акцент</div>
-    </div>
-    <div class="theme-check">✓</div>
-  </div>
+  <button type="button" class="theme-option color-option" id="topt-taiga" onclick="setTheme('taiga')" aria-pressed="false">
+    <span class="theme-swatch">
+      <span class="theme-swatch-bg" style="background:#010810;"></span>
+      <span class="theme-swatch-dot" style="background:#3aa87a;"></span>
+    </span>
+    <span>
+      <span class="theme-name">Deep Forest</span>
+      <span class="theme-desc">Синий, зелёный акцент</span>
+    </span>
+    <span class="theme-check" aria-hidden="true">✓</span>
+  </button>
 
+  <div class="font-picker-section" role="group" aria-label="Шрифт приложения">
+    <div class="theme-picker-label">Шрифт</div>
+    <button type="button" class="theme-option font-option" id="fopt-default" onclick="setAppFont('default')" aria-pressed="true">
+      <span class="font-sample font-sample-default" aria-hidden="true">Аа</span>
+      <span class="font-option-text"><span class="theme-name">По умолчанию</span><span class="theme-desc">JetBrains Mono + Unbounded</span></span>
+      <span class="theme-check" aria-hidden="true">✓</span>
+    </button>
+    <button type="button" class="theme-option font-option" id="fopt-onest" onclick="setAppFont('onest')" aria-pressed="false">
+      <span class="font-sample font-sample-onest" aria-hidden="true">Аа</span>
+      <span class="font-option-text"><span class="theme-name">Unbounded + Onest</span><span class="theme-desc">Unbounded — заголовки · Onest — текст</span></span>
+      <span class="theme-check" aria-hidden="true">✓</span>
+    </button>
+  </div>
 </div>
 <script>
 (function() {
   var THEMES = ['default','emerald','violet','crystal','taiga'];
+
+  function applyAppFont(font) {
+    font = ['onest', 'golos', 'mix'].includes(font) ? 'onest' : 'default';
+    document.documentElement.setAttribute('data-font', font);
+    ['default', 'onest'].forEach(function(name) {
+      var option = document.getElementById('fopt-' + name);
+      option.classList.toggle('active', name === font);
+      option.setAttribute('aria-pressed', String(name === font));
+    });
+  }
+  window.setAppFont = function(font) {
+    font = ['onest', 'golos', 'mix'].includes(font) ? 'onest' : 'default';
+    localStorage.setItem('travel_font', font);
+    applyAppFont(font);
+  };
+  applyAppFont(localStorage.getItem('travel_font'));
 
   function applyTheme(t) {
     if (!THEMES.includes(t)) t = 'default';
@@ -752,13 +781,12 @@
     localStorage.setItem('travel_theme', t);
     THEMES.forEach(function(n) {
       var el = document.getElementById('topt-' + n);
-      if (el) el.classList.toggle('active', n === t);
+      if (el) { el.classList.toggle('active', n === t); el.setAttribute('aria-pressed', String(n === t)); }
     });
   }
 
   window.setTheme = function(t) {
     applyTheme(t);
-    closeThemePicker();
   };
 
   window.toggleThemePicker = function() {
@@ -767,6 +795,12 @@
     var open = dd.style.display !== 'none';
     dd.style.display = open ? 'none' : 'block';
     ov.classList.toggle('show', !open);
+    document.getElementById('themeBtn').setAttribute('aria-expanded', String(!open));
+    if (!open) {
+      var rect = document.getElementById('themeBtn').getBoundingClientRect();
+      dd.style.top = Math.max(12, Math.min(rect.bottom + 8, window.innerHeight - dd.offsetHeight - 12)) + 'px';
+      dd.querySelector('.appearance-close').focus({preventScroll:true});
+    }
   };
 
   window.closeThemePicker = function() {
@@ -774,7 +808,20 @@
     var ov = document.getElementById('themePickerOverlay');
     if (dd) dd.style.display = 'none';
     if (ov) ov.classList.remove('show');
+    document.getElementById('themeBtn').setAttribute('aria-expanded','false');
   };
+
+  document.addEventListener('keydown', function(e) {
+    var panel = document.getElementById('themePickerDropdown');
+    if (panel.style.display === 'none') return;
+    if (e.key === 'Escape') { e.preventDefault(); closeThemePicker(); document.getElementById('themeBtn').focus(); }
+    if (e.key === 'Tab') {
+      var controls = panel.querySelectorAll('button');
+      var first = controls[0], last = controls[controls.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  });
 
   // Apply saved theme immediately on load
   applyTheme(localStorage.getItem('travel_theme') || 'default');

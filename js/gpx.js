@@ -24,13 +24,13 @@ async function _buildGpx(dayNum) {
 `;
 
   if (day.start?.lat && day.start?.lng) {
-    gpx += _gpxWaypoint(day.start.lat, day.start.lng, day.start.icon + ' ' + day.start.name,
+    gpx += _gpxWaypoint(day.start.lat, day.start.lng, pointIconText(day.start.icon) + ' ' + day.start.name,
       `Старт${day.departP ? ', отпр. план ' + day.departP : ''}`);
   }
   day.stops.forEach(s => {
     if (!s.lat || !s.lng) return;
     const desc = [s.type || '', s.arrP ? 'приб. ' + s.arrP : '', s.depP ? 'отпр. ' + s.depP : ''].filter(Boolean).join(', ');
-    gpx += _gpxWaypoint(s.lat, s.lng, `${s.icon || '📍'} ${s.name}`, desc);
+    gpx += _gpxWaypoint(s.lat, s.lng, `${pointIconText(s.icon)} ${s.name}`, desc);
   });
 
   let track = [];
@@ -63,7 +63,9 @@ async function exportGpxAndOpen(dayNum) {
   if (!day) { showToast('⚠ Нет данных для дня ' + dayNum); return; }
 
   const btn = document.getElementById('organic-maps-btn');
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Генерация…'; }
+  const btnTitle = btn && btn.querySelector('.nav-link-title');
+  const originalTitle = btnTitle ? btnTitle.textContent : '';
+  if (btn) { btn.disabled = true; if (btnTitle) btnTitle.textContent = 'Готовим GPX…'; }
 
   try {
     const result = await _buildGpx(dayNum);
@@ -130,7 +132,7 @@ async function exportGpxAndOpen(dayNum) {
     showToast(`📥 GPX скачан (${stats}) — откройте файл в Загрузках`);
 
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '📲 Открыть в картах'; }
+    if (btn) { btn.disabled = false; if (btnTitle) btnTitle.textContent = originalTitle; }
   }
 }
 

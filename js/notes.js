@@ -131,6 +131,7 @@ function _renderNotesList() {
     item.className = 'note-item';
     item.id = 'note-' + entry.key;
     item.style.borderLeftColor = borderColor;
+    item.style.setProperty('--note-type-color', borderColor);
 
     let itemsHtml = '';
     const COLLAPSE_ITEMS = 5;
@@ -165,10 +166,10 @@ function _renderNotesList() {
 
     item.innerHTML = `
       <div class="note-meta">
-        <span class="note-type-badge">${t.emoji} ${t.label}</span>
+        <span class="note-type-badge">${dayActionIcon({buy:'cart',take:'box',todo:'check',other:'note'}[entry.type] || 'note')} ${t.label}</span>
         <span class="note-date">${date}</span>
-        <button class="note-action-btn" onclick="startEditNote('${entry.key}')" title="Редактировать">✏️</button>
-        <button class="note-action-btn danger" onclick="deleteNote('${entry.key}')" title="Удалить">❌</button>
+        <button class="note-action-btn" onclick="startEditNote('${entry.key}')" title="Редактировать" aria-label="Редактировать заметку">${dayActionIcon('edit')}</button>
+        <button class="note-action-btn danger" onclick="deleteNote('${entry.key}')" title="Удалить" aria-label="Удалить заметку">${dayActionIcon('delete')}</button>
       </div>
       ${entry.title ? `<div class="note-title-display" style="color:${borderColor}">${_escN(entry.title)}</div>` : ''}
       ${itemsHtml}
@@ -338,7 +339,7 @@ function startEditNote(key) {
 
   // Change + btn to checkmark
   const btn = document.getElementById('noteAddBtn');
-  if (btn) { btn.textContent = '✓'; btn.style.background = 'rgba(245,166,35,0.2)'; btn.style.borderColor = 'var(--amber)'; btn.style.color = 'var(--amber)'; }
+  if (btn) { btn.innerHTML = dayActionIcon('check'); btn.setAttribute('aria-label','Сохранить заметку'); btn.style.background = 'rgba(245,166,35,0.2)'; btn.style.borderColor = 'var(--amber)'; btn.style.color = 'var(--amber)'; }
 }
 
 function cancelEditNote() {
@@ -350,7 +351,7 @@ function cancelEditNote() {
   const banner = document.getElementById('noteEditBanner');
   if (banner) banner.style.display = 'none';
   const btn = document.getElementById('noteAddBtn');
-  if (btn) { btn.textContent = '+'; btn.style.background = ''; btn.style.borderColor = ''; btn.style.color = ''; }
+  if (btn) { btn.innerHTML = dayActionIcon('plus'); btn.setAttribute('aria-label','Добавить заметку'); btn.style.background = ''; btn.style.borderColor = ''; btn.style.color = ''; }
 }
 
 async function commitEditNote(key) {
@@ -591,6 +592,30 @@ function _resolveNoteImg(ref, imgEl) {
 // ── STOP NOTES (notes[] array) ────────────────────────────────────────────────
 var _pendingStopImages = {}; // key: 'stopId-noteIdx' → [dataUrl, ...] (base64 до commit)
 var _pendingStopOffline = {}; // key: 'stopId-noteIdx' → bool (true = сохранить в Gist)
+var _stopNoteImageDrafts = {}; // Saved photo removals stay local until ✓.
+var _savingStopNotes = {};
+
+function _stopNoteEditImages(stopId, idx) {
+  var pk = _pendingKey(stopId, idx);
+  if (_stopNoteImageDrafts[pk]) return _stopNoteImageDrafts[pk];
+  var stop = _findStop(stopId);
+  return stop?.notes?.[idx]?.images || [];
+}
+
+function cancelStopNoteEdit(stopId, day, idx) {
+  var pk = _pendingKey(stopId, idx);
+  if (_savingStopNotes[pk]) return;
+  delete _pendingStopImages[pk];
+  delete _pendingStopOffline[pk];
+  delete _stopNoteImageDrafts[pk];
+  var stop = _findStop(stopId), note = stop?.notes?.[idx];
+  if (!note) return;
+  var hasContent = note.text || (note.images && note.images.length);
+  if (!hasContent && idx === stop.notes.length - 1) stop.notes.pop();
+  renderStops(day);
+  var card = document.getElementById('card-' + stopId);
+  if (card) card.draggable = true;
+}
 
 function setStopNoteOffline(stopId, idx, val) {
   _pendingStopOffline[_pendingKey(stopId, idx)] = !!val;
@@ -660,6 +685,7 @@ function doDeleteStopNote() {
   if (note.images) note.images.forEach(_deleteNoteImg);
   s.notes.splice(idx, 1);
   delete _pendingStopImages[_pendingKey(stopId, idx)];
+  delete _stopNoteImageDrafts[_pendingKey(stopId, idx)];
   _clearNoteReactions(stopId, idx);
   saveData();
   renderStops(day);
@@ -673,11 +699,23 @@ async function commitStopNote(stopId, day, idx) {
   var note = s.notes[idx];
   if (!note) return;
   var inp = document.getElementById('stop-note-' + stopId + '-' + idx);
+  var pk = _pendingKey(stopId, idx);
+  if (_savingStopNotes[pk]) return;
+  _savingStopNotes[pk] = true;
+  var editor = document.getElementById('stop-note-edit-' + stopId + '-' + idx);
+  if (editor) editor.querySelectorAll('button,input').forEach(function(el) { el.disabled = true; });
+  if (inp) inp.readOnly = true;
+  try {
 
   note.text = inp ? inp.value.trim() : '';
 
   // Загружаем pending фото
-  var pk = _pendingKey(stopId, idx);
+  var removedImages = [];
+  if (_stopNoteImageDrafts[pk]) {
+    removedImages = (note.images || []).filter(function(ref) { return !_stopNoteImageDrafts[pk].includes(ref); });
+    note.images = _stopNoteImageDrafts[pk].slice();
+    delete _stopNoteImageDrafts[pk];
+  }
   var uploadFailedCount = 0;
   // Авто-детект: заметка уже содержит data: фото — считаем офлайн-режим
   if (note.images && note.images.some(function(r){return r&&r.startsWith('data:');})) {
@@ -709,6 +747,7 @@ async function commitStopNote(stopId, day, idx) {
 
   // If empty — remove the note entirely
   if (!hasContent) {
+    _clearNoteReactions(stopId, idx);
     s.notes.splice(idx, 1);
     delete _pendingStopImages[pk];
   }
@@ -718,12 +757,18 @@ async function commitStopNote(stopId, day, idx) {
   if (card) card.draggable = true;
 
   saveData();
+  removedImages.forEach(_deleteNoteImg);
   renderStops(day);
   if (uploadFailedCount) {
     if (typeof _renderStopNoteEditImages === 'function') _renderStopNoteEditImages(stopId, idx);
     showToast('⚠️ ' + uploadFailedCount + ' фото не сохранилось — заметка сохранена, нажмите ✓ ещё раз для повтора');
   } else {
     typeof showToast === 'function' && showToast('💾 Сохранено');
+  }
+  } finally {
+    delete _savingStopNotes[pk];
+    if (editor) editor.querySelectorAll('button,input').forEach(function(el) { el.disabled = false; });
+    if (inp) inp.readOnly = false;
   }
 }
 
@@ -743,9 +788,9 @@ function addPendingStopImage(stopId, idx, dataUrl) {
   var pk = _pendingKey(stopId, idx);
   if (!_pendingStopImages[pk]) _pendingStopImages[pk] = [];
   var s = _findStop(stopId);
-  var saved = (s && s.notes && s.notes[idx]) ? (s.notes[idx].images || []) : [];
-  if (_pendingStopImages[pk].length + saved.length >= MAX_NOTE_IMAGES) {
-    showToast('📷 Максимум ' + MAX_NOTE_IMAGES + ' фото');
+  var saved = _stopNoteEditImages(stopId, idx);
+  if (_pendingStopImages[pk].length + saved.length >= MAX_STOP_NOTE_IMAGES) {
+    showToast('📷 Максимум ' + MAX_STOP_NOTE_IMAGES + ' фото');
     return;
   }
   _pendingStopImages[pk].push(dataUrl);
@@ -755,19 +800,13 @@ function addPendingStopImage(stopId, idx, dataUrl) {
 function removePendingStopImage(stopId, noteIdx, imgIdx) {
   var s = _findStop(stopId);
   var note = (s && s.notes) ? s.notes[noteIdx] : null;
-  var saved = note ? (note.images || []) : [];
   var pk = _pendingKey(stopId, noteIdx);
+  if (!_stopNoteImageDrafts[pk]) _stopNoteImageDrafts[pk] = (note?.images || []).slice();
+  var saved = _stopNoteImageDrafts[pk];
   var pending = _pendingStopImages[pk] || [];
 
   if (imgIdx < saved.length) {
-    _deleteNoteImg(saved[imgIdx]); // чистим из Firebase если fb: ссылка
     saved.splice(imgIdx, 1);
-    if (note) note.images = saved;
-    // Если заметка стала пустой — обнуляем реакции
-    var remainingPending = (_pendingStopImages[pk] || []).length;
-    if (!saved.length && !remainingPending && !note.text) {
-      _clearNoteReactions(stopId, noteIdx);
-    }
   } else {
     pending.splice(imgIdx - saved.length, 1);
     _pendingStopImages[pk] = pending;
@@ -780,7 +819,7 @@ function _renderStopNoteEditImages(stopId, idx) {
   if (!container) return;
   var s = _findStop(stopId);
   var note = (s && s.notes) ? s.notes[idx] : null;
-  var saved = note ? (note.images || []) : [];
+  var saved = _stopNoteEditImages(stopId, idx);
   var pk = _pendingKey(stopId, idx);
   var pending = _pendingStopImages[pk] || [];
   var all = saved.concat(pending);
@@ -813,7 +852,7 @@ function triggerStopNotePhoto(stopId, day, noteIdx) {
   }
   inp.onchange = function() {
     if (!inp.files.length) return;
-    var files = Array.from(inp.files).slice(0, MAX_NOTE_IMAGES);
+    var files = Array.from(inp.files).slice(0, MAX_STOP_NOTE_IMAGES);
     // Авто-детект: если в заметке уже есть data: фото — режим офлайн
     var _existNote = _findStop(stopId); var _existN = (_existNote&&_existNote.notes)?_existNote.notes[noteIdx]:null;
     if (_existN && _existN.images && _existN.images.some(function(r){return r&&r.startsWith('data:');})) {
@@ -894,7 +933,7 @@ function saveStopNoteBtn(stopId, day) {
 
 // ── PASTE IMAGES INTO NOTES ──────────────────────────────────────────────────
 // Shared: вставка фото из буфера в заметки (вкладка + точки)
-const MAX_NOTE_IMAGES = 5;
+const MAX_STOP_NOTE_IMAGES = 5;
 
 function _handleNotePaste(e) {
   const items = e.clipboardData?.items;
@@ -931,7 +970,6 @@ function _handleNotePaste(e) {
 let _noteTabPendingImages = [];
 
 function _addNoteTabImage(dataUrl) {
-  if (_noteTabPendingImages.length >= MAX_NOTE_IMAGES) { showToast('📷 Максимум ' + MAX_NOTE_IMAGES + ' фото'); return; }
   _noteTabPendingImages.push(dataUrl);
   _renderNoteTabPending();
 }
@@ -969,7 +1007,7 @@ function triggerNoteTabPhoto() {
   }
   inp.onchange = function() {
     if (!inp.files.length) return;
-    var files = Array.from(inp.files).slice(0, MAX_NOTE_IMAGES - _noteTabPendingImages.length);
+    var files = Array.from(inp.files);
     files.forEach(function(file) {
       if (typeof _compressToBase64 === 'function') {
         _compressToBase64(file, 1600, 0.82).then(function(dataUrl) {

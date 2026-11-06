@@ -7,10 +7,12 @@ const vm = require('node:vm');
 const root = path.join(__dirname, '..');
 const app = fs.readFileSync(path.join(root, 'js/app.js'), 'utf8');
 
-function load() {
+function load(role) {
   const body = { innerHTML: '' };
   let shown = false;
-  const ctx = vm.createContext({ console, document: { getElementById(id) {
+  const ctx = vm.createContext({ console,
+    ...(role ? {isAdmin:()=>role === 'admin' || role === 'demo',isChatEnabled:()=>role !== 'spectator'} : {}),
+    document: { getElementById(id) {
     return id === 'changelogBody' ? body : { classList: { add() { shown = true; } } };
   } } });
   vm.runInContext(app.slice(app.indexOf('var APP_VERSION ='), app.indexOf('function closeChangelog()')), ctx);
@@ -29,7 +31,9 @@ test('latest changes are visible and full compact history is expandable', () => 
   const { run, body, shown } = load();
   run('showChangelog()');
   assert.equal(shown(), true);
-  assert.match(body.innerHTML, /v2\.9\.0/);
+  assert.match(body.innerHTML, /v2\.9\.1 build 1/);
+  assert.match(body.innerHTML, /Unbounded \+ Onest/);
+  assert.match(body.innerHTML, /Поиск значков закреплён снизу/);
   assert.match(body.innerHTML, /<details class="changelog-history">/);
   assert.match(body.innerHTML, /Личные чаты/);
   assert.match(body.innerHTML, /общий чат, ответы, реакции/);
@@ -41,6 +45,23 @@ test('app and service worker use the same release and build', () => {
   const sw = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
   assert.equal(sw.match(/APP_VERSION\s*=\s*'([^']+)'/)[1], run('APP_VERSION'));
   assert.equal(Number(sw.match(/APP_BUILD\s*=\s*(\d+)/)[1]), run('APP_BUILD'));
+  const html = fs.readFileSync(path.join(root,'index.html'),'utf8');
+  const assetKeys = [...html.matchAll(/(?:js\/[\w-]+\.js|css\/style\.css)\?v=([^"']+)/g)].map(m=>m[1]);
+  assert.ok(assetKeys.length >= 15);
+  assert.ok(assetKeys.every(key=>key === run('APP_VERSION + "-" + APP_BUILD')));
+});
+
+test('release notes are available to admin, demo and spectator but never the reader',()=>{
+  for(const role of ['admin','demo','spectator']){
+    const page = load(role);
+    page.run('showChangelog()');
+    assert.equal(page.shown(),true);
+    assert.match(page.body.innerHTML,/v2\.9\.1 build 1/);
+  }
+  const reader=load('reader');
+  reader.run('showChangelog()');
+  assert.equal(reader.shown(),false);
+  assert.equal(reader.body.innerHTML,'');
 });
 
 test('spectator sees the changelog only on first visit, independently of demo/admin history', () => {

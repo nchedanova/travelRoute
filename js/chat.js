@@ -82,7 +82,7 @@ function _updateSoundBtn() {
   const btn = document.getElementById('chatSoundBtn');
   if (!btn) return;
   const mode = getNotifyMode();
-  btn.textContent = mode === 'off' ? '🔕' : mode === 'pin' ? '📌' : '🔔';
+  btn.innerHTML = typeof dayActionIcon === 'function' ? dayActionIcon(mode === 'off' ? 'mute' : mode === 'pin' ? 'pin' : 'bell') : (mode === 'off' ? '🔕' : mode === 'pin' ? '📌' : '🔔');
   btn.title = mode === 'off' ? 'Уведомления выключены' : mode === 'pin' ? 'Не засыпать (keep-alive)' : 'Звук уведомлений';
 }
 
@@ -902,21 +902,21 @@ function openMsgMenu(e, key, isMine) {
   const replyText = msgEl?.querySelector('.chat-bubble')?.textContent?.trim() || '';
   const replyBtn = document.createElement('button');
   replyBtn.className = 'msg-menu-item';
-  replyBtn.textContent = '↩ Ответить';
+  replyBtn.innerHTML = dayActionIcon('reply') + ' Ответить';
   replyBtn.onclick = () => startReply(key, replyName, replyText);
   actions.appendChild(replyBtn);
 
   if (canEdit) {
     const btn = document.createElement('button');
     btn.className = 'msg-menu-item';
-    btn.textContent = '✎ Редактировать';
+    btn.innerHTML = dayActionIcon('edit') + ' Редактировать';
     btn.onclick = () => startEditMessage(key);
     actions.appendChild(btn);
   }
   if (canDelete) {
     const btn = document.createElement('button');
     btn.className = 'msg-menu-item danger';
-    btn.textContent = '× Удалить';
+    btn.innerHTML = dayActionIcon('delete') + ' Удалить';
     btn.onclick = () => deleteChatMessage(key);
     actions.appendChild(btn);
   }

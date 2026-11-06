@@ -32,15 +32,15 @@ config.js → data.js → storage.js → offline.js → map.js → render.js →
 
 ## Версионирование — КРИТИЧЕСКИ ВАЖНО
 
-**Текущая версия: v2.9.0 build 96**
+**Текущая версия: v2.9.1 build 1**
 
 При КАЖДОМ деплое обновляй ВСЕ ТРИ места одновременно:
 
 1. `sw.js` → `const APP_BUILD = N;` + `const APP_VERSION = 'X.Y.Z';`
 2. `js/app.js` → `var APP_BUILD = N;`
-3. `index.html` → ВСЕ теги `<script src="js/xxx.js?v=N">` и `<link rel="stylesheet" href="css/style.css?v=N">`
+3. `index.html` → ВСЕ локальные скрипты и CSS: `?v=X.Y.Z-N`, например `?v=2.9.1-1`.
 
-Номер N должен совпадать везде и быть больше предыдущего. Файлы с фиксированной версией (не менялись): `offline.js?v=19`, `map.js?v=19`, `import.js?v=19`, `gpx.js?v=19` — их не трогать.
+Версия и build должны совпадать в приложении и service worker. Внутри одной версии build увеличивается; при переходе на новую версию может начинаться с 1. Ключ ресурсов содержит и версию, и build: не оставлять старые `?v=19` у изменённых файлов.
 
 `CACHE_STATIC` генерится автоматически из `APP_VERSION` + `APP_BUILD` — вручную не менять.
 
@@ -251,8 +251,8 @@ Firebase `/note_reactions/{stopId}/{noteIdx}/{sid}`. При удалении з�
 ## Чеклист перед каждым деплоем
 
 - [ ] Все JS файлы проходят `node --check`
-- [ ] `APP_BUILD` в app.js совпадает с номером в sw.js — номер новый, не повторяет предыдущий
-- [ ] Все `?v=` теги в index.html обновлены (кроме файлов с v=19)
+- [ ] `APP_VERSION` и `APP_BUILD` совпадают в app.js и sw.js; сочетание версии и build новое
+- [ ] Все локальные `?v=` теги в index.html обновлены до `X.Y.Z-N`
 - [ ] sw.js: `normalUrl.search = ''` в staleWhileRevalidate
 - [ ] Новые stops содержат `notes: []`
 - [ ] `currentDay` через `_pickVisibleDay()`, НЕ через `<= dayKeys().length`

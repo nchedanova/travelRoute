@@ -389,7 +389,7 @@ function toggleDrivingMode() {
   if (btn) {
     btn.classList.toggle('active', _drivingMode);
     const _isWalk = typeof currentDay!=='undefined'&&DAYS_DATA[currentDay]?.walkMode;
-    btn.innerHTML = _drivingMode ? '🛑 Стоп' : (_isWalk ? '🚶 Иду' : '🚗 Еду');
+    btn.innerHTML = dayActionIcon(_drivingMode ? 'stop' : (_isWalk ? 'walk' : 'car')) + (_drivingMode ? ' Стоп' : (_isWalk ? ' Иду' : ' Еду'));
   }
   document.body.classList.toggle('driving-active', _drivingMode);
 

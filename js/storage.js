@@ -646,6 +646,12 @@ async function _checkAppVersion() {
   hint.style.display = 'none';
   block.className = 'cs-ver-block';
 
+  if (typeof LOCAL_PREVIEW !== 'undefined' && LOCAL_PREVIEW) {
+    badge.className = 'cs-ver-badge';
+    badge.textContent = 'Локальный просмотр';
+    return;
+  }
+
   try {
     var localBuild = typeof APP_BUILD !== 'undefined' ? APP_BUILD : null;
 
@@ -675,7 +681,7 @@ async function _checkAppVersion() {
       return;
     }
 
-    if (localBuild === serverBuild) {
+    if (localBuild === serverBuild && serverVer === APP_VERSION) {
       badge.className  = 'cs-ver-badge ok';
       badge.textContent = '✓ актуальная';
       block.classList.add('ver-ok');

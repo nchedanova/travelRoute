@@ -241,7 +241,7 @@ function _showEditStep(pts, names) {
       var guessed=_guessType(name);
       var typeKeys=Object.keys(TYPE_ICONS);
       var guessedIdx=typeKeys.indexOf(guessed); if(guessedIdx<0) guessedIdx=typeKeys.length-1;
-      var guessedIcon=TYPE_ICONS[guessed]||'📍';
+      var guessedIcon=stopTypeIcon(guessed);
       html+='<button type="button" class="imp-type-btn" data-idx="'+i+'" data-type="'+guessed+'" data-tidx="'+guessedIdx+'" onclick="cycleImportType(this)" title="Тип — нажми для смены">'+guessedIcon+'</button>';
       html+='<input class="imp-edit-name" data-idx="'+i+'" value="'+_escAttr(name)+'" placeholder="Название точки">';
     }
@@ -259,7 +259,7 @@ function cycleImportType(btn) {
   var newType = typeKeys[tidx];
   btn.dataset.tidx = tidx;
   btn.dataset.type = newType;
-  btn.textContent  = TYPE_ICONS[newType] || '📍';
+  btn.innerHTML = stopTypeIcon(newType);
 }
 
 // ── COMMIT ────────────────────────────────────────────────────────────────────
