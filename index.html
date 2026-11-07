@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&family=Onest:wght@400;500;600;700&family=Unbounded:wght@400;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=3.0.0-1">
+<link rel="stylesheet" href="css/style.css?v=3.0.0-2">
 <script>
 (function(){
   var t=localStorage.getItem('travel_theme');
@@ -113,7 +113,7 @@
         <button class="chat-change-name-btn" onclick="changeChatName()" title="Изменить имя" aria-label="Изменить имя"><span data-ui-icon="edit"></span></button>
         <button class="chat-google-btn" id="chatGoogleBtn" onclick="signInWithGoogle()" title="Войти через Google" aria-label="Войти через Google" style="display:none"><span class="chat-google-mark" aria-hidden="true">G</span></button>
         <button class="chat-sound-btn" id="chatSoundBtn" onclick="toggleChatSound()" title="Звук уведомлений">🔔</button>
-        <button class="chat-clear-btn" id="chatClearBtn" onclick="openClearChatConfirm()" title="Очистить чат" style="display:none" aria-label="Очистить чат"><span data-ui-icon="delete"></span></button>
+        <button class="chat-clear-btn" id="chatClearBtn" onclick="openClearChatConfirm()" title="Очистить текущий чат" style="display:none" aria-label="Очистить текущий чат"><span data-ui-icon="delete"></span><span>Очистить</span></button>
       </div>
       <div class="chat-room-tabs" id="chatRoomTabs" style="display:none"></div>
       <div id="chatMessages" class="chat-messages"></div>
@@ -596,20 +596,20 @@
 
 <!-- Scripts: порядок важен — config и data первыми -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="js/config.js?v=3.0.0-1"></script>
-<script src="js/data.js?v=3.0.0-1"></script>
-<script src="js/publishing.js?v=3.0.0-1"></script>
-<script src="js/storage.js?v=3.0.0-1"></script>
-<script src="js/offline.js?v=3.0.0-1"></script>
-<script src="js/map.js?v=3.0.0-1"></script>
-<script src="js/render.js?v=3.0.0-1"></script>
-<script src="js/app.js?v=3.0.0-1"></script>
-<script src="js/gps.js?v=3.0.0-1"></script>
-<script src="js/chat.js?v=3.0.0-1"></script>
-<script src="js/notes.js?v=3.0.0-1"></script>
-<script src="js/import.js?v=3.0.0-1"></script>
-<script src="js/gpx.js?v=3.0.0-1"></script>
-<script src="js/local-preview.js?v=3.0.0-1"></script>
+<script src="js/config.js?v=3.0.0-2"></script>
+<script src="js/data.js?v=3.0.0-2"></script>
+<script src="js/publishing.js?v=3.0.0-2"></script>
+<script src="js/storage.js?v=3.0.0-2"></script>
+<script src="js/offline.js?v=3.0.0-2"></script>
+<script src="js/map.js?v=3.0.0-2"></script>
+<script src="js/render.js?v=3.0.0-2"></script>
+<script src="js/app.js?v=3.0.0-2"></script>
+<script src="js/gps.js?v=3.0.0-2"></script>
+<script src="js/chat.js?v=3.0.0-2"></script>
+<script src="js/notes.js?v=3.0.0-2"></script>
+<script src="js/import.js?v=3.0.0-2"></script>
+<script src="js/gpx.js?v=3.0.0-2"></script>
+<script src="js/local-preview.js?v=3.0.0-2"></script>
 <script>
   window._swReg         = null;
   window._swReg = null;
@@ -831,9 +831,9 @@
 <!-- Clear Chat Confirmation Modal -->
 <div class="modal-overlay" id="clearChatModal" onclick="if(event.target===this)closeClearChatConfirm()">
   <div class="modal" style="max-width:320px;text-align:center;">
-    <div class="modal-title">🗑️ Очистить чат?</div>
+    <div class="modal-title" id="clearChatTitle">Очистить чат?</div>
     <div class="modal-body" style="margin-bottom:16px;font-size:13px;color:var(--muted);">
-      Все сообщения будут удалены безвозвратно.<br>Это действие нельзя отменить.
+      Все сообщения в этом чате будут удалены у всех участников. Это действие нельзя отменить.
     </div>
     <div class="modal-actions" style="justify-content:center;gap:10px;">
       <button class="modal-cancel" onclick="closeClearChatConfirm()">Отмена</button>

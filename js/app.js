@@ -1079,11 +1079,13 @@ function toggleDayMenu(d) {
     backdrop.id = 'dayActionsBackdrop';
     backdrop.onclick = function() { closeDayMenus(true); };
     document.body.appendChild(backdrop);
-    if (window.innerWidth > 700) {
-      var rect = trigger.getBoundingClientRect();
-      menu.style.left = Math.max(12, Math.min(rect.right - menu.offsetWidth, window.innerWidth - menu.offsetWidth - 12)) + 'px';
-      menu.style.top = Math.max(12, Math.min(rect.bottom + 8, window.innerHeight - menu.offsetHeight - 12)) + 'px';
-    }
+    var rect = trigger.getBoundingClientRect();
+    var below = window.innerHeight - rect.bottom - 20;
+    var above = rect.top - 20;
+    var placeAbove = menu.offsetHeight > below && above > below;
+    menu.style.maxHeight = Math.max(0, placeAbove ? above : below) + 'px';
+    menu.style.left = Math.max(12, Math.min(rect.right - menu.offsetWidth, window.innerWidth - menu.offsetWidth - 12)) + 'px';
+    menu.style.top = (placeAbove ? rect.top - menu.offsetHeight - 8 : rect.bottom + 8) + 'px';
     var first = menu.querySelector('button');
     if (first) first.focus({preventScroll:true});
   }
@@ -1094,7 +1096,7 @@ function closeDayMenus(restoreFocus) {
     if (m._home) {
       if (m._home.isConnected) m._home.appendChild(m);
       else m.remove();
-      m.style.left = ''; m.style.top = '';
+      m.style.left = ''; m.style.top = ''; m.style.maxHeight = '';
       if (m._trigger) {
         m._trigger.setAttribute('aria-expanded','false');
         if (restoreFocus && m._trigger.isConnected) m._trigger.focus({preventScroll:true});
@@ -3084,7 +3086,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '3.0.0';
-var APP_BUILD   = 1;
+var APP_BUILD   = 2;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 1;
 

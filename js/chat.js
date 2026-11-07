@@ -747,20 +747,28 @@ function chatInputKeydown(e) {
 }
 
 // ── CLEAR CHAT (только Admin) ──────────────────────────────────────────────────
+let _chatRefToClear = null;
 function openClearChatConfirm() {
+  if (!_chatRef || !CLOUD_CONFIG.canWrite) return;
   const ov = document.getElementById('clearChatModal');
-  if (ov) ov.classList.add('show');
+  if (!ov) return;
+  _chatRefToClear = _chatRef;
+  document.getElementById('clearChatTitle').textContent = _currentRoom === 'group'
+    ? 'Очистить общий чат?' : 'Очистить личный чат?';
+  ov.classList.add('show');
 }
 function closeClearChatConfirm() {
+  _chatRefToClear = null;
   const ov = document.getElementById('clearChatModal');
   if (ov) ov.classList.remove('show');
 }
 function confirmClearChat() {
-  if (!_chatRef || !CLOUD_CONFIG.canWrite) return;
+  const target = _chatRefToClear;
   closeClearChatConfirm();
-  _chatRef.remove().then(() => {
+  if (!target || target !== _chatRef || !CLOUD_CONFIG.canWrite) return;
+  target.remove().then(() => {
     const list = document.getElementById('chatMessages');
-    if (list) list.innerHTML = '';
+    if (list && _chatRef === target) list.innerHTML = '';
     showToast && showToast('🗑️ Чат очищен');
   }).catch(e => {
     console.error('[chat] clearChat error:', e);
@@ -1359,7 +1367,7 @@ function renderChatHeader() {
   if (gBtn) gBtn.style.display = _isGoogle ? 'none' : '';
   // Clear chat — admin only
   const clearBtn = document.getElementById('chatClearBtn');
-  if (clearBtn) clearBtn.style.display = (typeof isAdmin === 'function' && isAdmin()) ? 'inline-flex' : 'none';
+  if (clearBtn) clearBtn.style.display = CLOUD_CONFIG.canWrite ? 'inline-flex' : 'none';
 }
 function changeChatName() {
   var el = document.getElementById('chatNameDisplay');

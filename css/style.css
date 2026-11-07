@@ -20,9 +20,10 @@
 .route-empty p {font-size:11px;margin:6px 0 12px}
 .route-empty-icon {font-size:18px}
 .local-preview-bar {display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:8px 14px;background:var(--surface2);border-bottom:1px solid var(--accent);font-size:12px;color:var(--text)}
-.walk-review-picker {position:fixed;z-index:2000;width:min(216px,calc(100vw - 16px));box-sizing:border-box;overflow:auto;padding:4px;border:1px solid var(--border);border-radius:10px;background:var(--surface);box-shadow:0 6px 18px #0005;}
-.walk-review-picker button {display:flex;align-items:center;gap:8px;width:100%;min-height:34px;padding:7px 8px;border:0;border-radius:7px;background:transparent;color:var(--text);font:12px var(--font-ui);text-align:left;cursor:pointer;}
-.walk-review-picker button:is(:hover,:focus-visible) {background:var(--surface2);}
+.walk-review-picker {position:fixed;z-index:2000;width:min(180px,calc(100vw - 16px));box-sizing:border-box;overflow:auto;padding:5px;border:1px solid color-mix(in srgb,var(--accent) 40%,var(--border));border-radius:12px;background:var(--surface2);box-shadow:0 8px 24px #0009;}
+.walk-review-picker button {display:flex;align-items:center;gap:8px;width:100%;min-height:34px;padding:7px 8px;border:0;border-radius:7px;background:var(--surface);color:var(--text);font:12px var(--font-ui);text-align:left;cursor:pointer;}
+.walk-review-picker button + button {margin-top:3px;}
+.walk-review-picker button:is(:hover,:focus-visible) {background:var(--border);}
 .walk-review-picker svg {flex:none;width:16px;height:16px;}
 .walk-review-picker small,.walk-review-panel small {display:block;margin-top:3px;color:var(--muted);line-height:1.4;}
 .walk-review-actions {display:flex;gap:8px;}
@@ -3505,7 +3506,7 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
   .day-header-actions .nav-day-btn {min-height:44px;}
   .day-header-actions .day-navigate-btn {width:44px;}
   .day-header-actions .day-menu-trigger {width:44px;}
-  .day-overflow-menu {left:auto !important;right:12px;bottom:max(12px,env(safe-area-inset-bottom));top:auto !important;width:280px;padding:10px;border-radius:16px;}
+  .day-overflow-menu {padding:10px;border-radius:16px;}
   .day-overflow-menu .day-actions-close {min-height:44px;flex-basis:44px;width:44px !important;}
   .day-overflow-menu .day-mode-pill {min-height:44px;width:44px;}
   .day-overflow-menu .day-actions-footer .dom-item {min-height:44px;}
@@ -3626,8 +3627,14 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 
 /* Chat: lighter bubbles and one consistent composer/tool treatment. */
 .chat-header-bar {gap:5px;padding:6px 12px;background:var(--surface);border-bottom:0;}
-.chat-name-display {min-width:0;color:var(--text);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.chat-change-name-btn,.chat-sound-btn,.chat-clear-btn,.chat-google-btn {align-items:center;justify-content:center;width:32px;min-height:32px;padding:7px;border:0;border-radius:9px;background:transparent;color:var(--muted);}
+.chat-name-display {flex:0 1 auto;min-width:0;color:var(--text);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.chat-header-bar.editing-name .chat-name-display {flex:1;overflow:visible;}
+.chat-change-name-btn,.chat-sound-btn,.chat-clear-btn,.chat-google-btn {display:inline-flex;align-items:center;justify-content:center;flex:none;width:32px;height:32px;padding:6px;border:0;border-radius:9px;background:transparent;color:var(--muted);box-sizing:border-box;}
+.chat-header-bar .day-action-icon {display:block;width:18px;height:18px;}
+.chat-header-bar .chat-sound-btn {margin-inline-start:auto;}
+.chat-header-bar .chat-clear-btn {width:auto;gap:4px;color:var(--red);opacity:1;font:11px var(--font-ui);}
+.chat-header-bar .chat-clear-btn .day-action-icon {stroke:currentColor;}
+.chat-header-bar .chat-clear-btn:is(:hover,:focus-visible) {background:color-mix(in srgb,var(--red) 14%,transparent);}
 .chat-google-btn {display:inline-flex;flex:none;}
 .chat-google-mark {display:flex;align-items:center;justify-content:center;width:18px;height:18px;font:700 20px/1 Arial,sans-serif;color:color-mix(in srgb,var(--accent) 60%,var(--muted));}
 .chat-google-btn:is(:hover,:focus-visible) .chat-google-mark {color:var(--accent);}

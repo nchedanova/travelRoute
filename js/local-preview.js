@@ -56,7 +56,7 @@ function installWalkReview() {
   picker.innerHTML = `
     <button type="button" data-mode="auto">${dayActionIcon('car')}<span>Автомаршрут</span></button>
     <button type="button" data-mode="walk">${dayActionIcon('walk')}<span>Пеший маршрут</span></button>
-    <button type="button" data-mode="record">${dayActionIcon('map')}<span>Запись прогулки<small>Трекер · точка каждые 500 м</small></span></button>`;
+    <button type="button" data-mode="record">${dayActionIcon('map')}<span>Запись прогулки<small>Точка каждые 500 м</small></span></button>`;
   let trigger;
 
   function closeChoice(restoreFocus = false) {
