@@ -385,7 +385,60 @@ function refreshPill() {
 const walkTrackLines = {};
 
 function refreshWalkTrackLine(day) {
-  walkTrackLines[day]?.setLatLngs(DAYS_DATA[day].walkReview.segments.filter(segment => segment.length > 1));
+  const track = walkTrackLines[day];
+  if (track) drawWalkTrack(track, DAYS_DATA[day].walkReview.segments, DAYS_DATA[day].color);
+}
+
+function drawWalkTrack(group, tracks, dayColor) {
+  group.clearLayers();
+  const legs = tracks.filter(segment => segment.length > 1).map(segment => {
+    const points = segment.map(point => L.latLng(point));
+    return points.slice(1).map((end, i) => ({
+      start: points[i], end, meters: points[i].distanceTo(end)
+    })).filter(leg => leg.meters > 0);
+  });
+  const total = legs.flat().reduce((sum, leg) => sum + leg.meters, 0);
+  if (!total) return;
+
+  const color = /^#[\da-f]{6}$/i.test(dayColor) ? dayColor : '#f5a623';
+  const channels = [1, 3, 5].map(index => parseInt(color.slice(index, index + 2), 16));
+  const shade = progress => {
+    const target = progress < .5 ? 0 : 255;
+    const amount = Math.abs(progress - .5) * .72;
+    return 'rgb(' + channels.map(channel => Math.round(channel + (target - channel) * amount)).join(',') + ')';
+  };
+  const arrowSpacing = Math.max(90, total / 36);
+  let nextArrow = Math.min(arrowSpacing / 2, total / 2);
+  let distance = 0;
+  for (const segment of legs) {
+    let chunk = [];
+    let previousBand = -1;
+    for (const {start, end, meters} of segment) {
+      const band = Math.min(15, Math.floor((distance + meters / 2) / total * 16));
+      if (band !== previousBand) {
+        if (chunk.length) L.polyline(chunk, {color: shade(previousBand / 15), weight: 5, interactive: false}).addTo(group);
+        chunk = [start];
+        previousBand = band;
+      }
+      chunk.push(end);
+      while (nextArrow <= distance + meters) {
+        const fraction = (nextArrow - distance) / meters;
+        const point = [start.lat + (end.lat - start.lat) * fraction, start.lng + (end.lng - start.lng) * fraction];
+        const from = map.project(start, 16);
+        const to = map.project(end, 16);
+        const angle = Math.atan2(to.y - from.y, to.x - from.x) * 180 / Math.PI;
+        const icon = L.divIcon({
+          className: 'walk-track-arrow',
+          iconSize: [16, 16], iconAnchor: [8, 8],
+          html: '<span style="transform:rotate(' + angle + 'deg) translateY(7px);color:' + shade(band / 15) + '">➜</span>'
+        });
+        L.marker(point, {icon, interactive: false, keyboard: false, zIndexOffset: -500}).addTo(group);
+        nextArrow += arrowSpacing;
+      }
+      distance += meters;
+    }
+    if (chunk.length) L.polyline(chunk, {color: shade(previousBand / 15), weight: 5, interactive: false}).addTo(group);
+  }
 }
 
 function drawDay(d) {
@@ -412,9 +465,9 @@ function drawDay(d) {
     const tracks = reviewTrack.segments ?? [
       allPoints.filter(p => p.lat || p.lng).map(p => [p.lat, p.lng])
     ];
-    const line = L.polyline(tracks.filter(segment => segment.length > 1), {color, weight: 4, interactive: false});
-    group.addLayer(line);
-    walkTrackLines[d] = line;
+    const track = L.layerGroup().addTo(group);
+    drawWalkTrack(track, tracks, color);
+    walkTrackLines[d] = track;
   }
 
   for (let i = 0; !reviewTrack && i < allPoints.length - 1; i++) {

@@ -107,3 +107,16 @@ test('an unfinished build 3 walk can be shared immediately after upgrade',()=>{
   owner.ctx.DAYS_DATA[1].hidden=true;
   assert.equal(update(null),undefined);
 });
+
+test('a late recovery snapshot cannot replace a completed reader route',()=>{
+  const {ctx}=setup(false);
+  ctx.CLOUD_CONFIG={canWrite:false,binId:'route'};
+  const short={dateISO:'07.11.2026',walkReview:{id:'walk',phase:'paused',startedAt:100,lastAt:200,segments:[[[10,20],[10,21]]]},stops:[{id:'500'}]};
+  const full={...short,walkReview:{...short.walkReview,phase:'finished',lastAt:400,finishedAt:410},stops:[{id:'500'},{id:'finish',notes:[{text:'photo'}]}]};
+  ctx.DAYS_DATA[1]=full;
+  assert.equal(ctx.mergeReaderWalk({routeId:'route',dayId:1,updatedAt:900,day:short},800),false);
+  assert.equal(ctx.DAYS_DATA[1].stops.length,2);
+  ctx.DAYS_DATA[1]=short;
+  assert.equal(ctx.mergeReaderWalk({routeId:'route',dayId:1,updatedAt:800,day:full},900),true);
+  assert.equal(ctx.DAYS_DATA[1].stops.length,2);
+});

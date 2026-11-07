@@ -283,14 +283,36 @@ function _listenRemotePosition() {
   });
 }
 
+function sameRecordedWalk(a, b) {
+  if (!a?.walkReview || !b?.walkReview) return false;
+  const first = a.walkReview;
+  const second = b.walkReview;
+  if (first.id && second.id) return first.id === second.id;
+  if (first.startedAt && second.startedAt) return first.startedAt === second.startedAt;
+  return a.dateISO === b.dateISO;
+}
+
+// Compare progress for this walk, not the save time of the whole journal.
+function compareWalkProgress(a, b) {
+  const first = a.walkReview;
+  const second = b.walkReview;
+  const points = walk => (walk.segments || []).reduce((total, segment) => total + segment.length, 0);
+  return (Number(first.phase === 'finished') - Number(second.phase === 'finished')) ||
+    ((first.finishedAt || first.lastAt || 0) - (second.finishedAt || second.lastAt || 0)) ||
+    (points(first) - points(second)) ||
+    (a.stops.length - b.stops.length);
+}
+
 function mergeReaderWalk(walk, cloudSavedAt = 0) {
   if (!walk || CLOUD_CONFIG.canWrite || SPECTATOR_MODE || walk.routeId !== CLOUD_CONFIG.binId ||
       !Number.isSafeInteger(walk.dayId) || walk.dayId < 1 || !walk.day?.walkReview?.id) return false;
   const existing = DAYS_DATA[walk.dayId];
-  if (cloudSavedAt >= walk.updatedAt || existing?.hidden || existing?.archived) return false;
-  if (existing && (!existing.walkReview || (existing.walkReview.id
-      ? existing.walkReview.id !== walk.day.walkReview.id
-      : existing.dateISO !== walk.day.dateISO))) return false;
+  if (existing?.hidden || existing?.archived) return false;
+  if (existing) {
+    if (!sameRecordedWalk(existing, walk.day)) return false;
+    const progress = compareWalkProgress(walk.day, existing);
+    if (progress < 0 || (progress === 0 && cloudSavedAt >= walk.updatedAt)) return false;
+  } else if (cloudSavedAt >= walk.updatedAt) return false;
   const notes = new Map(existing?.stops.map(stop => [stop.id, stop.notes]));
   DAYS_DATA[walk.dayId] = {...existing, ...walk.day,
     stops: walk.day.stops.map(stop => ({...stop, notes: notes.get(stop.id) || []}))};
@@ -317,8 +339,9 @@ function applyReaderWalk(walk) {
 
 function restoreReaderWalk(cloudSavedAt) {
   _readerCloudSavedAt = Math.max(_readerCloudSavedAt, cloudSavedAt);
-  if (_readerWalk && cloudSavedAt >= _readerWalk.updatedAt) _readerWalk = null;
-  return mergeReaderWalk(_readerWalk, cloudSavedAt);
+  const merged = mergeReaderWalk(_readerWalk, cloudSavedAt);
+  if (!merged && _readerWalk && cloudSavedAt >= _readerWalk.updatedAt) _readerWalk = null;
+  return merged;
 }
 
 function walkBroadcastPayload(id) {

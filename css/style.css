@@ -867,6 +867,7 @@ input.day-date-input {
 
 /* ── MAP ─────────────────────────────────────────────── */
 #map { flex:1; z-index:1; min-width:0; }
+.walk-track-arrow span {display:block;font:bold 15px/16px system-ui;text-align:center;text-shadow:0 0 2px #000,0 0 4px #000,0 0 4px #000;}
 .leaflet-container { background:#111318 !important; }
 .leaflet-tile-pane { filter:invert(100%) hue-rotate(180deg); }
 .leaflet-popup-content-wrapper {

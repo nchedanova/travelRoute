@@ -185,13 +185,24 @@ function applyPayload(saved, fromCloud = false) {
   if (saved.daysData) {
     const localWalks = fromCloud && CLOUD_CONFIG.canWrite
       ? Object.fromEntries(Object.entries(DAYS_DATA).filter(([, day]) => day.walkReview?.lastAt)) : {};
+    const readerWalks = fromCloud && !CLOUD_CONFIG.canWrite && !SPECTATOR_MODE
+      ? Object.fromEntries(Object.entries(DAYS_DATA).filter(([, day]) => day.walkReview)) : {};
     Object.keys(DAYS_DATA).forEach(k => delete DAYS_DATA[k]);
     Object.entries(saved.daysData).forEach(([dayStr, dayData]) => {
       const local = localWalks[dayStr];
       const keepLocal = local && !dayData.archived && dayData.walkReview &&
         (dayData.walkReview.id ? dayData.walkReview.id === local.walkReview.id : dayData.dateISO === local.dateISO) &&
         local.walkReview.lastAt > (dayData.walkReview.lastAt || 0);
-      DAYS_DATA[Number(dayStr)] = keepLocal ? local : dayData;
+      const reader = readerWalks[dayStr];
+      const keepReaderTrack = reader && !dayData.hidden && !dayData.archived &&
+        typeof sameRecordedWalk === 'function' && sameRecordedWalk(reader, dayData) &&
+        compareWalkProgress(reader, dayData) > 0;
+      if (keepReaderTrack) {
+        const cloudNotes = new Map(dayData.stops.map(stop => [stop.id, stop.notes || []]));
+        DAYS_DATA[Number(dayStr)] = {...dayData,
+          walkReview: reader.walkReview, start: reader.start, departA: reader.departA, departP: reader.departP,
+          stops: reader.stops.map(stop => ({...stop, notes: cloudNotes.get(stop.id) ?? stop.notes}))};
+      } else DAYS_DATA[Number(dayStr)] = keepLocal ? local : dayData;
     });
     for (const [id, day] of Object.entries(localWalks)) {
       const walk = day.walkReview;
@@ -259,7 +270,7 @@ function applyPayload(saved, fromCloud = false) {
 }
 
 function cloudCacheJson(saved, originalJson) {
-  if (!CLOUD_CONFIG.canWrite || !saved.daysData) return originalJson;
+  if (SPECTATOR_MODE || !saved.daysData) return originalJson;
   return JSON.stringify({...saved, daysData: DAYS_DATA});
 }
 
