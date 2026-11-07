@@ -65,8 +65,25 @@ test('driving alerts use distance along the road and ignore an off-route or oppo
   const fix = {longitude:0.003,latitude:0.004,accuracy:10,heading:270};
   const alert = ctx._nextDrivingManeuver(steps, fix);
   assert.ok(alert.meters > 330 && alert.meters < 340);
-  assert.equal(alert.label[1], 'Съезд направо');
+  assert.equal(alert.label[1], 'направо');
+  const approach = {longitude:0.004,latitude:0.0038,accuracy:10,heading:0};
+  assert.ok(ctx._nextDrivingManeuver(steps, approach).meters > 400);
+  assert.equal(ctx._nextDrivingManeuver(steps, {...approach, latitude:0.0034}), undefined);
   assert.equal(ctx._nextDrivingManeuver(steps, {...fix, heading:90}), null);
+});
+test('the second exit stays selected inside a roundabout and a legacy cart is a shop', () => {
+  const {ctx} = setup(false);
+  const steps = [
+    {maneuver:{type:'roundabout', exit:2}, geometry:{coordinates:[[0,0],[0.001,0]]}},
+    {maneuver:{type:'turn', modifier:'right'}, geometry:{coordinates:[[0.001,0],[0.002,0]]}},
+    {maneuver:{type:'exit roundabout'}, geometry:{coordinates:[[0.002,0],[0.004,0]]}},
+  ];
+  const fix = {longitude:0.0015,latitude:0,accuracy:10,heading:90};
+  const alert = ctx._nextDrivingManeuver(steps, fix);
+  assert.equal(alert.label[1], '2-й съезд');
+  assert.equal(alert.onCircle, true);
+  assert.equal(ctx._nextDrivingManeuver(steps, {...fix, longitude:0.003}), undefined);
+  assert.equal(ctx._routePlaceType({type:'Другое', icon:'🛒'}), 'Магазин');
 });
 test('stopping, unpublishing or switching to an unpublished day clears the spectator branch',()=>{
   for(const action of ['_drivingMode=false','DAYS_DATA[1].publicationId=null','currentDay=2']) {

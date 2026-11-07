@@ -543,6 +543,13 @@ function renderStops(day) {
 // ── DAY SECTION ───────────────────────────────────────────────────────────────
 function dayActionIcon(name) {
   const paths = {
+    routeLeft:'<path d="M17 21V10a4 4 0 0 0-4-4H4m5-4L4 6l5 4"/>',
+    routeRight:'<path d="M7 21V10a4 4 0 0 1 4-4h9m-5-4 5 4-5 4"/>',
+    routeStraight:'<path d="M12 21V4M6 10l6-6 6 6"/>',
+    routeRampLeft:'<path d="M18 21V4M18 19c0-7-5-11-13-13m1 6L5 6l6-2"/>',
+    routeRampRight:'<path d="M6 21V4m0 15c0-7 5-11 13-13m-1 6 1-6-6-2"/>',
+    routeUturn:'<path d="M19 21V9a7 7 0 0 0-14 0v7m-3-4 3 4 4-4"/>',
+    routeCircle:'<path d="M20 9a8 8 0 1 0-3 9m3-15v6h-6"/>',
     weather:'<circle cx="9" cy="8" r="3"/><path d="M9 1v1M2 8H1M3 2l1 1M15 2l-1 1M18 12a5 5 0 0 0-9-1 4 4 0 1 0-1 8h10a3.5 3.5 0 0 0 0-7Z"/>',
     reverse:'<path d="m8 3-4 4 4 4M4 7h16M16 13l4 4-4 4M20 17H4"/>',
     archive:'<path d="M4 8v12h16V8M3 3h18v5H3zM9 12h6"/>',

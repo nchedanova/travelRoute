@@ -789,13 +789,15 @@ function refreshGpsMarkerIcon() {
 
 // ── ROUTE HINTS ────────────────────────────────────────────────────────────────
 var _routeHintTimer      = null;
+let _activeRoutePlace = null;
 const _routeHintShownIds = new Set();
 const _pendingDrivingLegs = new Map();
-const _HINT_TYPES = { 'Заправка': '⛽', 'Кафе': '☕', 'Магазин': '🛒' };
+const _HINT_TYPES = { 'Заправка': 'fuel', 'Кафе': 'cafe', 'Магазин': 'cart' };
 const ROUTE_HINT_DURATION_MS = 10000;
+const MANEUVER_HINT_DISTANCE_M = 500;
 let _lastRouteDing = -Infinity;
-let _maneuverExpiry = null;
-let _visibleManeuverId = null;
+const _CIRCLE_ENTRIES = new Set(['roundabout', 'rotary', 'roundabout turn']);
+const _CIRCLE_EXITS = new Set(['exit roundabout', 'exit rotary']);
 
 function routeHintsPreviewEnabled() {
   return typeof LOCAL_PREVIEW !== 'undefined' && LOCAL_PREVIEW && isAdmin() &&
@@ -807,17 +809,22 @@ function _setRouteHint(id, hint) {
   const row = document.getElementById(id);
   row.hidden = !hint;
   if (hint) {
-    row.querySelector('.route-hint-icon').textContent = hint.icon;
+    const icon = row.querySelector('.route-hint-icon');
+    if (icon.dataset.name !== hint.icon) {
+      icon.dataset.name = hint.icon;
+      icon.innerHTML = dayActionIcon(hint.icon);
+    }
     row.querySelector('strong').textContent = hint.title;
-    row.querySelector('.route-hint-detail').textContent = hint.detail;
+    const detail = row.querySelector('.route-hint-detail');
+    detail.textContent = hint.detail;
+    detail.hidden = !hint.detail;
   }
   panel.hidden = [...panel.children].every(child => child.hidden);
 }
 
 function _resetRouteHints() {
   clearTimeout(_routeHintTimer);
-  clearTimeout(_maneuverExpiry);
-  _visibleManeuverId = null;
+  _activeRoutePlace = null;
   _routeHintShownIds.clear();
   _lastRouteDing = -Infinity;
   _setRouteHint('routeManeuver', null);
@@ -835,14 +842,17 @@ function _dingRouteHint(id) {
 function _maneuverLabel(maneuver) {
   const {type, modifier, exit} = maneuver || {};
   const direction = modifier?.endsWith('left') ? 'налево' : modifier?.endsWith('right') ? 'направо' : '';
-  const arrow = direction === 'налево' ? '↰' : direction ? '↱' : '↑';
-  if (modifier === 'uturn') return ['↶', 'Разворот'];
-  if (/roundabout|rotary/.test(type || '')) return ['↻', exit ? 'Кольцо · съезд ' + exit : 'Кольцо'];
-  if (type === 'off ramp' || type === 'on ramp') {
-    return [arrow, [type === 'off ramp' ? 'Съезд' : 'Въезд', direction].filter(Boolean).join(' ')];
+  const arrow = direction === 'налево' ? 'routeLeft' : direction ? 'routeRight' : 'routeStraight';
+  const ramp = direction === 'налево' ? 'routeRampLeft' : direction ? 'routeRampRight' : 'routeStraight';
+  if (_CIRCLE_ENTRIES.has(type) || _CIRCLE_EXITS.has(type)) {
+    return ['routeCircle', exit ? exit + '-й съезд' : direction || 'Кольцо'];
   }
-  if (type === 'fork' || type === 'merge') return [arrow, direction ? 'Держитесь ' + direction : 'Держитесь прямо'];
-  if (direction && ['turn', 'end of road', 'continue'].includes(type)) return [arrow, 'Поворот ' + direction];
+  if (modifier === 'uturn') return ['routeUturn', 'Разворот'];
+  if (type === 'off ramp' || type === 'on ramp') {
+    return [ramp, direction || (type === 'off ramp' ? 'Съезд' : 'Въезд')];
+  }
+  if (type === 'fork' || type === 'merge') return [ramp, direction || 'Прямо'];
+  if (direction && ['turn', 'end of road', 'continue'].includes(type)) return [arrow, direction];
   return null;
 }
 
@@ -853,9 +863,20 @@ function _nextDrivingManeuver(steps, {latitude, longitude, accuracy, heading}) {
   let closest = Math.min(55, Math.max(25, accuracy));
   let progress = null;
   const maneuvers = [];
+  let circle = null;
   steps.forEach((step, index) => {
+    const type = step.maneuver?.type;
     const label = _maneuverLabel(step.maneuver);
-    if (label) maneuvers.push({along, label, index, street: step.name});
+    if (_CIRCLE_EXITS.has(type) && circle) {
+      circle.until = along;
+      if (step.maneuver.exit) circle.label = label;
+      maneuvers.length = maneuvers.indexOf(circle) + 1;
+      circle = null;
+    } else if (label) {
+      const entry = {along, label, index};
+      maneuvers.push(entry);
+      if (_CIRCLE_ENTRIES.has(type)) circle = entry;
+    }
     const line = step.geometry?.coordinates || [];
     for (let i = 1; i < line.length; i++) {
       const a = line[i - 1], b = line[i];
@@ -873,10 +894,23 @@ function _nextDrivingManeuver(steps, {latitude, longitude, accuracy, heading}) {
       }
       along += length;
     }
+    if (circle?.index === index) circle.until = along;
   });
   if (progress === null) return null;
-  const next = maneuvers.find(item => item.along >= progress && item.along - progress <= 400);
-  return next && {...next, meters: next.along - progress};
+  const next = maneuvers.find(item => (item.until ?? item.along + 12) >= progress &&
+    item.along - progress <= MANEUVER_HINT_DISTANCE_M);
+  return next && {...next, meters: Math.max(0, next.along - progress),
+    onCircle: next.until !== undefined && progress >= next.along};
+}
+
+function _routePlaceType(stop) {
+  const type = stop.type?.trim();
+  if (Object.hasOwn(_HINT_TYPES, type)) return type;
+  if (type && type !== 'Другое') return null;
+  const icon = stop.icon?.replace(/^emoji:/, '').replace(/\uFE0F/g, '');
+  if (['🛒', '🏪', '🛍', '🏬', 'type:Магазин'].includes(icon) ||
+      (typeof POINT_GRAPHICS !== 'undefined' && POINT_GRAPHICS[icon?.replace(/^graphic:/, '')]?.[0] === 'Магазин')) return 'Магазин';
+  return null;
 }
 
 function _checkRouteHints(fix) {
@@ -900,29 +934,45 @@ function _checkRouteHints(fix) {
   }
   if (maneuver) {
     const maneuverId = id + ':' + key + ':' + maneuver.index;
-    if (!_routeHintShownIds.has(maneuverId)) {
-      clearTimeout(_maneuverExpiry);
-      _visibleManeuverId = maneuverId;
-      _dingRouteHint(maneuverId);
-      _maneuverExpiry = setTimeout(() => {
-        _visibleManeuverId = null;
-        _setRouteHint('routeManeuver', null);
-      }, ROUTE_HINT_DURATION_MS);
-    }
+    _dingRouteHint(maneuverId);
     const [icon, title] = maneuver.label;
-    const meters = Math.min(400, Math.ceil(maneuver.meters / 10) * 10);
-    const detail = (meters ? 'Через ' + meters + ' м' : 'Сейчас') + (maneuver.street ? ' · ' + maneuver.street : '');
-    _setRouteHint('routeManeuver', _visibleManeuverId === maneuverId ? {icon, title, detail} : null);
+    const meters = Math.ceil(maneuver.meters / 10) * 10;
+    const detail = maneuver.onCircle ? '' : meters ? meters + ' м' : 'Сейчас';
+    _setRouteHint('routeManeuver', {icon, title, detail});
   } else _setRouteHint('routeManeuver', null);
 
   if (!Number.isFinite(fix.accuracy) || fix.accuracy > 50) return;
-  const place = day.stops.find(stop => _HINT_TYPES[stop.type] && !stop.arrA &&
-    !_routeHintShownIds.has('place:' + stop.id) && (stop.lat || stop.lng) &&
-    _haversineKmPts(fix.latitude, fix.longitude, stop.lat, stop.lng) <= 1);
-  if (!place || !document.getElementById('routePlace').hidden) return;
-  _setRouteHint('routePlace', {icon: _HINT_TYPES[place.type], title: place.type, detail: 'В пределах 1 км'});
+  const distanceTo = stop => _haversineKmPts(fix.latitude, fix.longitude, stop.lat, stop.lng);
+  if (_activeRoutePlace) {
+    const stop = day.stops.find(stop => stop.id === _activeRoutePlace.id);
+    if (stop) _showRoutePlace(_activeRoutePlace.type, distanceTo(stop));
+    return;
+  }
+  let place, placeType, nearest = 1;
+  for (const stop of day.stops) {
+    if (stop.arrA || _routeHintShownIds.has('place:' + stop.id) || !(stop.lat || stop.lng)) continue;
+    const type = _routePlaceType(stop);
+    if (!type) continue;
+    const distance = distanceTo(stop);
+    if (distance > nearest) continue;
+    nearest = distance;
+    place = stop;
+    placeType = type;
+  }
+  if (!place) return;
+  _activeRoutePlace = {id: place.id, type: placeType};
+  _showRoutePlace(placeType, nearest);
   _dingRouteHint('place:' + place.id);
-  _routeHintTimer = setTimeout(() => _setRouteHint('routePlace', null), ROUTE_HINT_DURATION_MS);
+  _routeHintTimer = setTimeout(() => {
+    _activeRoutePlace = null;
+    _setRouteHint('routePlace', null);
+  }, ROUTE_HINT_DURATION_MS);
+}
+
+function _showRoutePlace(type, distanceKm) {
+  const meters = Math.round(distanceKm * 100) * 10;
+  const detail = meters >= 1000 ? (meters / 1000).toLocaleString('ru-RU') + ' км' : meters + ' м';
+  _setRouteHint('routePlace', {icon: _HINT_TYPES[type], title: type, detail});
 }
 
 function _haversineKmPts(lat1, lng1, lat2, lng2) {

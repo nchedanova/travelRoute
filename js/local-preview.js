@@ -36,7 +36,11 @@ if (LOCAL_PREVIEW) {
       const start = [37.940, 55.795];
       const turn = [37.950, 55.795];
       const exit = [37.950, 55.800];
-      const cafe = [37.952, 55.801];
+      const circle = [37.952, 55.801];
+      const circleMid = [37.953, 55.802];
+      const circleExit = [37.954, 55.802];
+      const turnback = [37.958, 55.805];
+      const cafe = [37.956, 55.804];
       const fuel = [37.952, 55.817];
       const shop = [37.952, 55.833];
       const place = (id, num, name, type, icon, [lng, lat]) =>
@@ -45,28 +49,36 @@ if (LOCAL_PREVIEW) {
         start:{name:'Старт', icon:'🚗', lng:start[0], lat:start[1]},
         stops:[place('hint-cafe', 1, 'Кафе', 'Кафе', '☕', cafe),
           place('hint-fuel', 2, 'Заправка', 'Заправка', '⛽', fuel),
-          place('hint-shop', 3, 'Магазин', 'Магазин', '🛒', shop)]};
+          place('hint-shop', 3, 'Магазин', 'Другое', '🛒', shop)]};
       const legKey = (a, b) => `driving|${a[1]},${a[0]}|${b[1]},${b[0]}`;
       const cacheLine = (a, b, line) => { _routeCache[legKey(a, b)] = line.map(([lng, lat]) => [lat, lng]); };
-      cacheLine(start, cafe, [start, turn, exit, cafe]);
+      cacheLine(start, cafe, [start, turn, exit, circle, circleMid, circleExit, turnback, cafe]);
       cacheLine(cafe, fuel, [cafe, fuel]);
       cacheLine(fuel, shop, [fuel, shop]);
       drivingSteps.set(legKey(start, cafe), [
         {maneuver:{type:'depart'}, geometry:{coordinates:[start, turn]}},
         {maneuver:{type:'turn', modifier:'left'}, name:'Живописная улица', geometry:{coordinates:[turn, exit]}},
-        {maneuver:{type:'off ramp', modifier:'right'}, geometry:{coordinates:[exit, cafe]}}
+        {maneuver:{type:'off ramp', modifier:'right'}, geometry:{coordinates:[exit, circle]}},
+        {maneuver:{type:'roundabout', exit:2}, geometry:{coordinates:[circle, circleMid]}},
+        {maneuver:{type:'turn', modifier:'right'}, geometry:{coordinates:[circleMid, circleExit]}},
+        {maneuver:{type:'exit roundabout'}, geometry:{coordinates:[circleExit, turnback]}},
+        {maneuver:{type:'turn', modifier:'uturn'}, geometry:{coordinates:[turnback, cafe]}}
       ]);
       redrawDay(1);
       renderTabs();
       renderAllDays();
       switchDay(1);
       document.getElementById('drivingBtn').style.display = '';
-      for (const [label, longitude, latitude, heading] of [
-        ['GPS · поворот', 37.944, 55.795, 90],
-        ['GPS · съезд', 37.950, 55.797, 0],
-        ['GPS · кафе', 37.952, 55.805, 0],
-        ['GPS · заправка', 37.952, 55.810, 0],
-        ['GPS · магазин', 37.952, 55.830, 0],
+      let advancePlace = null;
+      for (const [label, longitude, latitude, heading, target] of [
+        ['GPS · поворот', 37.9421, 55.795, 90],
+        ['GPS · съезд', 37.950, 55.7985, 0],
+        ['GPS · после съезда', 37.951, 55.8005, 50],
+        ['GPS · на кругу', 37.9535, 55.802, 90],
+        ['GPS · разворот', 37.9555, 55.8031, 40],
+        ['GPS · кафе', cafe[0], cafe[1] - 0.00898, 0, cafe],
+        ['GPS · заправка', fuel[0] - 0.01598, fuel[1], 90, fuel],
+        ['GPS · магазин', shop[0], shop[1] + 0.00898, 180, shop],
       ]) {
         const button = document.createElement('button');
         button.type = 'button';
@@ -76,9 +88,18 @@ if (LOCAL_PREVIEW) {
           if (!_drivingMode) return;
           _resetRouteHints();
           _checkRouteHints({longitude, latitude, heading, accuracy:10});
+          advancePlace = target && (() => _checkRouteHints({
+            longitude: (target[0] + longitude) / 2, latitude: (target[1] + latitude) / 2, heading, accuracy:10
+          }));
         };
         bar.append(button);
       }
+      const closer = document.createElement('button');
+      closer.type = 'button';
+      closer.className = 'publication-btn';
+      closer.textContent = 'GPS · ближе';
+      closer.onclick = () => { if (_drivingMode) advancePlace?.(); };
+      bar.append(closer);
     }
   });
   window.addEventListener('storage', function(event) {
