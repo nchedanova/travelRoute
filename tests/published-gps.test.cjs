@@ -18,6 +18,30 @@ function setup(spectator) {
   vm.runInContext('_db=fakeDb; _drivingMode=true; _followCamera=true; _updateGpsMarker=(...args)=>calls.push(["marker",...args]); _highlightNearest=()=>{}; _updateSpeedDisplay=v=>calls.push(["speed",v]); _panTo=(...args)=>calls.push(["pan",...args]);',ctx);
   return {ctx,writes,calls,removed,subscriptions,elements,run:code=>vm.runInContext(code,ctx)};
 }
+test('pressing Drive restarts a GPS watch that started before location was enabled', () => {
+  const {ctx, calls, run, elements} = setup(false);
+  const watches = [];
+  const cleared = [];
+  ctx.isAdmin = () => true;
+  ctx.document.body.classList.toggle = () => {};
+  elements.get('gpsFollowBtn').classList = {remove() {}};
+  ctx.navigator = {geolocation: {
+    watchPosition: (success, failure) => watches.push({success, failure}) - 1,
+    clearWatch: id => cleared.push(id),
+  }};
+  ctx.clearTimeout = () => {};
+  run('_drivingMode=false; _resetRouteHints=()=>{}; startKeepAlive=()=>{}; _acquireWakeLock=()=>{}; _checkRouteHints=()=>{}');
+  ctx._startGpsWatch();
+  watches[0].failure({message:'Location disabled'});
+  ctx.toggleDrivingMode();
+  assert.deepEqual(cleared, [0]);
+  assert.equal(watches.length, 2);
+  watches[0].success({coords:{latitude:1,longitude:2}});
+  assert.equal(calls.some(call => call[0] === 'marker'), false);
+  watches[1].success({coords:{latitude:10,longitude:20,accuracy:5,speed:3}});
+  assert.ok(calls.some(call => call[0] === 'marker' && call[1] === 10 && call[2] === 20));
+  assert.ok(calls.some(call => call[0] === 'pan' && call[1] === 10 && call[2] === 20));
+});
 test('owner sends published GPS only for a published active day; reader GPS remains intact',()=>{
   const {ctx,writes}=setup(false);
   ctx._writePosition(10,20,30,4);

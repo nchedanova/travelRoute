@@ -15,6 +15,7 @@ const FIREBASE_CONFIG = {
 // ── STATE ──────────────────────────────────────────────────────────────────────
 let _db             = null;
 let _watchId        = null;   // navigator.geolocation watchId
+let _gpsWatchFailed = false;
 let _gpsMarker      = null;   // Leaflet marker — текущая позиция
 let _accuracyCircle = null;   // Leaflet circle — кружок погрешности
 let _drivingMode    = false;  // владелец нажал "Еду"
@@ -236,11 +237,22 @@ function _startGpsWatch() {
     showToast('GPS недоступен в этом браузере');
     return;
   }
-  _watchId = navigator.geolocation.watchPosition(
-    _onPosition,
-    err => console.warn('GPS:', err.message),
+  if (_watchId !== null) navigator.geolocation.clearWatch(_watchId);
+  _gpsWatchFailed = false;
+  const watchId = navigator.geolocation.watchPosition(
+    position => {
+      if (_watchId !== watchId) return;
+      _gpsWatchFailed = false;
+      _onPosition(position);
+    },
+    err => {
+      if (_watchId !== watchId) return;
+      _gpsWatchFailed = true;
+      console.warn('GPS:', err.message);
+    },
     { enableHighAccuracy: true, maximumAge: 3000, timeout: 15000 }
   );
+  _watchId = watchId;
 }
 
 function _onPosition(pos) {
@@ -618,7 +630,11 @@ function toggleDrivingMode() {
   // Keep-alive: держим WebSocket живым для уведомлений
   if (_drivingMode) {
     startKeepAlive();
-    if (!routeHintsPreviewEnabled()) _acquireWakeLock();
+    if (!routeHintsPreviewEnabled()) {
+      // The startup watch may have failed while location was disabled.
+      _startGpsWatch();
+      _acquireWakeLock();
+    }
   } else {
     stopKeepAlive();
     _releaseWakeLock();
@@ -656,8 +672,9 @@ function _releaseWakeLock() {
 
 // Перезахватываем Wake Lock если браузер/ОС сам отпустил его (экран погас и снова включился)
 document.addEventListener('visibilitychange', function() {
-  if (_drivingMode && document.visibilityState === 'visible' && !_wakeLock) {
-    _acquireWakeLock();
+  if (_drivingMode && document.visibilityState === 'visible' && !routeHintsPreviewEnabled()) {
+    if (_gpsWatchFailed) _startGpsWatch();
+    if (!_wakeLock) _acquireWakeLock();
   }
 });
 // Тихий осциллятор не даёт браузеру заморозить вкладку.
