@@ -33,22 +33,36 @@ function setModeBadge() {
 }
 
 let _gistOwnerLogin = localStorage.getItem('travel_gist_owner') || null; // кешируем логин между сессиями
+let _gistApiRetryAt = 0;
+
+function checkGistApiResponse(response) {
+  if (response.ok) return;
+  if (response.status === 403 || response.status === 429) {
+    const retry = Number(response.headers.get('retry-after')) * 1000;
+    const reset = response.headers.get('x-ratelimit-remaining') === '0'
+      ? Number(response.headers.get('x-ratelimit-reset')) * 1000 : 0;
+    _gistApiRetryAt = Math.max(Date.now() + Math.max(retry || 0, 60000), reset || 0);
+  }
+  throw new Error('HTTP ' + response.status);
+}
 
 async function fetchCloudData() {
   const headers = { 'Accept': 'application/vnd.github+json' };
   if (CLOUD_CONFIG.apiKey) headers['Authorization'] = `token ${CLOUD_CONFIG.apiKey}`;
 
   // Зрители (без токена): если знаем логин — читаем raw URL (нет лимитов API)
-  if (!CLOUD_CONFIG.apiKey && _gistOwnerLogin) {
-    const rawUrl = `https://gist.githubusercontent.com/${_gistOwnerLogin}/${CLOUD_CONFIG.binId}/raw/data.json?t=${Date.now()}`;
+  if (!CLOUD_CONFIG.apiKey) {
+    const owner = _gistOwnerLogin || 'nchedanova';
+    const rawUrl = `https://gist.githubusercontent.com/${owner}/${CLOUD_CONFIG.binId}/raw/data.json?t=${Date.now()}`;
     const r = await fetch(rawUrl, { cache: 'no-store' });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    return await r.json();
+    if (r.ok) return await r.json();
+    if (r.status !== 404) throw new Error('raw HTTP ' + r.status);
   }
 
   // Первый запрос (или владелец с токеном) — через API, запоминаем логин
+  if (Date.now() < _gistApiRetryAt) throw new Error('Gist API cooldown');
   const r = await fetch(`${GIST_URL}/${CLOUD_CONFIG.binId}`, { headers, cache: 'no-store' });
-  if (!r.ok) throw new Error('HTTP ' + r.status);
+  checkGistApiResponse(r);
   const json = await r.json();
 
   // Сохраняем логин для дальнейших запросов без токена
@@ -84,27 +98,17 @@ async function pushCloudData(payload) {
       files: { 'data.json': { content: JSON.stringify(payload) } }
     })
   });
-  if (!r.ok) throw new Error('HTTP ' + r.status);
+  checkGistApiResponse(r);
 }
 
 // Debounce: откладывает облачное сохранение на 1.5с после последнего изменения
 let _saveCloudTimer = null;
 function scheduleCloudSave(payload) {
+  _persistPendingPush(payload);
   clearTimeout(_saveCloudTimer);
-  _saveCloudTimer = setTimeout(async () => {
-    setSyncStatus('☁ сохранение…', 'var(--amber)');
-    try {
-      await pushCloudData(payload);
-      _lastCloudHash = strHash(JSON.stringify(payload));
-      _clearPendingPush();
-      setSyncStatus('☁ сохранено', 'var(--green)');
-      setTimeout(() => setSyncStatus('☁ ок', 'var(--muted)'), 2000);
-    } catch(e) {
-      console.error('Cloud save error', e);
-      _persistPendingPush(payload);
-      setSyncStatus('⚠ не синхронизировано — повтор при сети', '#f87171');
-    }
+  _saveCloudTimer = setTimeout(() => {
     _saveCloudTimer = null;
+    _tryFlushPendingPush();
   }, 1500);
 }
 
@@ -117,6 +121,8 @@ const PENDING_PUSH_KEY = 'travel_pending_push';
 let _cloudDirty = false;
 let _pendingPushPayload = null;
 let _pushRetryTimer = null;
+let _pushInFlight = false;
+let _nextGistWriteAt = 0;
 
 function _loadPendingPush() {
   try {
@@ -140,16 +146,21 @@ function _clearPendingPush() {
 async function _tryFlushPendingPush() {
   if (!_cloudDirty || !_pendingPushPayload) return;
   if (!CLOUD_CONFIG.canWrite) return;
-  if (_saveCloudTimer) return; // обычный дебаунс-сейв уже в процессе — не дублируем
+  if (_saveCloudTimer || _pushInFlight || Date.now() < Math.max(_gistApiRetryAt, _nextGistWriteAt)) return;
+  const payload = _pendingPushPayload;
+  _pushInFlight = true;
+  _nextGistWriteAt = Date.now() + 15000;
   setSyncStatus('☁ повтор синхронизации…', 'var(--amber)');
   try {
-    await pushCloudData(_pendingPushPayload);
-    _lastCloudHash = strHash(JSON.stringify(_pendingPushPayload));
-    _clearPendingPush();
+    await pushCloudData(payload);
+    _lastCloudHash = strHash(JSON.stringify(payload));
+    if (_pendingPushPayload === payload) _clearPendingPush();
     setSyncStatus('☁ синхронизировано', 'var(--green)');
     setTimeout(() => setSyncStatus('☁ ок', 'var(--muted)'), 2000);
   } catch(e) {
     setSyncStatus('⚠ не синхронизировано — повтор при сети', '#f87171');
+  } finally {
+    _pushInFlight = false;
   }
 }
 
@@ -164,7 +175,7 @@ _loadPendingPush();
 _schedulePushRetry();
 
 // ── APPLY SAVED PAYLOAD ───────────────────────────────────────────────────────
-function applyPayload(saved) {
+function applyPayload(saved, fromCloud = false) {
   if (typeof spectatorPayload === 'function') {
     spectatorPublications = saved.spectatorPublications || {};
     if (SPECTATOR_MODE) saved = spectatorPayload(saved);
@@ -172,10 +183,21 @@ function applyPayload(saved) {
   state.actuals = saved.actuals || {};
 
   if (saved.daysData) {
+    const localWalks = fromCloud && CLOUD_CONFIG.canWrite
+      ? Object.fromEntries(Object.entries(DAYS_DATA).filter(([, day]) => day.walkReview?.lastAt)) : {};
     Object.keys(DAYS_DATA).forEach(k => delete DAYS_DATA[k]);
     Object.entries(saved.daysData).forEach(([dayStr, dayData]) => {
-      DAYS_DATA[Number(dayStr)] = dayData;
+      const local = localWalks[dayStr];
+      const keepLocal = local && !dayData.archived && dayData.walkReview &&
+        (dayData.walkReview.id ? dayData.walkReview.id === local.walkReview.id : dayData.dateISO === local.dateISO) &&
+        local.walkReview.lastAt > (dayData.walkReview.lastAt || 0);
+      DAYS_DATA[Number(dayStr)] = keepLocal ? local : dayData;
     });
+    for (const [id, day] of Object.entries(localWalks)) {
+      const walk = day.walkReview;
+      if (!DAYS_DATA[id] && !day.archived && walk.phase !== 'finished' &&
+          walk.lastAt > (saved._savedAt || 0)) DAYS_DATA[id] = day;
+    }
   } else {
     // старый формат (обратная совместимость)
     if (saved.stopsData) {
@@ -234,6 +256,11 @@ function applyPayload(saved) {
     });
   });
   if (typeof refreshSpectatorGpsVisibility === 'function') refreshSpectatorGpsVisibility();
+}
+
+function cloudCacheJson(saved, originalJson) {
+  if (!CLOUD_CONFIG.canWrite || !saved.daysData) return originalJson;
+  return JSON.stringify({...saved, daysData: DAYS_DATA});
 }
 
 // ── LOAD STATE ────────────────────────────────────────────────────────────────
@@ -313,10 +340,13 @@ async function loadState() {
 
   try {
     const saved = await fetchCloudData();
+    if (CLOUD_CONFIG.canWrite && (_cloudDirty ||
+        (typeof _walkGpsActive !== 'undefined' && _walkGpsActive))) return;
     const json  = JSON.stringify(saved);
     _lastCloudHash = strHash(json);
     const geoHashBefore = _buildGeoHash();
-    applyPayload(saved);
+    applyPayload(saved, true);
+    if (typeof restoreReaderWalk === 'function') restoreReaderWalk(saved._savedAt || 0);
     if (typeof enableRouteLoading === 'function') enableRouteLoading(); // реальные данные из облака — OSRM можно
     const geoHashAfter = _buildGeoHash();
     _lastGeoHash = geoHashAfter;
@@ -325,11 +355,11 @@ async function loadState() {
     // При QuotaExceeded очищаем routeCache — он восстановится через OSRM,
     // а travel_tracker_v3 важнее (без него каждый визит = прямые линии у читателя)
     try {
-      localStorage.setItem(typeof routeStorageKey === 'function' ? routeStorageKey() : 'travel_tracker_v3', json);
+      localStorage.setItem(typeof routeStorageKey === 'function' ? routeStorageKey() : 'travel_tracker_v3', cloudCacheJson(saved, json));
     } catch(e) {
       if (e.name === 'QuotaExceededError') {
         try { localStorage.removeItem('travel_route_cache_v2'); } catch {}
-        try { localStorage.setItem(typeof routeStorageKey === 'function' ? routeStorageKey() : 'travel_tracker_v3', json); } catch {}
+        try { localStorage.setItem(typeof routeStorageKey === 'function' ? routeStorageKey() : 'travel_tracker_v3', cloudCacheJson(saved, json)); } catch {}
       }
     }
 
@@ -378,7 +408,7 @@ function captureActualTimeInputs() {
   });
 }
 
-function saveData() {
+function saveData(localOnly = false) {
   if (!isAdmin()) return;
   try {
     captureActualTimeInputs();
@@ -413,8 +443,10 @@ function saveData() {
     console.log('%c💾 Gist: ' + gistKB + ' KB / 1024 KB (' + gistPct + '%)', 'color:#f5a623');
 
     // Дополнительно — в облако (с дебаунсом), только если есть токен
-    if (CLOUD_CONFIG.canWrite) scheduleCloudSave(payload);
-    if (typeof refreshSpectatorGpsVisibility === 'function') refreshSpectatorGpsVisibility();
+    if (localOnly !== true) {
+      if (CLOUD_CONFIG.canWrite) scheduleCloudSave(payload);
+      if (typeof refreshSpectatorGpsVisibility === 'function') refreshSpectatorGpsVisibility();
+    }
 
   } catch(e) { console.error('saveData error', e); }
   showToast();
@@ -439,7 +471,8 @@ function _buildGeoHash() {
       if (!day) return '';
       var pts = day.start.lat + ',' + day.start.lng;
       day.stops.forEach(function(s) { pts += '|' + s.lat + ',' + s.lng; });
-      return d + ':' + (day.walkMode ? '1' : '0') + ':' + (day.archived ? 'A' : '') + ':' + pts;
+      return d + ':' + (day.walkMode ? '1' : '0') + ':' + (day.archived ? 'A' : '') + ':' + pts
+        + (day.walkReview?.segments ? ':' + strHash(JSON.stringify(day.walkReview.segments)) : '');
     });
     return strHash(parts.join(';'));
   } catch(e) { return null; }
@@ -505,6 +538,7 @@ document.addEventListener('focusout', e => {
 
 async function pollCloud() {
   if (!cloudEnabled()) return;
+  if (CLOUD_CONFIG.canWrite && typeof _walkGpsActive !== 'undefined' && _walkGpsActive) return;
   // Блокируем поллинг если пользователь активно вводит данные или идёт сохранение
   if (_userIsTyping || _userHasFocus) return;
   if (_saveCloudTimer) return;
@@ -516,18 +550,21 @@ async function pollCloud() {
 
   try {
     const saved = await fetchCloudData();
+    if (CLOUD_CONFIG.canWrite && (_saveCloudTimer || _cloudDirty ||
+        (typeof _walkGpsActive !== 'undefined' && _walkGpsActive))) return;
     const json  = JSON.stringify(saved);
     const hash  = strHash(json);
     if (hash === _lastCloudHash) return;
     _lastCloudHash = hash;
 
-    applyPayload(saved);
+    applyPayload(saved, true);
+    if (typeof restoreReaderWalk === 'function') restoreReaderWalk(saved._savedAt || 0);
     try {
-      localStorage.setItem(typeof routeStorageKey === 'function' ? routeStorageKey() : 'travel_tracker_v3', json);
+      localStorage.setItem(typeof routeStorageKey === 'function' ? routeStorageKey() : 'travel_tracker_v3', cloudCacheJson(saved, json));
     } catch(e) {
       if (e.name === 'QuotaExceededError') {
         try { localStorage.removeItem('travel_route_cache_v2'); } catch {}
-        try { localStorage.setItem(typeof routeStorageKey === 'function' ? routeStorageKey() : 'travel_tracker_v3', json); } catch {}
+        try { localStorage.setItem(typeof routeStorageKey === 'function' ? routeStorageKey() : 'travel_tracker_v3', cloudCacheJson(saved, json)); } catch {}
       }
     }
 

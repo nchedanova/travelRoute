@@ -89,7 +89,7 @@ function installWalkReview() {
     const today = new Date();
     Object.assign(DAYS_DATA[id], {
       dateISO: today.toLocaleDateString('ru-RU'), date: 'Прогулка', icon: '🚶',
-      walkReview: { phase: 'ready', segments: [], meters: 0, checkpoints: 0 }
+      walkReview: { id: crypto.randomUUID(), phase: 'ready', segments: [], meters: 0, checkpoints: 0 }
     });
     redrawDay(id);
     renderTabs();
@@ -167,15 +167,19 @@ function installWalkReview() {
     const {id, recording} = session;
     stopWatch();
     recording.phase = recording.startedAt ? 'paused' : 'ready';
+    stopWalkBroadcast();
     if (currentDay === id) renderRecording(id);
-    saveData();
+    saveData(true);
     if (message) showToast(message);
   }
 
   function acceptFix(active, position) {
     const {id, recording} = active;
-    if (session !== active || document.hidden) return;
-    if (DAYS_DATA[id]?.walkReview !== recording) { stopWatch(); return; }
+    if (session !== active) return;
+    if (DAYS_DATA[id]?.walkReview !== recording || DAYS_DATA[id].archived) {
+      suspendRecording();
+      return;
+    }
     const {latitude, longitude, accuracy} = position.coords;
     if (![latitude, longitude, accuracy, position.timestamp].every(Number.isFinite)
         || accuracy > 35 || Date.now() - position.timestamp > 15000) return;
@@ -185,18 +189,16 @@ function installWalkReview() {
       const seconds = (fix.time - previous.time) / 1000;
       const meters = haversineKm(...previous.point, ...fix.point) * 1000;
       if (fix.time <= active.lastSignalAt) return;
-      const gap = fix.time - active.lastSignalAt > 60000;
-      if (!gap && meters / seconds > 8) return;
+      if (meters / seconds > 8) return;
       active.lastSignalAt = fix.time;
-      if (gap) {
-        // После длительного провала GPS не дорисовываем неизвестный участок.
-        recording.segments.push([fix.point]);
-      } else if (meters < Math.max(5, Math.min(15, (accuracy + previous.accuracy) / 2))) {
-        updateWalkGpsControls(position);
+      if (meters < Math.max(5, Math.min(15, (accuracy + previous.accuracy) / 2))) {
+        if (currentDay === id) updateWalkGpsControls(position);
+        broadcastWalkPosition(id, position);
         recording.lastAt = fix.time;
         updateRecordingReadout(id, recording);
         return;
       } else {
+        closeRecordedStop(id, recording, fix.time);
         recording.segments.at(-1).push(fix.point);
         const total = recording.meters + meters;
         while ((recording.checkpoints + 1) * checkpointMeters <= total) {
@@ -209,31 +211,34 @@ function installWalkReview() {
         recording.meters = total;
       }
     } else {
+      recording.id ||= crypto.randomUUID();
       recording.segments.push([fix.point]);
       recording.phase = 'recording';
       if (!recording.startedAt) {
         recording.startedAt = fix.time;
         setRecordedStart(id, fix);
-        map.setView(fix.point, 17);
+        if (currentDay === id) map.setView(fix.point, 17);
       } else {
         closeRecordedStop(id, recording, fix.time);
       }
     }
     active.last = fix;
-    updateWalkGpsControls(position);
+    if (currentDay === id) updateWalkGpsControls(position);
     active.lastSignalAt = fix.time;
     recording.lastAt = fix.time;
     refreshWalkTrackLine(id);
-    if (!previous) renderRecording(id);
+    if (!previous && currentDay === id) renderRecording(id);
     else updateRecordingReadout(id, recording);
     if (!previous || Date.now() - active.savedAt >= 5000) {
       active.savedAt = Date.now();
-      saveData();
+      saveData(true);
     }
+    broadcastWalkPosition(id, position);
   }
 
   function startWatch(id, recording) {
-    if (session || document.hidden) return;
+    if (session) { showToast('Запись уже идёт в другом дне.'); return; }
+    if (document.hidden) return;
     if (!navigator.geolocation || !window.isSecureContext) {
       showToast('GPS доступен на localhost или по HTTPS.');
       return;
@@ -264,7 +269,12 @@ function installWalkReview() {
       suspendRecording('Не удалось включить GPS.');
       return;
     }
-    if (navigator.wakeLock) navigator.wakeLock.request('screen').then(lock => {
+    acquireWalkWakeLock(active);
+  }
+
+  function acquireWalkWakeLock(active) {
+    if (!navigator.wakeLock || active.wakeLock?.released === false) return;
+    navigator.wakeLock.request('screen').then(lock => {
       if (session === active) active.wakeLock = lock;
       else return lock.release();
     }).catch(() => {});
@@ -305,7 +315,7 @@ function installWalkReview() {
     }
     if (recording.phase === 'recording' && session?.recording !== recording) {
       recording.phase = 'paused';
-      saveData();
+      saveData(true);
     }
     const {phase} = recording;
     const finished = phase === 'finished';
@@ -366,19 +376,18 @@ function installWalkReview() {
         if (!point) return;
         if (recording.pauseStopId) closeRecordedStop(id, recording, now);
         const stop = addRecordedStop(id, 'Остановка', point, now);
-        stopWatch();
         recording.pauseStopId = stop.id;
-        recording.phase = 'paused';
       } else if (action === 'finish') {
         stopWatch();
         if (point) addRecordedStop(id, 'Финиш прогулки', point, now);
         recording.phase = 'finished';
         recording.finishedAt = now;
         delete recording.pauseStopId;
+        stopWalkBroadcast();
       } else return;
       renderRecording(id);
       if (action === 'mark') panel.querySelector('[data-action="mark"]').focus({preventScroll: true});
-      saveData();
+      saveData(action !== 'finish');
     };
     if (recenter && phase !== 'ready') {
       const points = recording.segments.flat().concat([day.start, ...day.stops]
@@ -403,7 +412,7 @@ function installWalkReview() {
     picker.querySelector('button').focus({preventScroll: true});
   };
   switchDay = function(id) {
-    if (session && (session.id !== id || DAYS_DATA[id]?.walkReview !== session.recording)) suspendRecording();
+    if (session && DAYS_DATA[session.id]?.walkReview !== session.recording) suspendRecording();
     originalSwitch(id);
     renderRecording(id, true);
   };
@@ -411,10 +420,10 @@ function installWalkReview() {
     originalRenderAllDays();
     renderRecording(currentDay);
   };
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) suspendRecording();
-  });
   window.addEventListener('pagehide', () => suspendRecording());
+  document.addEventListener('visibilitychange', () => {
+    if (session && !document.hidden) acquireWalkWakeLock(session);
+  });
   document.addEventListener('pointerdown', event => {
     if (!picker.contains(event.target) && !trigger?.contains(event.target)) closeChoice();
   });

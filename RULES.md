@@ -20,6 +20,9 @@
 
 Чистый JS/HTML/CSS, без фреймворков. PWA на GitHub Pages. Firebase Realtime DB для чата, заметок, GPS, реакций к фото. Gist API для маршрутных данных.
 
+- Поток GPS и живой трек прогулки идут через Firebase. Точки GPS сохраняются локально в процессе записи, а завершённый маршрут сохраняется в Gist. Не запускать Gist PATCH на каждом обновлении GPS.
+- Для чтения публичного Gist использовать raw URL. При ответе API о лимите выдерживать паузу по `Retry-After` или `X-RateLimit-Reset`, не повторять запросы в каждом цикле поллинга.
+
 ### Файлы и порядок загрузки
 ```
 config.js → data.js → storage.js → offline.js → map.js → render.js → app.js → gps.js → chat.js → notes.js → gpx.js → import.js
@@ -36,7 +39,7 @@ config.js → data.js → storage.js → offline.js → map.js → render.js →
 
 ## Версионирование — КРИТИЧЕСКИ ВАЖНО
 
-**Текущая версия: v3.0.0 build 3**
+**Текущая версия: v3.0.0 build 4**
 
 При КАЖДОМ деплое обновляй ВСЕ ТРИ места одновременно:
 

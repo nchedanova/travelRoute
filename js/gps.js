@@ -28,6 +28,10 @@ let _keepAliveOsc   = null;
 var _lastSpectatorPosition = null;
 var _lastOwnerPosition = null;
 var _spectatorGpsListening = false;
+let _lastWalkBroadcastAt = 0;
+let _broadcastWalkDay = null;
+let _readerWalk = null;
+let _readerCloudSavedAt = 0;
 
 // ── INIT ───────────────────────────────────────────────────────────────────────
 function initGps() {
@@ -153,6 +157,13 @@ function initGps() {
     // Владелец: запускаем GPS-слежение устройства
     _startGpsWatch();
     _showEl('drivingBtn');
+    if (typeof firebase.auth === 'function') {
+      const unsubscribe = firebase.auth().onAuthStateChanged(user => {
+        if (!user) return;
+        unsubscribe();
+        publishRecoveredWalk();
+      });
+    } else publishRecoveredWalk();
   } else if (CLOUD_CONFIG.canRead) {
     // Зритель: слушаем Firebase, камера сразу следит
     _listenRemotePosition();
@@ -252,7 +263,9 @@ function _listenRemotePosition() {
   if (!_db) return;
   _db.ref('gps').on('value', snap => {
     const d = snap.val();
-    if (!d) {
+    if (d?.walk && d.walk.routeId === CLOUD_CONFIG.binId) applyReaderWalk(d.walk);
+    if (!d || !Number.isFinite(d.lat) || !Number.isFinite(d.lng) ||
+        (d.walk && (currentDay !== d.walk.dayId || Date.now() - d.ts > 120000))) {
       // путешественник остановился — убираем подсветку и скорость
       document.body.classList.remove('driving-active');
       _updateSpeedDisplay(null);
@@ -270,6 +283,104 @@ function _listenRemotePosition() {
   });
 }
 
+function mergeReaderWalk(walk, cloudSavedAt = 0) {
+  if (!walk || CLOUD_CONFIG.canWrite || SPECTATOR_MODE || walk.routeId !== CLOUD_CONFIG.binId ||
+      !Number.isSafeInteger(walk.dayId) || walk.dayId < 1 || !walk.day?.walkReview?.id) return false;
+  const existing = DAYS_DATA[walk.dayId];
+  if (cloudSavedAt >= walk.updatedAt || existing?.hidden || existing?.archived) return false;
+  if (existing && (!existing.walkReview || (existing.walkReview.id
+      ? existing.walkReview.id !== walk.day.walkReview.id
+      : existing.dateISO !== walk.day.dateISO))) return false;
+  const notes = new Map(existing?.stops.map(stop => [stop.id, stop.notes]));
+  DAYS_DATA[walk.dayId] = {...existing, ...walk.day,
+    stops: walk.day.stops.map(stop => ({...stop, notes: notes.get(stop.id) || []}))};
+  return true;
+}
+
+function applyReaderWalk(walk) {
+  if (!mergeReaderWalk(walk, _readerCloudSavedAt)) return;
+  const id = walk.dayId;
+  const structure = JSON.stringify([walk.day.start, walk.day.departA, walk.day.stops]);
+  const changed = _readerWalk?.dayId !== id || _readerWalk.structure !== structure || !walkTrackLines[id];
+  _readerWalk = {...walk, structure};
+  if (!changed) {
+    refreshWalkTrackLine(id);
+    return;
+  }
+  redrawDay(id);
+  if (!DAYS_DATA[currentDay] || DAYS_DATA[currentDay].archived || DAYS_DATA[currentDay].hidden) switchDay(id);
+  if (!map.hasLayer(layers[id]) && currentDay === id) layers[id].addTo(map);
+  renderTabs();
+  renderAllDays();
+  updateProgress();
+}
+
+function restoreReaderWalk(cloudSavedAt) {
+  _readerCloudSavedAt = Math.max(_readerCloudSavedAt, cloudSavedAt);
+  if (_readerWalk && cloudSavedAt >= _readerWalk.updatedAt) _readerWalk = null;
+  return mergeReaderWalk(_readerWalk, cloudSavedAt);
+}
+
+function walkBroadcastPayload(id) {
+  const day = DAYS_DATA[id];
+  if (!day?.walkReview?.id || day.hidden || day.archived) return null;
+  const {lat, lng, name, icon} = day.start;
+  return {
+    routeId: CLOUD_CONFIG.binId, dayId: id, updatedAt: Date.now(),
+    day: {
+      date: day.date, dateISO: day.dateISO, color: day.color, icon: day.icon,
+      start: {lat, lng, name, icon}, walkMode: true, departA: day.departA, departP: day.departP,
+      walkReview: {...day.walkReview},
+      stops: day.stops.map(({id, num, name, lat, lng, type, icon, arrA, arrP, depA, depP}) =>
+        ({id, num, name, lat, lng, type, icon, arrA, arrP, depA, depP}))
+    }
+  };
+}
+
+function publishRecoveredWalk() {
+  if (!_db || !CLOUD_CONFIG.canWrite || _drivingMode || _walkGpsActive) return;
+  const candidates = dayKeys().filter(id => {
+    const day = DAYS_DATA[id];
+    const walk = day.walkReview;
+    return !day.hidden && !day.archived && walk?.startedAt && walk.lastAt &&
+      (walk.phase === 'paused' || walk.phase === 'recording') && walk.segments?.some(segment => segment.length);
+  });
+  const id = candidates.includes(currentDay) ? currentDay : candidates.sort((a, b) =>
+    DAYS_DATA[b].walkReview.lastAt - DAYS_DATA[a].walkReview.lastAt)[0];
+  if (id == null) return;
+  const recording = DAYS_DATA[id].walkReview;
+  recording.id ||= 'legacy-' + id + '-' + recording.startedAt;
+  const walk = walkBroadcastPayload(id);
+  _db.ref('gps').transaction(existing => {
+    if (_drivingMode || _walkGpsActive || DAYS_DATA[id]?.walkReview !== recording ||
+        DAYS_DATA[id].hidden || DAYS_DATA[id].archived) return;
+    if (existing?.lat != null && Date.now() - existing.ts < 120000) return;
+    if (existing?.walk?.routeId === walk.routeId &&
+        existing.walk.day?.walkReview?.lastAt > recording.lastAt) return;
+    return {walk};
+  }).catch(error => console.warn('Recovered walk GPS:', error));
+}
+
+function broadcastWalkPosition(id, position) {
+  if (!_db || !CLOUD_CONFIG.canWrite || Date.now() - _lastWalkBroadcastAt < 5000) return;
+  const walk = walkBroadcastPayload(id);
+  if (!walk) { stopWalkBroadcast(); return; }
+  _lastWalkBroadcastAt = Date.now();
+  _broadcastWalkDay = id;
+  const {latitude: lat, longitude: lng, accuracy, speed} = position.coords;
+  const point = {lat, lng, accuracy, speed: gpsSpeedKmh(speed), ts: Date.now()};
+  const spectator = spectatorGpsPayload(point, id);
+  _db.ref('gps').set({...point, walk, spectator}).catch(error => console.warn('Walk GPS:', error));
+}
+
+function stopWalkBroadcast() {
+  if (_broadcastWalkDay === null) return;
+  const walk = walkBroadcastPayload(_broadcastWalkDay);
+  _broadcastWalkDay = null;
+  _lastWalkBroadcastAt = 0;
+  _db.ref('gps').set(walk ? {walk} : null).catch(error => console.warn('Walk GPS:', error));
+}
+
 // ── FIREBASE WRITE — владелец едет ────────────────────────────────────────────
 function _writePosition(lat, lng, speed, accuracy) {
   if (!_db) return;
@@ -277,9 +388,9 @@ function _writePosition(lat, lng, speed, accuracy) {
   _db.ref('gps').set(Object.assign({}, _lastOwnerPosition, { spectator: spectatorGpsPayload(_lastOwnerPosition) }));
 }
 
-function spectatorGpsPayload(point) {
-  var day = DAYS_DATA[currentDay];
-  if (!_drivingMode || !day || day.archived || !day.publicationId || !publicationEntry(currentDay)) return null;
+function spectatorGpsPayload(point, dayId = currentDay) {
+  var day = DAYS_DATA[dayId];
+  if ((!_drivingMode && !_walkGpsActive) || !day || day.archived || !day.publicationId || !publicationEntry(dayId)) return null;
   return Object.assign({}, point, { publicationId: day.publicationId, walkMode: !!day.walkMode });
 }
 

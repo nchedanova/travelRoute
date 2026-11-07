@@ -1,6 +1,6 @@
 // ── SERVICE WORKER · Дорожный журнал ───────────────────────────────────────────
 const APP_VERSION   = '3.0.0';
-const APP_BUILD     = 3;
+const APP_BUILD     = 4;
 // CACHE_STATIC включает build — при каждом бампе старый кэш автоматически удаляется
 const CACHE_STATIC  = 'travel-static-v' + APP_VERSION.replace(/\./g,'-') + '-b' + APP_BUILD;
 const CACHE_TILES   = 'travel-tiles-v2';
@@ -68,6 +68,14 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
 
+  // Chrome проверяет манифест отдельно от обновления веб-страницы.
+  // При наличии сети не отдаём старый цвет установленного приложения из кеша.
+  if (e.request.method === 'GET' && url.origin === location.origin &&
+      url.pathname === new URL('./manifest.json', self.registration.scope).pathname) {
+    e.respondWith(freshManifest(e.request));
+    return;
+  }
+
   // 1) Map tiles → cache-first (offline maps!)
   if (url.hostname.includes('tile.openstreetmap.org') ||
       url.hostname.includes('tiles.wmflabs.org') ||
@@ -112,6 +120,21 @@ self.addEventListener('fetch', e => {
 });
 
 // ── STRATEGIES ────────────────────────────────────────────────────────────────
+
+async function freshManifest(request) {
+  const cache = await caches.open(CACHE_STATIC);
+  const key = new URL('./manifest.json', self.registration.scope).href;
+  try {
+    const response = await fetch(request, { cache: 'no-cache' });
+    if (response.ok) {
+      await cache.put(key, response.clone()).catch(() => {});
+      return response;
+    }
+  } catch {
+    // При отсутствии сети сохраняем доступ к установленному приложению.
+  }
+  return (await cache.match(key)) || new Response('Offline', { status: 503 });
+}
 
 // Tiles: cache-first, store forever (until cache is cleared)
 // Normalize a/b/c.tile.openstreetmap.org → tile.openstreetmap.org
