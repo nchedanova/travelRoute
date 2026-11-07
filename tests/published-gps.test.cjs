@@ -90,6 +90,29 @@ test('the second exit stays selected inside a roundabout and a legacy cart is a 
   assert.equal(ctx._nextDrivingManeuver(steps, {...fix, longitude:0.003}), undefined);
   assert.equal(ctx._routePlaceType({type:'Другое', icon:'🛒'}), 'Магазин');
 });
+test('stationary GPS can show a nearby turn despite a stale heading and wider accuracy radius', () => {
+  const {ctx} = setup(false);
+  ctx.isAdmin = () => true;
+  const day = ctx.DAYS_DATA[1];
+  day.start = {lat:55,lng:37};
+  day.stops = [{lat:55.003,lng:37.003}];
+  const key = 'driving|55,37|55.003,37.003';
+  ctx._routeCache = {[key]: [[55,37],[55.003,37],[55.003,37.003]]};
+  ctx.drivingSteps = new Map([[key, [
+    {maneuver:{type:'depart'},geometry:{coordinates:[[37,55],[37,55.003]]}},
+    {maneuver:{type:'turn',modifier:'right'},geometry:{coordinates:[[37,55.003],[37.003,55.003]]}},
+  ]]]);
+  const hints = new Map();
+  ctx._setRouteHint = (id, hint) => hints.set(id, hint);
+  const coords = {latitude:55.001,longitude:37,accuracy:85,speed:0,heading:180};
+  ctx._checkRouteHints(Object.create(coords));
+  assert.equal(hints.get('routeManeuver').title, 'направо');
+  ctx._checkRouteHints({...coords, longitude:37.002});
+  assert.equal(hints.get('routeManeuver'), null);
+  ctx._checkRouteHints({...coords, accuracy:130});
+  assert.equal(hints.get('routeManeuver'), null);
+});
+
 test('driving hints can match a completed leg when the first unvisited stop is elsewhere', () => {
   const {ctx} = setup(false);
   const day = {start:{lat:55,lng:37}, stops:[

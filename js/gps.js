@@ -960,6 +960,7 @@ function _refreshHintsFromOwnerFix() {
 const _HINT_TYPES = { 'Заправка': 'fuel', 'Кафе': 'cafe', 'Магазин': 'cart' };
 const ROUTE_HINT_DURATION_MS = 10000;
 const MANEUVER_HINT_DISTANCE_M = 500;
+const MANEUVER_MAX_GPS_ACCURACY_M = 120;
 let _lastRouteDing = -Infinity;
 const _CIRCLE_ENTRIES = new Set(['roundabout', 'rotary', 'roundabout turn']);
 const _CIRCLE_EXITS = new Set(['exit roundabout', 'exit rotary']);
@@ -1083,7 +1084,7 @@ function _measureDrivingLine(line, fix) {
   const eastScale = 111320 * Math.cos(fix.latitude * radians);
   let length = 0;
   let progress = null;
-  let closest = Math.max(25, fix.accuracy);
+  let closest = Math.min(55, Math.max(25, fix.accuracy));
   for (let j = 1; j < line.length; j++) {
     const [lat, lng] = line[j - 1];
     const dx = (line[j][1] - lng) * eastScale;
@@ -1151,7 +1152,14 @@ function _checkRouteHints(fix) {
   if (!_drivingMode || !isAdmin() || !day || day.walkMode || day.archived) return;
   const id = currentDay;
   const index = day.stops.findIndex(stop => !stop.arrA);
-  const leg = Number.isFinite(fix.accuracy) && fix.accuracy <= 50 && _findDrivingHintLeg(day, index, fix);
+  // A stationary device may keep reporting the heading from its previous movement.
+  const {latitude, longitude, accuracy, speed, heading} = fix;
+  const maneuverFix = {
+    latitude, longitude, accuracy,
+    heading: Number.isFinite(speed) && speed < 1.5 ? undefined : heading,
+  };
+  const leg = Number.isFinite(fix.accuracy) && fix.accuracy <= MANEUVER_MAX_GPS_ACCURACY_M &&
+    _findDrivingHintLeg(day, index, maneuverFix);
   let maneuver;
   if (leg) {
     const {key, from, to} = leg;
@@ -1165,7 +1173,7 @@ function _checkRouteHints(fix) {
         .catch(() => {})
         .finally(() => _pendingDrivingLegs.set(key, Date.now() + 120000));
     }
-    maneuver = _nextDrivingManeuver(drivingSteps.get(key) || [], fix);
+    maneuver = _nextDrivingManeuver(drivingSteps.get(key) || [], maneuverFix);
   }
   if (maneuver) {
     const maneuverId = id + ':' + leg.key + ':' + maneuver.index;
