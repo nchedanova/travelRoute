@@ -869,7 +869,7 @@ function doEditStart() {
   DAYS_DATA[day].departP = document.getElementById('edit-start-departP').value.trim();
   closeEditStart();
   const nameEl = document.getElementById('d' + day + '-start-name');
-  if (nameEl) nameEl.innerHTML = pointIconMarkup(icon) + ' ' + _escHtml(name);
+  if (nameEl) nameEl.innerHTML = startPointNameMarkup({icon:icon,name:name});
   const planTimeEl = document.querySelector(`#day${day} .depart-row .time-pair:first-child .time-val`);
   if (planTimeEl) planTimeEl.textContent = DAYS_DATA[day].departP || '—';
   updateDayRoute(day);
@@ -878,7 +878,7 @@ function doEditStart() {
   // Если у точки arrP пустой (не задан) — autoFillTimes заполнит его с нуля.
   const oldMins = typeof timeToMins === 'function' ? timeToMins(oldDepartP) : null;
   const newMins = typeof timeToMins === 'function' ? timeToMins(DAYS_DATA[day].departP) : null;
-  if (oldMins !== null && newMins !== null && oldMins !== newMins) {
+  if (!DAYS_DATA[day].walkReview && oldMins !== null && newMins !== null && oldMins !== newMins) {
     const delta = newMins - oldMins;
     DAYS_DATA[day].stops.forEach(function(s) {
       if (s.arrP) s.arrP = shiftTime(s.arrP, delta);
@@ -977,6 +977,7 @@ var _DAY_ICONS = ['🏠','🏡','🏕️','⛺','🌴','🏖️','🏔️','⛰�
                   '✈️','🚂','🚗','🚌','🛳️','🚀','🎡','🎪','🏛️','🌿','🎯'];
 
 function editDayIcon(d, triggerEl) {
+  if (!isAdmin()) return;
   document.removeEventListener('click', _dayIconOutside);
   var existing = document.getElementById('dayIconPickerInline');
   if (existing) {
@@ -988,35 +989,58 @@ function editDayIcon(d, triggerEl) {
   var picker = document.createElement('div');
   picker.id = 'dayIconPickerInline';
   picker.className = 'day-icon-picker';
+  picker.setAttribute('role','dialog');
+  picker.setAttribute('aria-label','Иконка дня');
   picker.dataset.forDay = String(d);
 
   var btns = _DAY_ICONS.map(function(ic) {
     return '<button class="icon-pick-stop-btn' + (ic === current ? ' ip-sel' : '') +
-           '" onmousedown="event.preventDefault()" onclick="selectDayIcon(' + d + ',\'' + ic + '\')">' + ic + '</button>';
+           '" aria-label="Иконка дня ' + ic + '" aria-pressed="' + (ic === current) + '" onmousedown="event.preventDefault()" onclick="selectDayIcon(' + d + ',\'' + ic + '\')">' + ic + '</button>';
   }).join('');
 
   var customRow =
-    '<div class="dip-custom-row">' +
-      '<input id="dipCustom" class="edit-input" type="text" maxlength="4" placeholder="Свой…"' +
-      ' style="width:60px;height:28px;font-size:14px;font-family:var(--font-ui);text-align:center;padding:0 6px"' +
+    '<div class="dip-custom-row"><label class="ip-search-field">' +
+      dayActionIcon('search') + '<input id="dipCustom" type="text" maxlength="40" placeholder="Эмодзи или поиск" aria-label="Поиск иконки дня или свой эмодзи" autocomplete="off"' +
       ' onmousedown="event.stopPropagation()"' +
-      ' oninput="if(this.value.trim())selectDayIcon(' + d + ',this.value.trim())">' +
-      '<button class="dip-clear-btn" onmousedown="event.preventDefault()" onclick="selectDayIcon(' + d + ',\'\')">Убрать иконку</button>' +
+      ' oninput="_dayIconInput(this,' + d + ')"></label>' +
+      '<button class="dip-clear-btn" onmousedown="event.preventDefault()" onclick="selectDayIcon(' + d + ',\'\')">Без иконки</button>' +
     '</div>';
 
-  picker.innerHTML = btns + customRow;
+  picker.innerHTML = '<div class="dip-heading"><span>Иконка дня</span><button class="dip-close" aria-label="Закрыть выбор иконки дня" onclick="closeDayIconPicker()">' + dayActionIcon('close') + '</button></div>' +
+    '<div class="dip-icons" id="dipIcons">' + btns + '</div>' + customRow;
+  picker.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') { e.preventDefault(); closeDayIconPicker(); }
+  });
 
   document.body.appendChild(picker);
   var tr = triggerEl.getBoundingClientRect();
   var pw = picker.offsetWidth || 220;
-  var top  = tr.bottom + window.scrollY + 4;
-  var left = Math.max(4, Math.min(tr.left + window.scrollX, window.innerWidth - pw - 4));
+  var top  = Math.max(8, Math.min(tr.bottom + 6, window.innerHeight - picker.offsetHeight - 8));
+  var left = Math.max(8, Math.min(tr.left, window.innerWidth - pw - 8));
   picker.style.top  = top  + 'px';
   picker.style.left = left + 'px';
 
   setTimeout(function() {
     document.addEventListener('click', _dayIconOutside);
   }, 0);
+}
+
+function closeDayIconPicker() {
+  document.getElementById('dayIconPickerInline')?.remove();
+  document.removeEventListener('click', _dayIconOutside);
+}
+function _dayIconInput(input, day) {
+  var value = input.value.trim();
+  if (/\p{Emoji}/u.test(value) && !/^[a-zA-Z\u0400-\u04FF0-9\s]+$/.test(value)) {
+    selectDayIcon(day, value); return;
+  }
+  var results = value ? searchEmoji(value) : _DAY_ICONS;
+  var grid = document.getElementById('dipIcons');
+  if (!grid) return;
+  grid.innerHTML = results.map(function(icon) {
+    return '<button class="icon-pick-stop-btn" aria-label="Иконка дня ' + icon + '" onmousedown="event.preventDefault()" onclick="selectDayIcon(' + day + ',\'' + icon + '\')">' + icon + '</button>';
+  }).join('') || '<span class="ip-search-empty">Нет совпадений</span>';
+  grid.scrollTop = 0;
 }
 
 function _dayIconOutside(e) {
@@ -1415,9 +1439,9 @@ function setDayVisibility(day, visible) {
   showToast(visible ? '👁 День виден читателю' : '🔒 День скрыт от читателя');
 }
 
-function addNewDay() {
+function addNewDay(mode) {
   const keys     = dayKeys();
-  const newD     = Math.max(...keys) + 1;
+  const newD     = Math.max(0, ...keys) + 1;
   const activeKeys = keys.filter(function(k) { return !DAYS_DATA[k].archived; });
   const colorIdx = activeKeys.length % DAY_COLORS.length;
 
@@ -1426,7 +1450,8 @@ function addNewDay() {
     dateISO: '',
     date: '',
     departP: '', departA: '',
-    start: { lat:0, lng:0, name:'Старт', icon:'🚗' },
+    walkMode: mode === 'walk',
+    start: { lat:0, lng:0, name:'Старт', icon:mode === 'walk' ? '🚶' : '🚗' },
     stops: []
   };
   layers[newD]        = L.layerGroup();
@@ -1438,6 +1463,7 @@ function addNewDay() {
   switchDay(newD);
   saveData();
   showToast('📅 День добавлен');
+  return newD;
 }
 
 
@@ -1740,7 +1766,7 @@ function editDepartTime(day, el) {
     // Cascade time shift to stops only if both old and new times are valid and differ
     const oldMins = timeToMins(current);
     const newMins = timeToMins(val);
-    if (oldMins !== null && newMins !== null && oldMins !== newMins) {
+    if (!DAYS_DATA[day].walkReview && oldMins !== null && newMins !== null && oldMins !== newMins) {
       const delta = newMins - oldMins;
       snapshotForUndo('Пересчёт времён · День ' + day);
       DAYS_DATA[day].stops.forEach(s => {
@@ -3057,12 +3083,24 @@ document.addEventListener('click', e => {
 });
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
-var APP_VERSION = '2.9.1';
+var APP_VERSION = '3.0.0';
 var APP_BUILD   = 1;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 1;
 
 var APP_CHANGELOG = [
+  { ver: '3.0.0 build 1', date: '07.11.2026', items: [
+    '🚶 Гуляйте налегке. В меню «+ день» выберите «Запись прогулки» и нажмите ▶. Журнал нарисует пройденный путь по GPS и сам поставит точки каждые 500 м. Во время записи держите журнал открытым на включённом экране.',
+    '📍 Нашли место для привала? Нажмите «+ Остановка». Журнал запомнит время прибытия, а когда продолжите запись, отметит отправление. Фото и заметки можно добавить в карточке остановки.',
+    '✨ Искать эмодзи теперь проще. Попробуйте «геометка», «деревья» или «заправка» в выборе иконки. Поиск с русскими названиями и синонимами работает и в чате.',
+    '💬 Имя в чате теперь можно изменить и сразу сохранить галочкой или отменить крестиком. В заметках категории подписаны компактнее, а настройка «Фото офлайн» стала заметнее.'
+  ], spectatorItems: [
+    '🚶 У опубликованных прогулок на карте появилась линия пройденного пути. По отметкам каждые 500 м видно, как шла прогулка, а в карточках точек можно посмотреть время и открытые заметки с фото.'
+  ], demoItems: [
+    '🚶 Попробуйте записать свою прогулку. Откройте «+ день» → «Запись прогулки», нажмите ▶ и разрешите геолокацию. На карте появится ваш путь, а каждые 500 м журнал сам добавит точку.',
+    '📍 На привале нажмите «+ Остановка», чтобы сохранить время прибытия. Добавьте фото или заметку в карточке, а затем продолжите запись.',
+    '✨ Подберите значок дня по слову «геометка» или «парк» и попробуйте поиск эмодзи в чате. Имя в чате можно сохранить галочкой или отменить правку крестиком.'
+  ]},
   { ver: '2.9.1 build 1', date: '06.11.2026', items: [
     'Обновлены кнопки, вкладки маршрута, заметок и чата, настройки и оформление: акцентный цвет используется для основных действий, остальные кнопки спокойнее.',
     'В оформлении доступны два варианта шрифтов: «По умолчанию» и «Unbounded + Onest». Выбор шрифта сохраняется отдельно от цветовой темы; оба варианта поддерживают кириллицу.',
@@ -3198,6 +3236,7 @@ var APP_CHANGELOG = [
 
 // Краткая история: сборки одной версии объединены, подробные записи выше сохранены.
 var APP_HISTORY_SUMMARIES = {
+  '3.0.0': 'GPS-запись прогулок, точки каждые 500 м, отметки остановок и поиск эмодзи по синонимам.',
   '2.8.0': 'Точки на карте: выбор и перетаскивание; поиск иконок. Автовремя и пересчёт остановок, подсказки перед остановкой, архив дней, реакции и фото к заметкам, категории и сворачивание заметок.',
   '2.7.0': 'Несколько заметок к точке; публичные и скрытые заметки; скрытие дней от читателей.',
   '2.6.0': 'Улучшены первый запуск и импорт нового дня; добавлен пешеходный демомаршрут.',
@@ -3233,7 +3272,10 @@ function showChangelog() {
   var entries = APP_CHANGELOG.slice(0, CHANGELOG_MAX_SHOW);
   entries.forEach(function(entry) {
     html += '<div class="changelog-ver">v' + entry.ver + ' — ' + entry.date + '</div>';
-    entry.items.forEach(function(item) {
+    var items = typeof isChatEnabled === 'function' && !isChatEnabled()
+      ? entry.spectatorItems
+      : typeof isDemoMode === 'function' && isDemoMode() ? entry.demoItems : entry.items;
+    (items || entry.items).forEach(function(item) {
       html += '<div class="changelog-item">' + item + '</div>';
     });
   });
@@ -3250,16 +3292,16 @@ function showChangelog() {
 function closeChangelog() {
   document.getElementById('changelogModal').classList.remove('show');
   try {
-    if (!isChatEnabled()) localStorage.setItem('changelog_spectator_seen', '1');
+    if (!isChatEnabled()) localStorage.setItem('changelog_spectator_seen', APP_VERSION);
     else localStorage.setItem('changelog_seen', APP_VERSION);
   } catch(e) {}
 }
 
-// Админ и демо: при новой версии. Зритель без чата: один раз при первом входе.
+// Каждая роль видит новое описание один раз на версию.
 function shouldShowChangelogOnLoad() {
   if (typeof LOCAL_PREVIEW !== 'undefined' && LOCAL_PREVIEW) return false;
   try {
-    if (!isChatEnabled()) return !localStorage.getItem('changelog_spectator_seen');
+    if (!isChatEnabled()) return localStorage.getItem('changelog_spectator_seen') !== APP_VERSION;
     return isAdmin() && localStorage.getItem('changelog_seen') !== APP_VERSION;
   } catch(e) { return false; }
 }

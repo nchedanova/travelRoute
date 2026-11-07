@@ -382,17 +382,24 @@ function refreshPill() {
 }
 
 // ── DRAW DAY ──────────────────────────────────────────────────────────────────
+const walkTrackLines = {};
+
+function refreshWalkTrackLine(day) {
+  walkTrackLines[day]?.setLatLngs(DAYS_DATA[day].walkReview.segments.filter(segment => segment.length > 1));
+}
+
 function drawDay(d) {
   const data = DAYS_DATA[d];
   if (!data) return;
   const color = data.color;
   const group = layers[d];
   if (!group) return;
+  const reviewTrack = data.walkReview;
 
   // Стартовый маркер — иконка зависит от режима дня (авто/пешком)
   const startEmoji = data.walkMode ? '🚶' : (data.start.icon || '🚗');
   const startM = L.marker([data.start.lat, data.start.lng], { icon: makeStartIcon(startEmoji, color) });
-  group.addLayer(startM);
+  if (!reviewTrack || data.start.lat || data.start.lng) group.addLayer(startM);
 
   // Сегменты маршрута по дорогам (OSRM)
   const allPoints = [
@@ -401,7 +408,16 @@ function drawDay(d) {
   ];
   if (!segmentLayers[d]) segmentLayers[d] = [];
 
-  for (let i = 0; i < allPoints.length - 1; i++) {
+  if (reviewTrack && reviewTrack.phase !== 'ready') {
+    const tracks = reviewTrack.segments ?? [
+      allPoints.filter(p => p.lat || p.lng).map(p => [p.lat, p.lng])
+    ];
+    const line = L.polyline(tracks.filter(segment => segment.length > 1), {color, weight: 4, interactive: false});
+    group.addLayer(line);
+    walkTrackLines[d] = line;
+  }
+
+  for (let i = 0; !reviewTrack && i < allPoints.length - 1; i++) {
     const from = allPoints[i], to = allPoints[i + 1];
     const isWalk = !!data.walkMode;
     const profile = isWalk ? 'foot' : 'driving';

@@ -23,13 +23,13 @@ test('type defaults use distinct graphic icons; explicitly chosen emoji remain e
     assert.equal(ctx.pointIconText('type:'+type),emoji);
     assert.match(ctx.pointIconMarkup('type:'+type),/<svg/);
   }
-  assert.equal(colors.size,6);
+  assert.equal(colors.size,5); // Fuel and the default pin share a muted red.
 });
 test('category palettes keep matching graphics and quick emoji, with an expanded walking palette',()=>{
   const {ctx,types}=setup();
   for(const type of Object.keys(types)){
     const choices=ctx.pointIconChoices(type);
-    assert.equal(choices.filter(ic=>ic.startsWith('emoji:')).length,type === 'Другое' ? 17 : 6);
+    assert.equal(choices.filter(ic=>ic.startsWith('emoji:')).length,type === 'Другое' ? 18 : 6);
     assert.equal(choices.filter(ic=>ic.startsWith('type:')).length,1);
     assert.equal(choices[0],'type:'+type);
     for(const icon of choices.filter(ic=>ic.startsWith('graphic:'))){
@@ -43,7 +43,7 @@ test('category palettes keep matching graphics and quick emoji, with an expanded
     assert.ok(other.includes('graphic:'+key));
     assert.match(ctx.makeIcon('graphic:'+key,'#f5a623').html,/stop-type-glyph/);
   }
-  for(const emoji of ['🌳','🌲','🍃','🌿','🍀','🌊']) assert.ok(other.includes('emoji:'+emoji));
+  for(const emoji of ['📍','🌳','🌲','🍃','🌿','🍀','🌊']) assert.ok(other.includes('emoji:'+emoji));
   assert.doesNotMatch(ctx.pointIconMarkup('type:Жильё'),/stroke="#/);
   assert.doesNotMatch(ctx.pointIconMarkup('graphic:cottage'),/stroke="#/);
 });

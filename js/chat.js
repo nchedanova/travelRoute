@@ -339,6 +339,7 @@ function getChatName()  { return localStorage.getItem('travel_chat_name') || '';
 function getChatRole()  { return (typeof isAdmin === 'function' && isAdmin()) ? 'admin' : 'viewer'; }
 function getRoleBadge() { return (typeof isAdmin === 'function' && isAdmin()) ? '✏' : '👁'; }
 function isGoogleUser() {
+  if (typeof firebase === 'undefined' || !firebase.apps?.length) return false;
   var u = firebase.auth && firebase.auth().currentUser;
   return u && u.providerData && u.providerData.some(function(p) { return p.providerId === 'google.com'; });
 }
@@ -1345,10 +1346,11 @@ function onChatTabOpen() {
 }
 function onChatTabClose() { _chatVisible = false; clearInterval(_presenceTimer); }
 
+var _chatNameEditActive = false;
 function renderChatHeader() {
   const el = document.getElementById('chatNameDisplay');
   var _isGoogle = isGoogleUser();
-  if (el) {
+  if (el && !_chatNameEditActive) {
     var gBadge = _isGoogle ? ' <span class="google-badge" title="Google">G</span>' : '';
     el.innerHTML = getChatName() ? _esc(getChatName()) + ' ' + gBadge : '';
   }
@@ -1362,6 +1364,7 @@ function renderChatHeader() {
 function changeChatName() {
   var el = document.getElementById('chatNameDisplay');
   if (!el) return;
+  if (_chatNameEditActive) { el.querySelector('input')?.focus(); return; }
   var current = getChatName();
   var inp = document.createElement('input');
   inp.type = 'text';
@@ -1369,25 +1372,51 @@ function changeChatName() {
   inp.value = current;
   inp.maxLength = 24;
   inp.className = 'chat-name-edit';
-  inp.style.cssText = 'background:var(--surface2);border:1px solid var(--amber);border-radius:4px;color:var(--text);font-family:inherit;font-size:12px;padding:2px 6px;width:100px;outline:none;';
+  inp.setAttribute('aria-label','Имя в чате');
+  inp.placeholder = 'Ваше имя';
+  _chatNameEditActive = true;
+  var header = el.closest('.chat-header-bar');
+  header?.classList.add('editing-name');
   el.innerHTML = '';
-  el.appendChild(inp);
-  inp.focus();
-  inp.select();
-  var commit = function() {
-    var name = inp.value.trim() || current;
-    localStorage.setItem('travel_chat_name', name);
-    // Sync to Firebase for cross-device (Google users)
-    if (isGoogleUser() && _chatDb && window._firebaseUid) {
-      _chatDb.ref('users/' + window._firebaseUid + '/name').set(name);
+  var editor = document.createElement('span');
+  editor.className = 'chat-name-editor';
+  editor.appendChild(inp);
+  el.appendChild(editor);
+  var finish = function(save) {
+    if (!_chatNameEditActive) return;
+    var name = inp.value.trim();
+    if (save && !name) {
+      inp.setAttribute('aria-invalid','true');
+      inp.focus(); return;
+    }
+    _chatNameEditActive = false;
+    header?.classList.remove('editing-name');
+    if (save && name !== current) {
+      localStorage.setItem('travel_chat_name', name);
+      if (isGoogleUser() && _chatDb && window._firebaseUid) {
+        _chatDb.ref('users/' + window._firebaseUid + '/name').set(name);
+      }
+      _writePresence();
     }
     renderChatHeader();
-    _writePresence();
   };
-  inp.addEventListener('blur', commit);
+  [['Сохранить имя','check',true],['Отменить изменение имени','close',false]].forEach(function(action) {
+    var button = document.createElement('button');
+    button.className = 'chat-name-edit-action' + (action[2] ? ' chat-name-save' : '');
+    button.type = 'button';
+    button.title = action[0];
+    button.setAttribute('aria-label',action[0]);
+    button.innerHTML = dayActionIcon(action[1]);
+    button.onmousedown = function(event) { event.preventDefault(); };
+    button.onclick = function() { finish(action[2]); };
+    editor.appendChild(button);
+  });
+  inp.focus();
+  inp.select();
   inp.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') inp.blur();
-    if (e.key === 'Escape') { inp.value = current; inp.blur(); }
+    if (e.isComposing) return;
+    if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+    if (e.key === 'Escape') { e.preventDefault(); finish(false); }
   });
 }
 

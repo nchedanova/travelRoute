@@ -17,7 +17,7 @@ const ICON_SETS = {
   'Магазин':  ['🛒','🏪','🛍️','🏬','🧴','💊','🥑','🍞','🥛','🧃','🧹','🔧'],
   'Отель':    ['🛎️','🏨','🛏️','🔑','🛁','🌙','⭐','🌟','🏩','🏡'],
   'Жильё':    ['🏠','🏡','🏘️','🛖','⛺','🔑','🛋️','🌿','🏗️','🏚️'],
-  'Другое':   ['🌳','🌲','🍃','🌿','🍀','🍂','🌊','🏞️','🌸','🌼','🦆','🦢','🏛️','🏊','🏖️','⛰️','🎤'],
+  'Другое':   ['📍','🌳','🌲','🍃','🌿','🍀','🍂','🌊','🏞️','🌸','🌼','🦆','🦢','🏛️','🏊','🏖️','⛰️','🎤'],
 };
 
 // Минуты стоянки для автозаполнения план.отправления (depP = arrP + offset)
@@ -29,6 +29,7 @@ const DEP_OFFSETS = { 'Заправка': 20, 'Кафе': 60 };
 const LOCAL_PREVIEW = /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname) &&
   ['admin', 'reader', 'spectator'].includes(new URLSearchParams(window.location.search).get('preview'));
 const PREVIEW_ROLE = LOCAL_PREVIEW ? new URLSearchParams(window.location.search).get('preview') : '';
+const LOCAL_WALK_REVIEW = LOCAL_PREVIEW && new URLSearchParams(window.location.search).get('walk') === '1';
 function resolveSpectatorMode() {
   var params = new URLSearchParams(window.location.search);
   if (LOCAL_PREVIEW) return PREVIEW_ROLE === 'spectator';
@@ -167,20 +168,20 @@ const EMOJI_DICT = [
   ['🧹','уборка cleaning sweep'],
   ['🚧','ремонт дорог roadwork construction'],
   // Еда и кафе
-  ['🍜','лапша рамен noodles ramen кафе'],
+  ['🍜','лапша рамен noodles ramen кафе еда'],
   ['🍝','паста спагетти pasta'],
   ['🥞','блины pancake завтрак breakfast'],
   ['🧇','вафли waffles'],
-  ['🥐','круассан выпечка croissant'],
+  ['🥐','круассан выпечка croissant еда'],
   ['🍕','пицца pizza'],
-  ['🍔','бургер burger'],
+  ['🍔','бургер burger еда'],
   ['🌮','тако мексика taco'],
   ['🌯','шаурма kebab wrap'],
   ['🍱','ланч бэнто lunch bento'],
   ['🍣','суши sushi'],
   ['🥩','мясо стейк meat steak'],
   ['🍗','курица chicken'],
-  ['🥗','салат salad'],
+  ['🥗','салат salad еда'],
   ['🍲','суп soup pot'],
   ['🥘','рагу жаркое stew'],
   ['🥓','бекон bacon шашлык'],
@@ -188,7 +189,7 @@ const EMOJI_DICT = [
   ['🧁','кексы cupcake выпечка'],
   ['🎂','торт cake'],
   ['🍩','пончик donut'],
-  ['☕','кофе coffee'],
+  ['☕','кофе кофейня кафе coffee'],
   ['🍵','чай tea green'],
   ['🥤','напиток drink сок juice'],
   ['🍺','пиво beer'],
@@ -228,6 +229,10 @@ const EMOJI_DICT = [
   ['💐','цветы flowers'],
   ['🍄','гриб mushroom лес'],
   ['🌊','море волна пляж beach ocean wave'],
+  ['🍂','листья осень листопад autumn leaves'],
+  ['🏞️','набережная река прогулка пейзаж river promenade'],
+  ['🏖️','пляж море beach sea'],
+  ['⛰️','горы вершина mountain'],
   ['🌋','вулкан гора volcano mountain'],
   ['⛺','кемпинг лагерь camping природа'],
   // Спорт и активности
@@ -240,6 +245,7 @@ const EMOJI_DICT = [
   ['🏊','бассейн плавание swimming'],
   ['⛳','гольф golf'],
   // Культура и достопримечательности
+  ['🏛️','музей архитектура история museum'],
   ['🏯','замок castle крепость'],
   ['🗼','башня tower'],
   ['🗽','статуя monument'],
@@ -253,6 +259,7 @@ const EMOJI_DICT = [
   ['🎬','кино cinema film'],
   ['🎤','концерт concert'],
   // Сервисы и инфраструктура
+  ['🚻','туалет уборная restroom wc'],
   ['🏥','больница hospital'],
   ['🏦','банк bank'],
   ['📮','почта post office letter'],
@@ -265,7 +272,7 @@ const EMOJI_DICT = [
   // Навигация и путешествия
   ['🌍','карта map маршрут route глобус'],
   ['🌐','маршрут route карта map глобус'],
-  ['📍','место точка pin location'],
+  ['📍','пин метка геометка маркер место точка pin location'],
   ['📸','фото photo camera'],
   ['🔭','обзорная площадка telescope viewpoint'],
   ['🧳','чемодан luggage travel'],
@@ -280,17 +287,79 @@ const EMOJI_DICT = [
   ['❄️','снег snow winter зима'],
   ['🌈','радуга rainbow'],
 ];
+// Small offline alias groups; no network, persistent search history or route storage.
+const EMOJI_SEARCH_GROUPS = [
+  'дерево деревья деревьями деревце деревцем деревцу деревца деревцо tree trees',
+  'листья лист листик листики листиков листочком листочек листочки листва leaves leaf',
+  'трава травка травушка зелень зеленый зеленая зелёный зелёная растительность',
+  'цветы цветок цветочек цветочки цветочков flowers flower',
+  'парк парки парке парку парков сквер скверик park parks',
+  'лес леса лесу лесной лесок forest woods',
+  'прогулка прогулки прогулке гулять погулять прогулочный walk walking',
+  'набережная набережной набережную набережные promenade embankment',
+  'море морю моря морской морское sea ocean',
+  'пляж пляже пляжи пляжный beach beaches',
+  'река реке рекой речка речке речной river rivers',
+  'музей музеи музее музея museum museums',
+  'гора горы горе горный mountain mountains',
+  'бассейн бассейны бассейне бассейна pool pools',
+  'плавание плавать поплавать купание купаться swimming swim',
+  'кафе кафешка кафешки кафетерий cafe café',
+  'еда поесть покушать перекус перекусить food meal',
+  'ресторан рестораны ресторане restaurant restaurants',
+  'кофе кофейня кофейни кофейне coffee',
+  'выпечка пекарня пекарни булочная bakery pastry',
+  'завтрак позавтракать breakfast',
+  'заправка заправки заправке заправиться азс fuel petrol',
+  'зарядка зарядки зарядке зарядить charging',
+  'машина машины машинка машинки машиной автомобиль авто car cars',
+  'магазин магазины магазине магазины магазинчик shop store shops',
+  'покупки купить закупиться shopping',
+  'отель отели отеле гостиница гостиницы hotel hotels',
+  'дом дома домик домики домой house houses home',
+  'палатка палатки палатке кемпинг camping tent',
+  'концерт концерты концерте выступление concert',
+  'аптека аптеки аптеке лекарства pharmacy',
+  'туалет туалеты туалете уборная wc restroom',
+  'фото фотография фотографии фотка фотки photo photos'
+];
+function _emojiSearchTokens(text) {
+  return String(text || '').toLowerCase().replace(/ё/g,'е').match(/[a-zа-я0-9]+/g) || [];
+}
+let _emojiSearchIndex = null;
+function _getEmojiSearchIndex() {
+  if (_emojiSearchIndex) return _emojiSearchIndex;
+  const aliases = new Map();
+  EMOJI_SEARCH_GROUPS.forEach((group, index) => {
+    _emojiSearchTokens(group).forEach(word => aliases.set(word, index));
+  });
+  // Same emoji may occur under several topics: merge tags and return it only once.
+  const entries = new Map();
+  EMOJI_DICT.forEach(([emoji, tags]) => {
+    if (!entries.has(emoji)) entries.set(emoji, new Set());
+    _emojiSearchTokens(tags).forEach(word => entries.get(emoji).add(word));
+  });
+  _emojiSearchIndex = {aliases, entries:Array.from(entries, ([emoji, words]) => ({emoji, words:Array.from(words)}))};
+  return _emojiSearchIndex;
+}
 function searchEmoji(query) {
-  if (!query || query.length < 2) return [];
-  var q = query.toLowerCase().trim();
-  var results = [];
-  for (var i = 0; i < EMOJI_DICT.length; i++) {
-    var words = EMOJI_DICT[i][1].split(' ');
-    var match = words.some(function(w) { return w === q || w.indexOf(q) === 0; });
-    if (match) {
-      results.push(EMOJI_DICT[i][0]);
-      if (results.length >= 8) break;
+  const terms = _emojiSearchTokens(query).filter(word => word.length >= 2).slice(0, 8);
+  if (!terms.length) return [];
+  const {aliases, entries} = _getEmojiSearchIndex();
+  return entries.map((entry, order) => {
+    let score = 0;
+    for (const term of terms) {
+      const group = aliases.get(term);
+      let best = 0;
+      for (const word of entry.words) {
+        if (word === term) best = Math.max(best, 100);
+        else if (group !== undefined && aliases.get(word) === group) best = Math.max(best, 85);
+        else if (word.startsWith(term)) best = Math.max(best, 60);
+      }
+      if (!best) return null;
+      score += best;
     }
-  }
-  return results;
+    return {emoji:entry.emoji, score, order};
+  }).filter(Boolean).sort((a,b) => b.score-a.score || a.order-b.order)
+    .slice(0,24).map(entry => entry.emoji);
 }

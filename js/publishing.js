@@ -78,13 +78,15 @@ function spectatorPayload(payload) {
 }
 
 function routeStorageKey() {
-  return typeof LOCAL_PREVIEW !== 'undefined' && LOCAL_PREVIEW ? 'travel_preview_v1' : 'travel_tracker_v3';
+  if (typeof LOCAL_PREVIEW === 'undefined' || !LOCAL_PREVIEW) return 'travel_tracker_v3';
+  return typeof LOCAL_WALK_REVIEW !== 'undefined' && LOCAL_WALK_REVIEW ? 'travel_walk_review_v1' : 'travel_preview_v1';
 }
 
 function initializePublicationView() {
   var raw = localStorage.getItem(routeStorageKey());
   if (typeof LOCAL_PREVIEW !== 'undefined' && LOCAL_PREVIEW && !raw) {
-    raw = JSON.stringify({ daysData: DAYS_DATA, actuals: {}, spectatorPublications: {} });
+    raw = (routeStorageKey() === 'travel_walk_review_v1' && localStorage.getItem('travel_preview_v1'))
+      || JSON.stringify({ daysData: DAYS_DATA, actuals: {}, spectatorPublications: {} });
     localStorage.setItem(routeStorageKey(), raw);
   }
   if (raw) {

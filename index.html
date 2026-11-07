@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&family=Onest:wght@400;500;600;700&family=Unbounded:wght@400;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=2.9.1-1">
+<link rel="stylesheet" href="css/style.css?v=3.0.0-1">
 <script>
 (function(){
   var t=localStorage.getItem('travel_theme');
@@ -69,10 +69,10 @@
         <span class="notes-section-label">Фильтр</span>
         <div class="notes-filters">
           <button class="notes-filter-btn active" data-type="all" onclick="setNotesFilter('all')">Все</button>
-          <button class="notes-filter-btn" data-type="buy" onclick="setNotesFilter('buy')" aria-label="Купить" title="Купить"><span data-ui-icon="cart"></span></button>
-          <button class="notes-filter-btn" data-type="take" onclick="setNotesFilter('take')" aria-label="Взять" title="Взять"><span data-ui-icon="box"></span></button>
-          <button class="notes-filter-btn" data-type="todo" onclick="setNotesFilter('todo')" aria-label="Сделать" title="Сделать"><span data-ui-icon="check"></span></button>
-          <button class="notes-filter-btn" data-type="other" onclick="setNotesFilter('other')" aria-label="Другое" title="Другое"><span data-ui-icon="note"></span></button>
+          <button class="notes-filter-btn" data-type="buy" onclick="setNotesFilter('buy')"><span data-ui-icon="cart"></span><span>Купить</span></button>
+          <button class="notes-filter-btn" data-type="take" onclick="setNotesFilter('take')"><span data-ui-icon="box"></span><span>Взять</span></button>
+          <button class="notes-filter-btn" data-type="todo" onclick="setNotesFilter('todo')"><span data-ui-icon="check"></span><span>Сделать</span></button>
+          <button class="notes-filter-btn" data-type="other" onclick="setNotesFilter('other')"><span data-ui-icon="note"></span><span>Другое</span></button>
         </div>
       </div>
       <div id="notesList" class="notes-list"></div>
@@ -80,10 +80,10 @@
         <div class="notes-type-row-wrap">
           <span class="notes-section-label">Тип</span>
           <div class="note-type-row">
-            <button class="note-type-btn type-buy" data-type="buy" onclick="setNoteType('buy')" aria-label="Купить" title="Купить"><span data-ui-icon="cart"></span></button>
-            <button class="note-type-btn type-take" data-type="take" onclick="setNoteType('take')" aria-label="Взять" title="Взять"><span data-ui-icon="box"></span></button>
-            <button class="note-type-btn type-todo" data-type="todo" onclick="setNoteType('todo')" aria-label="Сделать" title="Сделать"><span data-ui-icon="check"></span></button>
-            <button class="note-type-btn type-other active" data-type="other" onclick="setNoteType('other')" aria-label="Другое" title="Другое"><span data-ui-icon="note"></span></button>
+            <button class="note-type-btn type-buy" data-type="buy" onclick="setNoteType('buy')"><span data-ui-icon="cart"></span><span>Купить</span></button>
+            <button class="note-type-btn type-take" data-type="take" onclick="setNoteType('take')"><span data-ui-icon="box"></span><span>Взять</span></button>
+            <button class="note-type-btn type-todo" data-type="todo" onclick="setNoteType('todo')"><span data-ui-icon="check"></span><span>Сделать</span></button>
+            <button class="note-type-btn type-other active" data-type="other" onclick="setNoteType('other')"><span data-ui-icon="note"></span><span>Другое</span></button>
           </div>
         </div>
         <div id="noteEditBanner" class="chat-edit-banner" style="display:none">
@@ -111,7 +111,7 @@
       <div class="chat-header-bar">
         <span id="chatNameDisplay" class="chat-name-display"></span>
         <button class="chat-change-name-btn" onclick="changeChatName()" title="Изменить имя" aria-label="Изменить имя"><span data-ui-icon="edit"></span></button>
-        <button class="chat-google-btn" id="chatGoogleBtn" onclick="signInWithGoogle()" title="Войти через Google" style="display:none">G</button>
+        <button class="chat-google-btn" id="chatGoogleBtn" onclick="signInWithGoogle()" title="Войти через Google" aria-label="Войти через Google" style="display:none"><span class="chat-google-mark" aria-hidden="true">G</span></button>
         <button class="chat-sound-btn" id="chatSoundBtn" onclick="toggleChatSound()" title="Звук уведомлений">🔔</button>
         <button class="chat-clear-btn" id="chatClearBtn" onclick="openClearChatConfirm()" title="Очистить чат" style="display:none" aria-label="Очистить чат"><span data-ui-icon="delete"></span></button>
       </div>
@@ -146,7 +146,7 @@
       <div class="chat-input-bar">
         <div class="pending-images-bar" id="chatPendingImages" style="display:none"></div>
         <div class="chat-input-row">
-          <button class="chat-emoji-btn" onclick="toggleEmojiPicker()" title="Смайлики" aria-label="Смайлики"><span data-ui-icon="smile"></span></button>
+          <button class="chat-emoji-btn chat-smile-btn" onclick="toggleEmojiPicker()" title="Смайлики" aria-label="Смайлики"><span aria-hidden="true">🙂</span></button>
           <button class="chat-emoji-btn" onclick="triggerPhotoUpload()" title="Фото" aria-label="Фото"><span data-ui-icon="camera"></span></button>
           <textarea id="chatInput" class="chat-textarea" placeholder="Сообщение…" rows="1"
             onkeydown="chatInputKeydown(event)" oninput="autoResizeChatInput(this)"></textarea>
@@ -596,20 +596,20 @@
 
 <!-- Scripts: порядок важен — config и data первыми -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="js/config.js?v=2.9.1-1"></script>
-<script src="js/data.js?v=2.9.1-1"></script>
-<script src="js/publishing.js?v=2.9.1-1"></script>
-<script src="js/storage.js?v=2.9.1-1"></script>
-<script src="js/offline.js?v=2.9.1-1"></script>
-<script src="js/map.js?v=2.9.1-1"></script>
-<script src="js/render.js?v=2.9.1-1"></script>
-<script src="js/app.js?v=2.9.1-1"></script>
-<script src="js/gps.js?v=2.9.1-1"></script>
-<script src="js/chat.js?v=2.9.1-1"></script>
-<script src="js/notes.js?v=2.9.1-1"></script>
-<script src="js/import.js?v=2.9.1-1"></script>
-<script src="js/gpx.js?v=2.9.1-1"></script>
-<script src="js/local-preview.js?v=2.9.1-1"></script>
+<script src="js/config.js?v=3.0.0-1"></script>
+<script src="js/data.js?v=3.0.0-1"></script>
+<script src="js/publishing.js?v=3.0.0-1"></script>
+<script src="js/storage.js?v=3.0.0-1"></script>
+<script src="js/offline.js?v=3.0.0-1"></script>
+<script src="js/map.js?v=3.0.0-1"></script>
+<script src="js/render.js?v=3.0.0-1"></script>
+<script src="js/app.js?v=3.0.0-1"></script>
+<script src="js/gps.js?v=3.0.0-1"></script>
+<script src="js/chat.js?v=3.0.0-1"></script>
+<script src="js/notes.js?v=3.0.0-1"></script>
+<script src="js/import.js?v=3.0.0-1"></script>
+<script src="js/gpx.js?v=3.0.0-1"></script>
+<script src="js/local-preview.js?v=3.0.0-1"></script>
 <script>
   window._swReg         = null;
   window._swReg = null;

@@ -117,7 +117,7 @@ function _fmtTime(totalMin) {
 function autoFillTimes(day) {
   if (!isAdmin()) return;
   var data = DAYS_DATA[day];
-  if (!data) return;
+  if (!data || data.walkReview) return;
   var profile = data.walkMode ? 'foot' : 'driving';
   var stops = data.stops;
   var changed = false;
@@ -181,7 +181,7 @@ function autoFillTimes(day) {
 function cascadeAutoFillFrom(day, stopId) {
   if (!isAdmin()) return;
   var data = DAYS_DATA[day];
-  if (!data) return;
+  if (!data || data.walkReview) return;
   var idx = data.stops.findIndex(function(x) { return x.id === stopId; });
   if (idx < 0) return;
   var changed = false;
@@ -466,7 +466,7 @@ function makeStopCard(s, day) {
           var _hasOfflineImgs = n.images && n.images.some(function(r){return r&&r.startsWith('data:');});
           var _offChk = (_hasOfflineImgs || (typeof _pendingStopOffline !== 'undefined' && _pendingStopOffline[s.id+'-'+i])) ? ' checked' : '';
           var _offHintStyle = _offChk ? '' : 'display:none';
-          html += '<label class="stop-note-offline-label" onmousedown="event.preventDefault()"><input type="checkbox" onchange="setStopNoteOffline(\''+s.id+'\','+i+',this.checked);var h=document.getElementById(\'offline-hint-'+s.id+'-'+i+'\');if(h)h.style.display=this.checked?\'block\':\'none\'"'+_offChk+'>Фото офлайн</label>';
+          html += '<label class="stop-note-offline-label"><input type="checkbox" role="switch" onchange="setStopNoteOffline(\''+s.id+'\','+i+',this.checked);var h=document.getElementById(\'offline-hint-'+s.id+'-'+i+'\');if(h)h.style.display=this.checked?\'block\':\'none\'"'+_offChk+'><span class="stop-note-offline-track" aria-hidden="true"></span><span>Фото офлайн</span></label>';
           html += '<div style="flex:1"></div>';
           html += '<button class="stop-note-del-btn" onmousedown="event.preventDefault()" onclick="deleteStopNote(\''+s.id+'\','+day+','+i+')" title="Удалить заметку" aria-label="Удалить заметку">'+dayActionIcon('delete')+'<span>Удалить</span></button>';
           html += '<button class="stop-note-save-btn" onmousedown="event.preventDefault()" onclick="commitStopNote(\''+s.id+'\','+day+','+i+')" title="Сохранить" aria-label="Сохранить заметку">'+dayActionIcon('check')+'</button>';
@@ -561,10 +561,12 @@ function dayActionIcon(name) {
     arrow:'<path d="M7 17 17 7M7 7h10v10"/>',
     copy:'<rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V3H3v13h5"/>',
     stop:'<rect x="5" y="5" width="14" height="14" rx="3"/>',
+    play:'<path d="m8 5 12 7-12 7Z"/>',
+    pause:'<path d="M9 5v14M15 5v14"/>',
     dots:'<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
     camera:'<path d="M8 6l2-3h4l2 3h5v15H3V6Z"/><circle cx="12" cy="13" r="4"/>',
     send:'<path d="m22 2-7 20-4-9-9-4ZM11 13 22 2"/>',
-    smile:'<circle cx="12" cy="12" r="9"/><path d="M8 14s1 3 4 3 4-3 4-3M8 8h.01M16 8h.01"/>',
+    smile:'<circle cx="12" cy="12" r="9"/><path d="M8 14a4.5 4.5 0 0 0 8 0"/><circle cx="8.5" cy="9" r="1" fill="currentColor" stroke="none"/><circle cx="15.5" cy="9" r="1" fill="currentColor" stroke="none"/>',
     bell:'<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>',
     mute:'<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18M10 21h4M3 3l18 18"/>',
     pin:'<path d="m16 3 5 5-4 2-2 5-6-6 5-2ZM9 15l-6 6"/>',
@@ -576,13 +578,14 @@ function dayActionIcon(name) {
     palette:'<path d="M12 3a9 9 0 1 0 0 18h1a2 2 0 0 0 1-4c-1-1 0-3 2-3h2a3 3 0 0 0 3-3 9 9 0 0 0-9-8Z"/><circle cx="7" cy="9" r=".8" fill="currentColor"/><circle cx="11" cy="6.5" r=".8" fill="currentColor"/><circle cx="16" cy="8" r=".8" fill="currentColor"/><circle cx="6.5" cy="14" r=".8" fill="currentColor"/>',
     settings:'<path fill="currentColor" fill-rule="evenodd" stroke="none" d="M19.43 12.98a7.2 7.2 0 0 0 0-1.96l2.11-1.65a.5.5 0 0 0 .12-.64l-2-3.46a.5.5 0 0 0-.6-.22l-2.49 1a7.8 7.8 0 0 0-1.68-.98l-.38-2.65a.5.5 0 0 0-.49-.42h-4a.5.5 0 0 0-.49.42l-.38 2.65a7.8 7.8 0 0 0-1.68.98l-2.49-1a.5.5 0 0 0-.6.22l-2 3.46a.5.5 0 0 0 .12.64l2.11 1.65a7.2 7.2 0 0 0 0 1.96l-2.11 1.65a.5.5 0 0 0-.12.64l2 3.46a.5.5 0 0 0 .6.22l2.49-1c.52.4 1.07.73 1.68.98l.38 2.65a.5.5 0 0 0 .49.42h4a.5.5 0 0 0 .49-.42l.38-2.65a7.8 7.8 0 0 0 1.68-.98l2.49 1a.5.5 0 0 0 .6-.22l2-3.46a.5.5 0 0 0-.12-.64ZM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z"/>',
     close:'<path d="m6 6 12 12M6 18 18 6"/>',
+    search:'<circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/>',
     fuel:'<path d="M4 21V4h10v17M2 21h14M4 11h10M17 5l4 4v8a2 2 0 0 1-4 0v-4h-3M18 6v4h3"/>',
     cafe:'<path d="M4 8h13v8a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4ZM17 9h2a3 3 0 0 1 0 6h-2M7 3v2M11 2v3M15 3v2"/>',
     hotel:'<path d="M4 22V3h16v19M9 22v-5h6v5M8 7h1M15 7h1M8 11h1M15 11h1M2 22h20"/>',
     home:'<path d="m3 11 9-8 9 8M5 10v11h14V10M9 21v-7h6v7"/>',
-    location:'<path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/>'
+    location:'<path d="M20.5 10c0 6-8.5 12-8.5 12S3.5 16 3.5 10a8.5 8.5 0 1 1 17 0Z"/><circle cx="12" cy="10" r="3"/>'
   };
-  return '<svg class="day-action-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + paths[name] + '</svg>';
+  return '<svg class="day-action-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="' + (name === 'car' || name === 'walk' ? '2.4' : '1.7') + '" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + paths[name] + '</svg>';
 }
 // Category-specific vector choices. Tokens remain stable in saved routes and publications.
 const POINT_GRAPHICS = {
@@ -654,9 +657,9 @@ function pointIconChoices(type) {
 }
 function stopTypeIcon(type) {
   const icons = {
-    'Заправка':['fuel','#ff9393'], 'Кафе':['cafe','#f4c16c'],
+    'Заправка':['fuel','#db8178'], 'Кафе':['cafe','#f4c16c'],
     'Магазин':['cart','#83c5f5'], 'Отель':['hotel','#c6acff'],
-    'Жильё':['home','#7edbb4'], 'Другое':['location','#e8a2b5']
+    'Жильё':['home','#7edbb4'], 'Другое':['location','#db8178']
   };
   const icon = icons[type] || icons['Другое'];
   const details = {
@@ -665,7 +668,7 @@ function stopTypeIcon(type) {
     cart:'<circle stroke="#edf2f7" cx="9" cy="21" r="1"/><circle stroke="#edf2f7" cx="18" cy="21" r="1"/>',
     hotel:'<path stroke="#edf2f7" d="M8 7h1M15 7h1M8 11h1M15 11h1"/>',
     home:'',
-    location:'<circle stroke="#edf2f7" cx="12" cy="10" r="3"/>'
+    location:''
   };
   return '<span class="stop-type-icon" style="color:' + icon[1] + '">' + dayActionIcon(icon[0]).replace('class="day-action-icon"','class="stop-type-glyph"').replace('</svg>',details[icon[0]] + '</svg>') + '</span>';
 }
@@ -687,6 +690,10 @@ document.addEventListener('DOMContentLoaded', function() {
     el.innerHTML = dayActionIcon(el.dataset.uiIcon);
   });
 });
+function startPointNameMarkup(start) {
+  const name = String(start.name || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return '<span class="depart-start-icon">' + pointIconMarkup(start.icon) + '</span><span class="depart-name-text">' + name + '</span>';
+}
 function renderDaySection(d) {
   if (typeof discardInlinePlanTimeForDay === 'function') discardInlinePlanTimeForDay(d);
   const data    = DAYS_DATA[d];
@@ -755,8 +762,8 @@ function renderDaySection(d) {
       <div class="depart-icon" id="d${d}-depart-icon">${dayActionIcon(data.walkMode ? 'walk' : 'car')}</div>
       <div class="depart-label" style="${isAdmin() ? 'cursor:pointer' : ''}"
            ${isAdmin() ? `onclick="openEditStart(${d})" title="Изменить точку старта"` : ''}>
-        <span id="d${d}-start-name">${pointIconMarkup(data.start.icon)} ${data.start.name}</span>
-        ${isAdmin() ? `<span style="font-size:9px;color:var(--border)">${dayActionIcon('edit')}</span>` : ''}
+        <span class="depart-start-name" id="d${d}-start-name">${startPointNameMarkup(data.start)}</span>
+        ${isAdmin() ? `<span class="depart-edit-icon">${dayActionIcon('edit')}</span>` : ''}
       </div>
       <span class="weather-badge" id="wb-d${d}-start" style="display:none" onclick="event.stopPropagation();toggleWeatherStrip('d${d}-start')"></span>
       <div class="depart-times">

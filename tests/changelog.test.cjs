@@ -11,7 +11,7 @@ function load(role) {
   const body = { innerHTML: '' };
   let shown = false;
   const ctx = vm.createContext({ console,
-    ...(role ? {isAdmin:()=>role === 'admin' || role === 'demo',isChatEnabled:()=>role !== 'spectator'} : {}),
+    ...(role ? {isAdmin:()=>role === 'admin' || role === 'demo',isChatEnabled:()=>role !== 'spectator',isDemoMode:()=>role === 'demo'} : {}),
     document: { getElementById(id) {
     return id === 'changelogBody' ? body : { classList: { add() { shown = true; } } };
   } } });
@@ -31,7 +31,8 @@ test('latest changes are visible and full compact history is expandable', () => 
   const { run, body, shown } = load();
   run('showChangelog()');
   assert.equal(shown(), true);
-  assert.match(body.innerHTML, /v2\.9\.1 build 1/);
+  assert.match(body.innerHTML, /v3\.0\.0 build 1/);
+  assert.match(body.innerHTML, /Гуляйте налегке/);
   assert.match(body.innerHTML, /Unbounded \+ Onest/);
   assert.match(body.innerHTML, /Поиск значков закреплён снизу/);
   assert.match(body.innerHTML, /<details class="changelog-history">/);
@@ -52,11 +53,16 @@ test('app and service worker use the same release and build', () => {
 });
 
 test('release notes are available to admin, demo and spectator but never the reader',()=>{
-  for(const role of ['admin','demo','spectator']){
+  for(const [role, headline] of [
+    ['admin', /Гуляйте налегке/],
+    ['demo', /Попробуйте записать свою прогулку/],
+    ['spectator', /У опубликованных прогулок/]
+  ]){
     const page = load(role);
     page.run('showChangelog()');
     assert.equal(page.shown(),true);
-    assert.match(page.body.innerHTML,/v2\.9\.1 build 1/);
+    assert.match(page.body.innerHTML,/v3\.0\.0 build 1/);
+    assert.match(page.body.innerHTML.split('<details')[0], headline);
   }
   const reader=load('reader');
   reader.run('showChangelog()');
@@ -64,8 +70,8 @@ test('release notes are available to admin, demo and spectator but never the rea
   assert.equal(reader.body.innerHTML,'');
 });
 
-test('spectator sees the changelog only on first visit, independently of demo/admin history', () => {
-  const values = new Map([['changelog_seen', '2.9.0']]);
+test('spectator sees each release once, independently of demo/admin history', () => {
+  const values = new Map([['changelog_seen', '2.9.0'], ['changelog_spectator_seen', '1']]);
   const ctx = vm.createContext({
     console, setTimeout() {},
     isChatEnabled: () => false, isAdmin: () => false,
@@ -76,8 +82,8 @@ test('spectator sees the changelog only on first visit, independently of demo/ad
   assert.equal(vm.runInContext('shouldShowChangelogOnLoad()', ctx), true);
   vm.runInContext('closeChangelog()', ctx);
   assert.equal(vm.runInContext('shouldShowChangelogOnLoad()', ctx), false);
-  vm.runInContext('APP_VERSION = "3.0.0"', ctx);
-  assert.equal(vm.runInContext('shouldShowChangelogOnLoad()', ctx), false);
+  vm.runInContext('APP_VERSION = "3.0.1"', ctx);
+  assert.equal(vm.runInContext('shouldShowChangelogOnLoad()', ctx), true);
   ctx.isChatEnabled = () => true;
   assert.equal(vm.runInContext('shouldShowChangelogOnLoad()', ctx), false);
   ctx.isAdmin = () => true;
