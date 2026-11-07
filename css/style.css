@@ -2276,13 +2276,6 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin
 input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 
 @media (max-width: 700px) {
-  /* Theme picker — full width от краёв, под шапкой */
-  .theme-picker-dropdown {
-    left: 10px !important;
-    right: 10px !important;
-    width: auto !important;
-    top: 54px !important;
-  }
   /* Реакции — одна строка со скроллом на мобилках */
   .msg-menu-emoji {
     font-size: 20px;
@@ -3716,7 +3709,7 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 .driving-btn:is(:hover,.active) .day-action-icon {stroke:var(--accent-text-on);}
 .driving-btn.active:hover {filter:brightness(1.08);}
 @media(max-width:700px){
-  .theme-picker-dropdown {left:auto !important;right:12px !important;top:auto !important;bottom:calc(12px + env(safe-area-inset-bottom, 0px));max-height:calc(100dvh - 24px - env(safe-area-inset-bottom, 0px));}
+  .theme-picker-dropdown {right:12px;max-height:calc(100dvh - var(--appearance-top, 50px) - 12px - env(safe-area-inset-bottom, 0px));}
   .appearance-section summary {min-height:44px;}
   .appearance-close {width:40px;height:40px;}
   .theme-picker-dropdown .theme-option {min-height:46px;padding:7px 8px;}

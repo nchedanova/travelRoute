@@ -1040,6 +1040,45 @@ function _routePlaceType(stop) {
   return null;
 }
 
+function* _upcomingRoadStops(day, index, fix) {
+  if (index < 0) return;
+  const radians = Math.PI / 180;
+  const eastScale = 111320 * Math.cos(fix.latitude * radians);
+  let remaining = 0;
+  for (let i = index; i < day.stops.length; i++) {
+    const from = i > 0 ? day.stops[i - 1] : day.start;
+    const stop = day.stops[i];
+    const line = _routeCache[`driving|${from.lat},${from.lng}|${stop.lat},${stop.lng}`];
+    if (!line || line.length < 2) return;
+    let length = 0;
+    let progress = null;
+    let closest = Math.max(25, fix.accuracy);
+    for (let j = 1; j < line.length; j++) {
+      const [lat, lng] = line[j - 1];
+      const dx = (line[j][1] - lng) * eastScale;
+      const dy = (line[j][0] - lat) * 111320;
+      const segment = Math.hypot(dx, dy);
+      if (!segment) continue;
+      if (i === index) {
+        const x = (fix.longitude - lng) * eastScale;
+        const y = (fix.latitude - lat) * 111320;
+        const fraction = Math.max(0, Math.min(1, (x * dx + y * dy) / segment ** 2));
+        const offset = Math.hypot(x - fraction * dx, y - fraction * dy);
+        const bearing = Math.atan2(dx, dy);
+        if (offset < closest && (!Number.isFinite(fix.heading) || Math.cos(fix.heading * radians - bearing) > 0)) {
+          closest = offset;
+          progress = length + fraction * segment;
+        }
+      }
+      length += segment;
+    }
+    if (i === index && progress === null) return;
+    remaining += length - (progress ?? 0);
+    if (remaining > 1000) return;
+    yield {stop, distance: remaining / 1000};
+  }
+}
+
 function _checkRouteHints(fix) {
   const day = DAYS_DATA[currentDay];
   if (!_drivingMode || !isAdmin() || !day || day.walkMode || day.archived) return;
@@ -1069,31 +1108,24 @@ function _checkRouteHints(fix) {
   } else _setRouteHint('routeManeuver', null);
 
   if (!Number.isFinite(fix.accuracy) || fix.accuracy > 50) return;
-  const distanceTo = stop => _haversineKmPts(fix.latitude, fix.longitude, stop.lat, stop.lng);
-  if (_activeRoutePlace) {
-    const stop = day.stops.find(stop => stop.id === _activeRoutePlace.id);
-    if (stop) _showRoutePlace(_activeRoutePlace.type, distanceTo(stop));
+  for (const {stop, distance} of _upcomingRoadStops(day, index, fix)) {
+    if (_activeRoutePlace) {
+      if (stop.id !== _activeRoutePlace.id) continue;
+      _showRoutePlace(_activeRoutePlace.type, distance);
+      return;
+    }
+    const type = !stop.arrA && !_routeHintShownIds.has('place:' + stop.id) && _routePlaceType(stop);
+    if (!type) continue;
+    _activeRoutePlace = {id: stop.id, type};
+    _showRoutePlace(type, distance);
+    _dingRouteHint('place:' + stop.id);
+    _routeHintTimer = setTimeout(() => {
+      _activeRoutePlace = null;
+      _setRouteHint('routePlace', null);
+    }, ROUTE_HINT_DURATION_MS);
     return;
   }
-  let place, placeType, nearest = 1;
-  for (const stop of day.stops) {
-    if (stop.arrA || _routeHintShownIds.has('place:' + stop.id) || !(stop.lat || stop.lng)) continue;
-    const type = _routePlaceType(stop);
-    if (!type) continue;
-    const distance = distanceTo(stop);
-    if (distance > nearest) continue;
-    nearest = distance;
-    place = stop;
-    placeType = type;
-  }
-  if (!place) return;
-  _activeRoutePlace = {id: place.id, type: placeType};
-  _showRoutePlace(placeType, nearest);
-  _dingRouteHint('place:' + place.id);
-  _routeHintTimer = setTimeout(() => {
-    _activeRoutePlace = null;
-    _setRouteHint('routePlace', null);
-  }, ROUTE_HINT_DURATION_MS);
+  if (_activeRoutePlace) _setRouteHint('routePlace', null);
 }
 
 function _showRoutePlace(type, distanceKm) {

@@ -90,6 +90,16 @@ test('the second exit stays selected inside a roundabout and a legacy cart is a 
   assert.equal(ctx._nextDrivingManeuver(steps, {...fix, longitude:0.003}), undefined);
   assert.equal(ctx._routePlaceType({type:'Другое', icon:'🛒'}), 'Магазин');
 });
+test('stop hints count road bends and wait until the remaining route is within one kilometer', () => {
+  const {ctx} = setup(false);
+  ctx._routeCache = {'driving|0,0|0,0.001': [[0,0],[0.006,0],[0.006,0.001],[0,0.001]]};
+  const day = {start:{lat:0,lng:0}, stops:[{lat:0,lng:0.001}]};
+  const fix = {latitude:0,longitude:0,accuracy:5,heading:0};
+  assert.deepEqual([...ctx._upcomingRoadStops(day, 0, fix)], []);
+  const [hint] = ctx._upcomingRoadStops(day, 0, {...fix, latitude:0.005});
+  assert.ok(hint.distance > 0.88 && hint.distance < 0.90);
+  assert.deepEqual([...ctx._upcomingRoadStops(day, 0, {...fix, longitude:0.003})], []);
+});
 test('stopping, unpublishing or switching to an unpublished day clears the spectator branch',()=>{
   for(const action of ['_drivingMode=false','DAYS_DATA[1].publicationId=null','currentDay=2']) {
     const {ctx,writes,run}=setup(false);ctx._writePosition(10,20,30,4);run(action);
