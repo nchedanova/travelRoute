@@ -377,13 +377,14 @@ function installWalkReview() {
         if (recording.pauseStopId) closeRecordedStop(id, recording, now);
         const stop = addRecordedStop(id, 'Остановка', point, now);
         recording.pauseStopId = stop.id;
+        if (!session) stopWalkBroadcast(id);
       } else if (action === 'finish') {
         stopWatch();
         if (point) addRecordedStop(id, 'Финиш прогулки', point, now);
         recording.phase = 'finished';
         recording.finishedAt = now;
         delete recording.pauseStopId;
-        stopWalkBroadcast();
+        stopWalkBroadcast(id);
       } else return;
       renderRecording(id);
       if (action === 'mark') panel.querySelector('[data-action="mark"]').focus({preventScroll: true});
@@ -437,6 +438,28 @@ function installWalkReview() {
 
   document.addEventListener('DOMContentLoaded', () => {
     document.body.appendChild(picker);
+    if (LOCAL_PREVIEW && new URLSearchParams(location.search).get('sample') === 'walk-line') {
+      const id = 1; // Первый день использует рыжий цвет в палитре журнала.
+      const points = [
+        [55.7947, 37.9460], [55.7959, 37.9458], [55.7970, 37.9477],
+        [55.7984, 37.9471], [55.7997, 37.9459], [55.8010, 37.9448],
+        [55.8000, 37.9427], [55.7985, 37.9434], [55.7970, 37.9477],
+        [55.7961, 37.9468], [55.7948, 37.9465]
+      ];
+      const [lat, lng] = points[0];
+      const meters = points.slice(1).reduce((total, point, i) =>
+        total + L.latLng(points[i]).distanceTo(L.latLng(point)), 0);
+      DAYS_DATA[id] = {
+        dateISO: '07.11.2026', date: 'Пример прогулки', icon: '🚶', walkMode: true, color: '#f5a623',
+        start: {lat, lng, name: 'Старт', icon: '🚶'}, stops: [],
+        walkReview: {phase: 'finished', segments: [points], meters}
+      };
+      redrawDay(id);
+      renderTabs();
+      renderAllDays();
+      switchDay(id);
+      return;
+    }
     renderTabs();
     renderRecording(currentDay, true);
   });

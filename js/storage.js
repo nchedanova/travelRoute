@@ -34,6 +34,7 @@ function setModeBadge() {
 
 let _gistOwnerLogin = localStorage.getItem('travel_gist_owner') || null; // кешируем логин между сессиями
 let _gistApiRetryAt = 0;
+const _gistDiscoveryRetryAt = new Map();
 
 function checkGistApiResponse(response) {
   if (response.ok) return;
@@ -61,6 +62,11 @@ async function fetchCloudData() {
 
   // Первый запрос (или владелец с токеном) — через API, запоминаем логин
   if (Date.now() < _gistApiRetryAt) throw new Error('Gist API cooldown');
+  if (!CLOUD_CONFIG.apiKey) {
+    const id = CLOUD_CONFIG.binId;
+    if (Date.now() < (_gistDiscoveryRetryAt.get(id) || 0)) throw new Error('Gist owner lookup cooldown');
+    _gistDiscoveryRetryAt.set(id, Date.now() + 300000);
+  }
   const r = await fetch(`${GIST_URL}/${CLOUD_CONFIG.binId}`, { headers, cache: 'no-store' });
   checkGistApiResponse(r);
   const json = await r.json();
@@ -266,6 +272,7 @@ function applyPayload(saved, fromCloud = false) {
       delete s.noteImages;
     });
   });
+  if (typeof mergeSpectatorWalk === 'function') mergeSpectatorWalk();
   if (typeof refreshSpectatorGpsVisibility === 'function') refreshSpectatorGpsVisibility();
 }
 

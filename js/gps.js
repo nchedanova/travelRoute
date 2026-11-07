@@ -26,6 +26,8 @@ let _nearestStopId  = null;   // id ближайшей остановки
 let _keepAliveCtx   = null;   // AudioContext для keep-alive
 let _keepAliveOsc   = null;
 var _lastSpectatorPosition = null;
+let _lastSpectatorWalk = null;
+let _spectatorWalkRender = null;
 var _lastOwnerPosition = null;
 var _spectatorGpsListening = false;
 let _lastWalkBroadcastAt = 0;
@@ -207,6 +209,14 @@ function initSpectatorPhotos() {
       _followCamera = true;
       _db.ref('gps/spectator').on('value', function(snap) {
         _lastSpectatorPosition = snap.val();
+        if (_lastSpectatorPosition?.walk) _lastSpectatorWalk = _lastSpectatorPosition;
+        const id = mergeSpectatorWalk(_lastSpectatorPosition);
+        if (id != null) {
+          const walk = _lastSpectatorPosition.walk;
+          const key = _lastSpectatorPosition.publicationId + ':' + id;
+          const structure = renderRemoteWalk(id, walk, _spectatorWalkRender?.key !== key, _spectatorWalkRender?.structure);
+          _spectatorWalkRender = {key, structure};
+        }
         refreshSpectatorGpsVisibility();
       });
       setInterval(refreshSpectatorGpsVisibility, 5000);
@@ -300,7 +310,7 @@ function compareWalkProgress(a, b) {
   return (Number(first.phase === 'finished') - Number(second.phase === 'finished')) ||
     ((first.finishedAt || first.lastAt || 0) - (second.finishedAt || second.lastAt || 0)) ||
     (points(first) - points(second)) ||
-    (a.stops.length - b.stops.length);
+    ((a.stops || []).length - (b.stops || []).length);
 }
 
 function mergeReaderWalk(walk, cloudSavedAt = 0) {
@@ -315,19 +325,22 @@ function mergeReaderWalk(walk, cloudSavedAt = 0) {
   } else if (cloudSavedAt >= walk.updatedAt) return false;
   const notes = new Map(existing?.stops.map(stop => [stop.id, stop.notes]));
   DAYS_DATA[walk.dayId] = {...existing, ...walk.day,
-    stops: walk.day.stops.map(stop => ({...stop, notes: notes.get(stop.id) || []}))};
+    stops: (walk.day.stops || []).map(stop => ({...stop, notes: notes.get(stop.id) || []}))};
   return true;
 }
 
 function applyReaderWalk(walk) {
   if (!mergeReaderWalk(walk, _readerCloudSavedAt)) return;
   const id = walk.dayId;
-  const structure = JSON.stringify([walk.day.start, walk.day.departA, walk.day.stops]);
-  const changed = _readerWalk?.dayId !== id || _readerWalk.structure !== structure || !walkTrackLines[id];
+  const structure = renderRemoteWalk(id, walk, _readerWalk?.dayId !== id, _readerWalk?.structure);
   _readerWalk = {...walk, structure};
-  if (!changed) {
+}
+
+function renderRemoteWalk(id, walk, force, previousStructure) {
+  const structure = JSON.stringify([walk.day.start, walk.day.departA, walk.day.stops]);
+  if (!force && previousStructure === structure && walkTrackLines[id]) {
     refreshWalkTrackLine(id);
-    return;
+    return structure;
   }
   redrawDay(id);
   if (!DAYS_DATA[currentDay] || DAYS_DATA[currentDay].archived || DAYS_DATA[currentDay].hidden) switchDay(id);
@@ -335,6 +348,27 @@ function applyReaderWalk(walk) {
   renderTabs();
   renderAllDays();
   updateProgress();
+  return structure;
+}
+
+function mergeSpectatorWalk(point = _lastSpectatorWalk) {
+  if (!SPECTATOR_MODE) return null;
+  const walk = point?.walk;
+  if (!walk?.day?.walkReview?.id || walk.routeId !== CLOUD_CONFIG.binId) return null;
+  const id = dayKeys().find(id => DAYS_DATA[id].spectatorLive &&
+    DAYS_DATA[id].spectatorPublicationId === point.publicationId);
+  if (id == null) return null;
+  const day = DAYS_DATA[id];
+  if (day.walkReview && (!sameRecordedWalk(day, walk.day) || compareWalkProgress(walk.day, day) <= 0)) return null;
+  const existing = new Map(day.stops.map(stop => [stop._walkSourceId, stop]));
+  Object.assign(day, {
+    walkReview: walk.day.walkReview, start: walk.day.start, departA: walk.day.departA, departP: walk.day.departP,
+    stops: (walk.day.stops || []).map((stop, index) => ({
+      ...stop, id: 'pub' + id + 's' + (index + 1), _walkSourceId: stop.id,
+      notes: existing.get(stop.id)?.notes || []
+    }))
+  });
+  return id;
 }
 
 function restoreReaderWalk(cloudSavedAt) {
@@ -344,11 +378,11 @@ function restoreReaderWalk(cloudSavedAt) {
   return merged;
 }
 
-function walkBroadcastPayload(id) {
+function walkBroadcastPayload(id, spectator = false) {
   const day = DAYS_DATA[id];
-  if (!day?.walkReview?.id || day.hidden || day.archived) return null;
+  if (!day?.walkReview?.id || (!spectator && day.hidden) || day.archived) return null;
   const {lat, lng, name, icon} = day.start;
-  return {
+  return JSON.parse(JSON.stringify({
     routeId: CLOUD_CONFIG.binId, dayId: id, updatedAt: Date.now(),
     day: {
       date: day.date, dateISO: day.dateISO, color: day.color, icon: day.icon,
@@ -357,7 +391,7 @@ function walkBroadcastPayload(id) {
       stops: day.stops.map(({id, num, name, lat, lng, type, icon, arrA, arrP, depA, depP}) =>
         ({id, num, name, lat, lng, type, icon, arrA, arrP, depA, depP}))
     }
-  };
+  }));
 }
 
 function publishRecoveredWalk() {
@@ -380,28 +414,38 @@ function publishRecoveredWalk() {
     if (existing?.lat != null && Date.now() - existing.ts < 120000) return;
     if (existing?.walk?.routeId === walk.routeId &&
         existing.walk.day?.walkReview?.lastAt > recording.lastAt) return;
-    return {walk};
+    return {walk, spectator: spectatorWalkPayload(id)};
   }).catch(error => console.warn('Recovered walk GPS:', error));
 }
 
 function broadcastWalkPosition(id, position) {
   if (!_db || !CLOUD_CONFIG.canWrite || Date.now() - _lastWalkBroadcastAt < 5000) return;
   const walk = walkBroadcastPayload(id);
-  if (!walk) { stopWalkBroadcast(); return; }
+  const spectatorWalk = spectatorWalkPayload(id);
+  if (!walk && !spectatorWalk) { stopWalkBroadcast(); return; }
   _lastWalkBroadcastAt = Date.now();
   _broadcastWalkDay = id;
   const {latitude: lat, longitude: lng, accuracy, speed} = position.coords;
   const point = {lat, lng, accuracy, speed: gpsSpeedKmh(speed), ts: Date.now()};
-  const spectator = spectatorGpsPayload(point, id);
-  _db.ref('gps').set({...point, walk, spectator}).catch(error => console.warn('Walk GPS:', error));
+  const spectator = spectatorWalk && {...point, ...spectatorWalk};
+  _db.ref('gps').set(walk ? {...point, walk, spectator} : {spectator}).catch(error => console.warn('Walk GPS:', error));
 }
 
-function stopWalkBroadcast() {
-  if (_broadcastWalkDay === null) return;
-  const walk = walkBroadcastPayload(_broadcastWalkDay);
+function spectatorWalkPayload(id) {
+  const day = DAYS_DATA[id];
+  if (!day?.publicationId || !publicationEntry(id)) return null;
+  const walk = walkBroadcastPayload(id, true);
+  return walk && {publicationId: day.publicationId, walkMode: true, walk};
+}
+
+function stopWalkBroadcast(id = _broadcastWalkDay) {
+  if (id === null || !_db || !CLOUD_CONFIG.canWrite || _drivingMode ||
+      (_broadcastWalkDay !== null && _broadcastWalkDay !== id)) return;
+  const walk = walkBroadcastPayload(id);
+  const spectator = spectatorWalkPayload(id);
   _broadcastWalkDay = null;
   _lastWalkBroadcastAt = 0;
-  _db.ref('gps').set(walk ? {walk} : null).catch(error => console.warn('Walk GPS:', error));
+  _db.ref('gps').set(walk || spectator ? {walk, spectator} : null).catch(error => console.warn('Walk GPS:', error));
 }
 
 // ── FIREBASE WRITE — владелец едет ────────────────────────────────────────────

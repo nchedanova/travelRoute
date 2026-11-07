@@ -50,6 +50,7 @@ function spectatorPayload(payload) {
     try { source = JSON.parse(publication.source || 'null'); } catch(e) {}
     day.stops.forEach(function(stop, stopIndex) {
       var oldStop = original.stops[stopIndex];
+      if (original.walkReview) stop._walkSourceId = oldStop.id;
       var sourceStop = source && source.stops.find(function(s) { return s.id === oldStop.id; });
       var liveStops = Object.values(payload.daysData || {}).flatMap(function(d) { return d.stops || []; });
       var liveStop = liveStops.find(function(s) { return s.id === oldStop.id; });
@@ -79,6 +80,9 @@ function spectatorPayload(payload) {
 
 function routeStorageKey() {
   if (typeof LOCAL_PREVIEW === 'undefined' || !LOCAL_PREVIEW) return 'travel_tracker_v3';
+  if (typeof location !== 'undefined' && new URLSearchParams(location.search).get('sample') === 'walk-line') {
+    return 'travel_walk_line_preview';
+  }
   return typeof LOCAL_WALK_REVIEW !== 'undefined' && LOCAL_WALK_REVIEW ? 'travel_walk_review_v1' : 'travel_preview_v1';
 }
 
@@ -182,24 +186,35 @@ function renderPublicationManager(selected) {
   var body = document.getElementById('publicationList');
   if (!body || !isAdmin()) return;
   var linked = new Set();
-  body.innerHTML = dayKeys().sort(function(a,b) { return Number(!!DAYS_DATA[a].archived) - Number(!!DAYS_DATA[b].archived); }).map(function(d) {
+  var today = new Date();
+  var todayUtc = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+  function row(day, html) {
+    var date = day.dateISO && (day.dateISO.includes('.') ? parseDateDMY(day.dateISO) : new Date(day.dateISO + 'T00:00:00'));
+    var utc = date ? Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) : NaN;
+    return { distance: Number.isFinite(utc) ? Math.abs(utc - todayUtc) : Infinity, utc: utc, html: html };
+  }
+  var rows = dayKeys().map(function(d) {
     var day = DAYS_DATA[d];
     var entry = publicationEntry(d);
     if (entry) linked.add(day.publicationId);
-    return '<article class="publication-row' + (selected === d ? ' publication-selected' : '') + '">'
+    return row(day, '<article class="publication-row' + (selected === d ? ' publication-selected' : '') + '">'
       + '<div class="publication-title">' + _escHtml((day.dateISO || _dayLabel(d)) + (day.date ? ' · ' + day.date : '')) + '</div>'
       + '<div class="publication-meta">' + (day.archived ? '📦 В архиве · ' : '')
       + (!entry ? 'Не виден зрителям' : day.archived ? '👁 Доступен завершённый день' : '👁 Изменения и движение видны автоматически') + '</div>'
       + (entry ? '<div class="publication-meta">Опубликовано ' + new Date(entry.publishedAt).toLocaleString('ru-RU') + '</div>' : '')
       + '<div class="publication-actions">' + (!entry ? '<button class="publication-btn publication-primary" onclick="publishSpectatorDay(' + d + ')"' + (_publicationBusy ? ' disabled' : '') + '>'
       + (_publicationBusy ? 'Подождите…' : 'Опубликовать день') + '</button>' : '')
-      + (entry ? '<button class="publication-btn" onclick="unpublishSpectatorDay(\'' + day.publicationId + '\')"' + (_publicationBusy ? ' disabled' : '') + '>Снять с публикации</button>' : '') + '</div></article>';
-  }).join('');
+      + (entry ? '<button class="publication-btn" onclick="unpublishSpectatorDay(\'' + day.publicationId + '\')"' + (_publicationBusy ? ' disabled' : '') + '>Снять с публикации</button>' : '') + '</div></article>');
+  });
   Object.entries(spectatorPublications).forEach(function(pair) {
     if (linked.has(pair[0])) return;
-    body.innerHTML += '<article class="publication-row"><div class="publication-title">' + _escHtml(pair[1].day.date || pair[1].day.dateISO || 'Опубликованный день')
-      + '</div><div class="publication-meta">Исходный день удалён · копия доступна зрителям</div><button class="publication-btn" onclick="unpublishSpectatorDay(\'' + pair[0] + '\')">Снять с публикации</button></article>';
+    var day = pair[1].day;
+    rows.push(row(day, '<article class="publication-row"><div class="publication-title">' + _escHtml(day.dateISO || day.date || 'Опубликованный день')
+      + (day.dateISO && day.date ? ' · ' + _escHtml(day.date) : '')
+      + '</div><div class="publication-meta">Исходный день удалён · копия доступна зрителям</div><button class="publication-btn" onclick="unpublishSpectatorDay(\'' + pair[0] + '\')">Снять с публикации</button></article>'));
   });
+  body.innerHTML = rows.sort(function(a, b) { return a.distance - b.distance || b.utc - a.utc; })
+    .map(function(item) { return item.html; }).join('');
   if (!body.innerHTML) body.innerHTML = '<div class="publication-row">Дней пока нет</div>';
   document.getElementById('publicationCount').textContent = Object.keys(spectatorPublications).length;
 }

@@ -6,6 +6,48 @@ const vm = require('node:vm');
 
 const source = file => fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
 
+test('publication manager lists all days by distance from today', () => {
+  const nodes = {publicationList: {}, publicationCount: {}};
+  const ctx = vm.createContext({
+    Date: class extends Date { constructor(...args) { super(...(args.length ? args : [2026, 10, 7])); } },
+    document: {addEventListener(){}, getElementById: id => nodes[id]},
+    isAdmin: () => true, dayKeys: () => [1, 2, 3, 4],
+    parseDateDMY: value => new Date(value.split('.').reverse().join('-') + 'T00:00:00'),
+    _escHtml: value => value, _dayLabel: () => 'Undated',
+    DAYS_DATA: {
+      1: {dateISO: '31.05.2026', date: 'Old'},
+      2: {dateISO: '06.11.2026', date: 'Yesterday'},
+      3: {dateISO: '07.11.2026', date: 'Today', archived: true},
+      4: {}
+    }
+  });
+  vm.runInContext(source('js/publishing.js'), ctx);
+  ctx.spectatorPublications = {p: {day: {dateISO: '2026-11-08', date: 'Tomorrow'}}};
+  ctx.renderPublicationManager();
+  assert.deepEqual([...nodes.publicationList.innerHTML.matchAll(/publication-title">(.*?)<\/div>/g)].map(match => match[1]), [
+    '07.11.2026 · Today', '2026-11-08 · Tomorrow', '06.11.2026 · Yesterday', '31.05.2026 · Old', 'Undated'
+  ]);
+});
+
+test('public Gist polls keep checking raw without repeatedly falling back to REST', async () => {
+  const requests = [];
+  const ctx = vm.createContext({
+    GIST_URL: 'https://api.github.com/gists', CLOUD_CONFIG: {binId: 'route'},
+    clearInterval(){}, setInterval(){},
+    localStorage: {getItem: () => null},
+    window: {addEventListener(){}}, document: {addEventListener(){}},
+    fetch: async url => {
+      requests.push(url);
+      return {ok:false,status:404};
+    }
+  });
+  vm.runInContext(source('js/storage.js'), ctx);
+  await assert.rejects(ctx.fetchCloudData(), /HTTP 404/);
+  await assert.rejects(ctx.fetchCloudData(), /lookup cooldown/);
+  assert.equal(requests.filter(url => url.startsWith('https://api.github.com')).length, 1);
+  assert.equal(requests.filter(url => url.startsWith('https://gist.githubusercontent.com')).length, 2);
+});
+
 function context(search = '', initial = {}) {
   const values = new Map(Object.entries(initial));
   const classes = new Set();

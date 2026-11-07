@@ -383,6 +383,17 @@ function refreshPill() {
 
 // ── DRAW DAY ──────────────────────────────────────────────────────────────────
 const walkTrackLines = {};
+const WALK_DASH_STYLE = {weight:3, lineCap:'round', lineJoin:'round', dashArray:'8 5'};
+const WALK_TRACK_PALETTES = {
+  '#f5a623': ['#ffba91', '#f5a623', '#ff7066'],
+  '#00ced1': ['#92f5d9', '#00ced1', '#61aaff'],
+  '#a78bfa': ['#e7b5ff', '#a78bfa', '#f68ac8'],
+  '#34d399': ['#c4ef85', '#34d399', '#42d8da'],
+  '#fa8072': ['#ffc899', '#fa8072', '#ff639e'],
+  '#ced23a': ['#ffdc79', '#ced23a', '#8ae26c'],
+  '#00bfff': ['#8ff2fa', '#00bfff', '#958bff'],
+  '#cc5500': ['#ffc28e', '#f58c36', '#f96859']
+};
 
 function refreshWalkTrackLine(day) {
   const track = walkTrackLines[day];
@@ -401,14 +412,16 @@ function drawWalkTrack(group, tracks, dayColor) {
   if (!total) return;
 
   const color = /^#[\da-f]{6}$/i.test(dayColor) ? dayColor : '#f5a623';
-  const channels = [1, 3, 5].map(index => parseInt(color.slice(index, index + 2), 16));
+  const palette = WALK_TRACK_PALETTES[color.toLowerCase()] || ['#ffffff', color, color];
+  const channels = palette.map(hex => [1, 3, 5].map(index => parseInt(hex.slice(index, index + 2), 16)));
   const shade = progress => {
-    const target = progress < .5 ? 0 : 255;
-    const amount = Math.abs(progress - .5) * .72;
-    return 'rgb(' + channels.map(channel => Math.round(channel + (target - channel) * amount)).join(',') + ')';
+    const interval = progress < .5 ? 0 : 1;
+    const fraction = progress * 2 - interval;
+    return 'rgb(' + channels[interval].map((channel, i) =>
+      Math.round(channel + (channels[interval + 1][i] - channel) * fraction)).join(',') + ')';
   };
-  const arrowSpacing = Math.max(90, total / 36);
-  let nextArrow = Math.min(arrowSpacing / 2, total / 2);
+  const arrowSpacing = 400;
+  let nextArrow = total < arrowSpacing ? total / 2 : arrowSpacing;
   let distance = 0;
   for (const segment of legs) {
     let chunk = [];
@@ -416,7 +429,7 @@ function drawWalkTrack(group, tracks, dayColor) {
     for (const {start, end, meters} of segment) {
       const band = Math.min(15, Math.floor((distance + meters / 2) / total * 16));
       if (band !== previousBand) {
-        if (chunk.length) L.polyline(chunk, {color: shade(previousBand / 15), weight: 5, interactive: false}).addTo(group);
+        if (chunk.length) L.polyline(chunk, {...WALK_DASH_STYLE, color: shade(previousBand / 15), interactive: false}).addTo(group);
         chunk = [start];
         previousBand = band;
       }
@@ -429,15 +442,16 @@ function drawWalkTrack(group, tracks, dayColor) {
         const angle = Math.atan2(to.y - from.y, to.x - from.x) * 180 / Math.PI;
         const icon = L.divIcon({
           className: 'walk-track-arrow',
-          iconSize: [16, 16], iconAnchor: [8, 8],
-          html: '<span style="transform:rotate(' + angle + 'deg) translateY(7px);color:' + shade(band / 15) + '">➜</span>'
+          iconSize: [12, 12], iconAnchor: [6, 6],
+          html: '<svg viewBox="0 0 12 12" aria-hidden="true" style="transform:rotate(' + angle +
+            'deg);color:' + shade(band / 15) + '"><path d="M2 6h8m-4-4 4 4-4 4"/></svg>'
         });
         L.marker(point, {icon, interactive: false, keyboard: false, zIndexOffset: -500}).addTo(group);
         nextArrow += arrowSpacing;
       }
       distance += meters;
     }
-    if (chunk.length) L.polyline(chunk, {color: shade(previousBand / 15), weight: 5, interactive: false}).addTo(group);
+    if (chunk.length) L.polyline(chunk, {...WALK_DASH_STYLE, color: shade(previousBand / 15), interactive: false}).addTo(group);
   }
 }
 
@@ -491,7 +505,7 @@ function drawDay(d) {
     }
     const seg = L.polyline(initialLatLngs,
       isWalk
-        ? { color, weight:3, opacity:0.3, lineCap:'round', lineJoin:'round', dashArray:'8 5' }
+        ? { ...WALK_DASH_STYLE, color, opacity:0.3 }
         : { color, weight:3, opacity:0.55, lineCap:'round', lineJoin:'round', dashArray:'6 4' }
     );
     group.addLayer(seg);
