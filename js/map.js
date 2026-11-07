@@ -230,7 +230,16 @@ function initMap() {
   map.zoomControl.setPosition('topright');
 
   // Zoom-adaptive segment style: refresh on zoom change
-  map.on('zoomend', function() { refreshSegments(); });
+  function updateGpsMarkerScale() {
+    const progress = Math.max(0, Math.min(1, (map.getZoom() - 11) / 5));
+    const scale = (20 + 6 * progress) / 26;
+    map.getContainer().style.setProperty('--gps-marker-scale', scale);
+  }
+  map.on('zoomend', function() {
+    updateGpsMarkerScale();
+    refreshSegments();
+  });
+  updateGpsMarkerScale();
 
   // тап/клик по карте — закрываем пилл или добавляем точку
   // Firefox: marker click bubbles to map even after stopPropagation on divIcon,

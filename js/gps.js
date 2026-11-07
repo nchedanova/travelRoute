@@ -25,6 +25,7 @@ let _accuracyCircle = null;   // Leaflet circle — кружок погрешн�
 let _drivingMode    = false;  // владелец нажал "Еду"
 let _walkGpsActive  = false;
 let _hasOwnerFix    = false;
+let _lastOwnerHintFix = null;
 let _followCamera   = false;  // камера следит за позицией
 let _userPanned     = false;  // пользователь двигал карту вручную
 let _nearestStopId  = null;   // id ближайшей остановки
@@ -263,6 +264,7 @@ function _onPosition(pos) {
   const { latitude: lat, longitude: lng, accuracy, speed, heading } = pos.coords;
   _hasOwnerFix = true;
   if (_walkGpsActive) return;
+  _lastOwnerHintFix = {coords: pos.coords, at: Date.now()};
   const kmh = gpsSpeedKmh(speed);
 
   _updateGpsMarker(lat, lng, accuracy, false, heading);
@@ -787,6 +789,7 @@ function toggleDrivingMode() {
   if (_drivingMode) {
     startKeepAlive();
     if (!routeHintsPreviewEnabled()) {
+      _refreshHintsFromOwnerFix();
       // The startup watch may have failed while location was disabled.
       _startGpsWatch();
       _acquireWakeLock();
@@ -948,6 +951,12 @@ var _routeHintTimer      = null;
 let _activeRoutePlace = null;
 const _routeHintShownIds = new Set();
 const _pendingDrivingLegs = new Map();
+
+function _refreshHintsFromOwnerFix() {
+  if (_lastOwnerHintFix && Date.now() - _lastOwnerHintFix.at < 15000) {
+    _checkRouteHints(_lastOwnerHintFix.coords);
+  }
+}
 const _HINT_TYPES = { 'Заправка': 'fuel', 'Кафе': 'cafe', 'Магазин': 'cart' };
 const ROUTE_HINT_DURATION_MS = 10000;
 const MANEUVER_HINT_DISTANCE_M = 500;
@@ -1069,40 +1078,69 @@ function _routePlaceType(stop) {
   return null;
 }
 
-function* _upcomingRoadStops(day, index, fix) {
-  if (index < 0) return;
+function _measureDrivingLine(line, fix) {
   const radians = Math.PI / 180;
   const eastScale = 111320 * Math.cos(fix.latitude * radians);
+  let length = 0;
+  let progress = null;
+  let closest = Math.max(25, fix.accuracy);
+  for (let j = 1; j < line.length; j++) {
+    const [lat, lng] = line[j - 1];
+    const dx = (line[j][1] - lng) * eastScale;
+    const dy = (line[j][0] - lat) * 111320;
+    const segment = Math.hypot(dx, dy);
+    if (!segment) continue;
+    const x = (fix.longitude - lng) * eastScale;
+    const y = (fix.latitude - lat) * 111320;
+    const fraction = Math.max(0, Math.min(1, (x * dx + y * dy) / segment ** 2));
+    const offset = Math.hypot(x - fraction * dx, y - fraction * dy);
+    const bearing = Math.atan2(dx, dy);
+    if (offset < closest && (!Number.isFinite(fix.heading) || Math.cos(fix.heading * radians - bearing) > 0)) {
+      closest = offset;
+      progress = length + fraction * segment;
+    }
+    length += segment;
+  }
+  return {length, progress, closest};
+}
+
+function _drivingLeg(day, index) {
+  const to = day.stops[index];
+  const from = index > 0 ? day.stops[index - 1] : day.start;
+  if (!to || !from || !(from.lat || from.lng) || !(to.lat || to.lng)) return null;
+  return {from, to, key: `driving|${from.lat},${from.lng}|${to.lat},${to.lng}`};
+}
+
+function _findDrivingHintLeg(day, preferredIndex, fix) {
+  const preferred = _drivingLeg(day, preferredIndex);
+  const preferredLine = preferred && _routeCache[preferred.key];
+  if (preferred && (!preferredLine || _measureDrivingLine(preferredLine, fix).progress !== null)) return preferred;
+  let best = null;
+  let closest = Infinity;
+  for (let index = 0; index < day.stops.length; index++) {
+    if (index === preferredIndex) continue;
+    const leg = _drivingLeg(day, index);
+    const line = leg && _routeCache[leg.key];
+    if (!line) continue;
+    const match = _measureDrivingLine(line, fix);
+    if (match.progress === null || match.closest >= closest) continue;
+    best = leg;
+    closest = match.closest;
+  }
+  return best;
+}
+
+function* _upcomingRoadStops(day, index, fix) {
+  if (index < 0) return;
   let remaining = 0;
   for (let i = index; i < day.stops.length; i++) {
     const from = i > 0 ? day.stops[i - 1] : day.start;
     const stop = day.stops[i];
     const line = _routeCache[`driving|${from.lat},${from.lng}|${stop.lat},${stop.lng}`];
     if (!line || line.length < 2) return;
-    let length = 0;
-    let progress = null;
-    let closest = Math.max(25, fix.accuracy);
-    for (let j = 1; j < line.length; j++) {
-      const [lat, lng] = line[j - 1];
-      const dx = (line[j][1] - lng) * eastScale;
-      const dy = (line[j][0] - lat) * 111320;
-      const segment = Math.hypot(dx, dy);
-      if (!segment) continue;
-      if (i === index) {
-        const x = (fix.longitude - lng) * eastScale;
-        const y = (fix.latitude - lat) * 111320;
-        const fraction = Math.max(0, Math.min(1, (x * dx + y * dy) / segment ** 2));
-        const offset = Math.hypot(x - fraction * dx, y - fraction * dy);
-        const bearing = Math.atan2(dx, dy);
-        if (offset < closest && (!Number.isFinite(fix.heading) || Math.cos(fix.heading * radians - bearing) > 0)) {
-          closest = offset;
-          progress = length + fraction * segment;
-        }
-      }
-      length += segment;
-    }
+    const {length, progress} = _measureDrivingLine(line, fix);
     if (i === index && progress === null) return;
-    remaining += length - (progress ?? 0);
+    remaining += length - (i === index ? progress : 0);
     if (remaining > 1000) return;
     yield {stop, distance: remaining / 1000};
   }
@@ -1113,22 +1151,24 @@ function _checkRouteHints(fix) {
   if (!_drivingMode || !isAdmin() || !day || day.walkMode || day.archived) return;
   const id = currentDay;
   const index = day.stops.findIndex(stop => !stop.arrA);
-  const to = day.stops[index];
-  const from = index > 0 ? day.stops[index - 1] : day.start;
-  const key = to && `driving|${from.lat},${from.lng}|${to.lat},${to.lng}`;
+  const leg = Number.isFinite(fix.accuracy) && fix.accuracy <= 50 && _findDrivingHintLeg(day, index, fix);
   let maneuver;
-  if (key && (from.lat || from.lng) && (to.lat || to.lng) && fix.accuracy <= 50) {
+  if (leg) {
+    const {key, from, to} = leg;
     if (!drivingSteps.has(key) && !routeHintsPreviewEnabled() && Date.now() >= osrmRetryAt &&
         Date.now() >= (_pendingDrivingLegs.get(key) || 0)) {
       _pendingDrivingLegs.set(key, Infinity);
-      fetchRoadSegment(from, to, 'driving', true).catch(() => {}).finally(() => {
-        _pendingDrivingLegs.set(key, Date.now() + 120000);
-      });
+      fetchRoadSegment(from, to, 'driving', true)
+        .then(() => {
+          if (drivingSteps.has(key) && _drivingMode && currentDay === id) _refreshHintsFromOwnerFix();
+        })
+        .catch(() => {})
+        .finally(() => _pendingDrivingLegs.set(key, Date.now() + 120000));
     }
     maneuver = _nextDrivingManeuver(drivingSteps.get(key) || [], fix);
   }
   if (maneuver) {
-    const maneuverId = id + ':' + key + ':' + maneuver.index;
+    const maneuverId = id + ':' + leg.key + ':' + maneuver.index;
     _dingRouteHint(maneuverId);
     const [icon, title] = maneuver.label;
     const meters = Math.ceil(maneuver.meters / 10) * 10;

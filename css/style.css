@@ -3613,7 +3613,8 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 .theme-picker-dropdown .gps-vehicle-option {gap:7px;min-height:44px;font-size:11px;border:1px solid transparent;}
 .theme-picker-dropdown .gps-vehicle-option[aria-pressed="true"] {background:var(--accent-bg);border-color:var(--accent);}
 .gps-vehicle-option .gps-car {flex:none;}
-.leaflet-marker-icon .gps-car {width:26px;height:35px;}
+.leaflet-marker-icon .gps-car {width:calc(26px * var(--gps-marker-scale, 1));height:max(27px,calc(35px * var(--gps-marker-scale, 1)));}
+.leaflet-marker-icon .gps-ring {scale:var(--gps-marker-scale, 1);}
 .theme-picker-dropdown .font-sample {display:flex;align-items:center;justify-content:center;flex-basis:44px;height:36px;font-size:17px;color:var(--muted);}
 .theme-picker-dropdown .theme-option:focus-visible,.appearance-close:focus-visible {outline:2px solid var(--accent);outline-offset:2px;}
 #importUrlInput {height:40px;min-height:40px;line-height:normal;padding:0 12px;text-align:left;}

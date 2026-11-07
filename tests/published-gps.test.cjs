@@ -90,6 +90,19 @@ test('the second exit stays selected inside a roundabout and a legacy cart is a 
   assert.equal(ctx._nextDrivingManeuver(steps, {...fix, longitude:0.003}), undefined);
   assert.equal(ctx._routePlaceType({type:'Другое', icon:'🛒'}), 'Магазин');
 });
+test('driving hints can match a completed leg when the first unvisited stop is elsewhere', () => {
+  const {ctx} = setup(false);
+  const day = {start:{lat:55,lng:37}, stops:[
+    {lat:55.01,lng:37,arrA:'10:00'}, {lat:55.01,lng:37.02},
+  ]};
+  const first = 'driving|55,37|55.01,37';
+  ctx._routeCache = {[first]: [[55,37],[55.01,37]], 'driving|55.01,37|55.01,37.02': [[55.01,37],[55.01,37.02]]};
+  const fix = {latitude:55.005,longitude:37,accuracy:5,heading:0};
+  assert.equal(ctx._findDrivingHintLeg(day, 1, fix).key, first);
+  assert.equal(ctx._findDrivingHintLeg(day, -1, fix).key, first);
+  assert.equal(ctx._findDrivingHintLeg(day, -1, {...fix, longitude:37.02}), null);
+});
+
 test('stop hints count road bends and wait until the remaining route is within one kilometer', () => {
   const {ctx} = setup(false);
   ctx._routeCache = {'driving|0,0|0,0.001': [[0,0],[0.006,0],[0.006,0.001],[0,0.001]]};
