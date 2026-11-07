@@ -540,29 +540,59 @@ function _updateGpsCourse(lat, lng, accuracy, heading) {
 
 const GPS_CAR_SHAPES = {
   compact: {
-    body: 'M8 3h8c3 0 5 3 5 6v16a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9c0-3 2-6 5-6Z',
-    glass: 'M7 9h10l1 6H6zm0 13h10l1 3H6z',
-    lights: 'M6 6h3m6 0h3',
+    body: 'M7 2.4q5-1.1 10 0c2.2.5 3.5 2.5 3.5 5.1l.1 17c0 2.6-1.4 4.5-3.7 5.1q-4.9.9-9.8 0c-2.3-.6-3.7-2.5-3.7-5.1l.1-17C3.5 4.9 4.8 2.9 7 2.4Z',
+    lights: 'M5 5.5 8 6.2m8 0 3-.7',
+    tailLights: 'M5.1 26.5 8 27.3m8 0 2.9-.8',
+    details: `
+      <path d="M4 10 1.7 11v1.5H4m16-2.5 2.3 1v1.5H20" fill="var(--gps-paint)" stroke="#202630" stroke-width=".65"/>
+      <path d="M6.6 8.5q5.4-1.5 10.8 0l1.3 4.5q-6.7 1.8-13.4 0ZM6.6 21.2q5.4.8 10.8 0l.8 3.2q-6.2.9-12.4 0Z" fill="#192b36"/>
+      <path d="M7 9.2q4-1 8-.7l-8.8 3.3Z" fill="#8daebf" opacity=".64"/>
+      <path d="M5 14.5h1.1v5.9L5 19.7Zm14 0h-1.1v5.9l1.1-.7Z" fill="#24343e"/>
+      <path d="M8 15.5q4-.7 8 0m-7 10.8h6" fill="none" stroke="#fff" stroke-opacity=".49" stroke-width=".65" stroke-linecap="round"/>`,
   },
   sport: {
-    body: 'M10 2h4l6 4 1 8-2 5 2 7-2 4H5l-2-4 2-7-2-5 1-8Z',
-    glass: 'M8 9h8l2 6H6zm0 11h8l2 5H6z',
-    lights: 'M6 7l3-2m6 0 3 2',
+    body: 'M8 2.5q4-1 8 0c3.7 1.1 5.2 4 5 7.2l-1.1 7.7 1.9 7.4c.6 2.4-.6 4.4-3 4.8H5.2c-2.4-.4-3.6-2.4-3-4.8l1.9-7.4L3 9.7C2.8 6.5 4.3 3.6 8 2.5Z',
+    lights: 'M4.9 6.6 8 4.6m8 0 3.1 2',
+    tailLights: 'M4.6 26.4h4m6.8 0h4',
+    details: `
+      <path d="M6.8 8.5q5.2-1.7 10.4 0l1.4 5.4q-6.6 1.2-13.2 0Z" fill="#1b2b36"/>
+      <path d="M7.2 9.1q4.6-1.4 8.6-.7l-9.4 3.4Z" fill="#95bacb" opacity=".58"/>
+      <path d="M8 19.8q4 .8 8 0l1.7 4.8q-5.7 1-11.4 0Z" fill="#25333d"/>
+      <path d="m6 15-1 5m13-5 1 5M4.9 28.5h14.2" stroke="#212832" stroke-width="1.15" stroke-linecap="round"/>
+      <path d="M9 16.1h6m-6 6h6m-6 1.2h6" stroke="#b7c4c9" stroke-opacity=".58" stroke-width=".55" stroke-linecap="round"/>`,
   },
   suv: {
-    body: 'M6 3h12l3 4v6h1v13h-2v3H4v-3H2V13h1V7Z',
-    glass: 'M6 10h12v4H6zm1 11h10v5H7zM5 16h2v4H5zm12 0h2v4h-2z',
-    lights: 'M6 7h3m6 0h3',
+    body: 'M5.1 2.7h13.8q2.2.3 2.5 2.9l.6 20.1q0 3.4-3 3.7H5q-3-.3-3-3.7l.6-20.1q.3-2.6 2.5-2.9Z',
+    lights: 'M4.4 5.4h3m9.2 0h3',
+    tailLights: 'M4.7 25.2v2.3m14.6-2.3v2.3',
+    details: `
+      <path d="M3.3 9.5 1 10.2v2.2h2.3m17.4-2.9 2.3.7v2.2h-2.3" fill="#29303a"/>
+      <path d="M8.6 5.4h6.8M5.6 7.7h12.8l1 4.5H4.6ZM6 23h12v3.6H6Z" fill="#1b2b34" stroke="#3f4a50" stroke-width=".65"/>
+      <path d="M6 8.1h10l-10.5 2.7Z" fill="#89a6b6" opacity=".62"/>
+      <path d="M5.6 13.7v7.9m12.8-7.9v7.9" stroke="#d0d6d7" stroke-width="1.05" stroke-linecap="round"/>
+      <path d="M7.5 15.4h9m-9 4.7h9" stroke="#384450" stroke-width=".85" stroke-linecap="round"/>`,
   },
   ix35: {
-    body: 'M8 2.5h8c2.5 0 4 2 4.5 5l.5 5 1.5 1v2L21 16v8c0 3-2 5.5-5 5.5H8c-3 0-5-2.5-5-5.5v-8l-1.5-.5v-2l1.5-1 .5-5C4 4.5 5.5 2.5 8 2.5Z',
-    glass: 'M7.5 9h9l2 5.5H5.5Zm-.7 13.5h10.4l-.6 3.7H7.4Z',
-    lights: 'M5.8 6.3 9 7.5m6 0 3.2-1.2',
-    tailLights: 'm5.5 24.8 2.8 1.7m7.4 0 2.8-1.7',
-    color: '#70432e',
+    body: 'M5 3.1Q12 .9 19 3.1c1.7 1 2.4 3.5 2.5 6.5l.4 13.9c0 3.5-1.7 5.7-4.8 6.3H6.9c-3.1-.6-4.8-2.8-4.8-6.3l.4-13.9C2.6 6.6 3.3 4.1 5 3.1Z',
+    lights: 'M4.5 5.2q1.1.9 2.7 1.8m9.6 0q1.6-.9 2.7-1.8',
+    tailLights: 'M4 25.9q1 1.5 2.8 1.8m10.4 0q1.8-.3 2.8-1.8',
+    color: '#51352e',
+    details: `
+      <path d="M3.8 10.3 1 11.6q-.8 1.1.4 1.6l2.5-.3m16.3-2.6 2.8 1.3q.8 1.1-.4 1.6l-2.5-.3" fill="#6f5045" stroke="#251a19" stroke-width=".55"/>
+      <path d="M8 4q4 .7 8 0M7 5.2l1.2 2.1m8.8-2.1-1.2 2.1" fill="none" stroke="#d5b8a6" stroke-opacity=".65" stroke-width=".55"/>
+      <path d="M6.1 8.2q5.9-1.8 11.8 0l1 4.3q-6.9 1.7-13.8 0Z" fill="#18242c" stroke="#6b7d84" stroke-width=".5"/>
+      <path d="M6.8 8.8q4.1-1.1 8.5-.7l-8.9 3.3Z" fill="#7d9ba9" opacity=".52"/>
+      <path d="M4.5 13.8 5 22l1.3 1.4-.3-9.1Zm15 0L19 22l-1.3 1.4.3-9.1Z" fill="#1c232a"/>
+      <path d="M7.3 14.7v7m9.4-7v7" stroke="#c8c2bb" stroke-width=".7" stroke-linecap="round"/>
+      <path d="M7 23.8q5 1 10 0l.6 2.3q-5.6 1.4-11.2 0Z" fill="#1d252b"/>
+      <path d="M9 28.4h6" stroke="#292322" stroke-width=".85" stroke-linecap="round"/>`,
   },
   arrow: {
     body: 'M12 3 22 27 12 22 2 27Z',
+    details: `
+      <path d="M12 4.6 12 22 3.5 25.9Z" fill="#fff" opacity=".22"/>
+      <path d="M12 4.6 20.5 25.9 12 22Z" fill="#0b1525" opacity=".3"/>
+      <path d="M12 6.2v14.6" stroke="#fff" stroke-opacity=".58" stroke-width=".7" stroke-linecap="round"/>`,
   },
 };
 
@@ -573,7 +603,7 @@ function initGpsVehiclePicker() {
     const saved = localStorage.getItem('travel_gps_vehicle');
     if (Object.hasOwn(GPS_CAR_SHAPES, saved)) _gpsVehicleStyle = saved;
   } catch {}
-  const labels = {compact:'Компакт', sport:'Спорт', suv:'Внедорожник', arrow:'Стрелка', ix35:'Hyundai ix35'};
+  const labels = {compact:'Седан', sport:'Спорткар', suv:'Внедорожник', arrow:'Стрелка', ix35:'Hyundai ix35'};
   const currentLabel = document.getElementById('appearanceVehicleValue');
   if (currentLabel) currentLabel.textContent = labels[_gpsVehicleStyle];
   for (const [style, label] of Object.entries(labels)) {
@@ -599,7 +629,7 @@ function initGpsVehiclePicker() {
 let _gpsCarPaintId = 0;
 
 function _gpsCarGlyph(style, course = 0, headlightsOn = false) {
-  const {body, glass, lights, tailLights, color = 'var(--accent)'} = GPS_CAR_SHAPES[style];
+  const {body, lights, tailLights, details, color = 'var(--accent)'} = GPS_CAR_SHAPES[style];
   const paint = 'gps-car-paint-' + (++_gpsCarPaintId);
   const beam = lights && headlightsOn ? paint + '-beam' : null;
   // The headlights face the top of the SVG (north on the map).
@@ -608,7 +638,7 @@ function _gpsCarGlyph(style, course = 0, headlightsOn = false) {
       <defs>
         <linearGradient id="${paint}" x1="0%" y1="22%" x2="100%" y2="78%">
           <stop stop-color="color-mix(in srgb,var(--gps-paint),#111827 42%)"/>
-          <stop offset=".28" stop-color="color-mix(in srgb,var(--gps-paint),white 44%)"/>
+          <stop offset=".28" stop-color="color-mix(in srgb,var(--gps-paint),white ${details ? 25 : 44}%)"/>
           <stop offset=".57" stop-color="var(--gps-paint)"/>
           <stop offset="1" stop-color="color-mix(in srgb,var(--gps-paint),#111827 62%)"/>
         </linearGradient>
@@ -619,11 +649,10 @@ function _gpsCarGlyph(style, course = 0, headlightsOn = false) {
       </defs>
       ${beam ? `<path d="M6 7 0-14h12L9 7Zm9 0-3-21h12L18 7Z" fill="url(#${beam})"/>` : ''}
       <path d="${body}" fill="url(#${paint}) ${color}"
-        stroke="color-mix(in srgb,var(--gps-paint),white 42%)" stroke-width="1.4" stroke-linejoin="round"/>
-      ${glass ? `<path d="${glass}" fill="#172331" stroke="#eff6ff" stroke-opacity=".4" stroke-width=".65"/>
-        <path d="M8.5 17.5h5" stroke="#fff" stroke-opacity=".7" stroke-width="1.3" stroke-linecap="round"/>` : ''}
-      ${lights ? `<path d="${lights}" stroke="#fff8de" stroke-width="2" stroke-linecap="round"/>` : ''}
-      ${tailLights ? `<path d="${tailLights}" stroke="#ff7771" stroke-width="1.4" stroke-linecap="round"/>` : ''}
+        stroke="color-mix(in srgb,var(--gps-paint),white 42%)" stroke-width="${details ? .85 : 1.4}" stroke-linejoin="round"/>
+      ${details || ''}
+      ${lights ? `<path d="${lights}" fill="none" stroke="#fff8de" stroke-width="${details ? 1.55 : 2}" stroke-linecap="round"/>` : ''}
+      ${tailLights ? `<path d="${tailLights}" fill="none" stroke="#ff7771" stroke-width="1.4" stroke-linecap="round"/>` : ''}
     </svg>`;
 }
 
