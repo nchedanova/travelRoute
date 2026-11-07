@@ -217,7 +217,7 @@ function installWalkReview() {
       if (!recording.startedAt) {
         recording.startedAt = fix.time;
         setRecordedStart(id, fix);
-        if (currentDay === id) map.setView(fix.point, 17);
+        if (currentDay === id) fitDayMap(DAYS_DATA[id]);
       } else {
         closeRecordedStop(id, recording, fix.time);
       }
@@ -294,7 +294,7 @@ function installWalkReview() {
     }
   }
 
-  function renderRecording(id, recenter = false) {
+  function renderRecording(id) {
     const recording = DAYS_DATA[id]?.walkReview;
     const editable = isAdmin() && !!recording;
     document.body.classList.toggle('walk-review-recording-day', editable);
@@ -390,12 +390,6 @@ function installWalkReview() {
       if (action === 'mark') panel.querySelector('[data-action="mark"]').focus({preventScroll: true});
       saveData(action !== 'finish');
     };
-    if (recenter && phase !== 'ready') {
-      const points = recording.segments.flat().concat([day.start, ...day.stops]
-        .filter(p => p.lat || p.lng).map(p => [p.lat, p.lng]));
-      if (points.length > 1) map.fitBounds(L.latLngBounds(points), {padding: [28, 28], maxZoom: 16});
-      else if (points.length === 1) map.setView(points[0], 16);
-    }
   }
 
   addNewDay = event => {
@@ -415,7 +409,7 @@ function installWalkReview() {
   switchDay = function(id) {
     if (session && DAYS_DATA[session.id]?.walkReview !== session.recording) suspendRecording();
     originalSwitch(id);
-    renderRecording(id, true);
+    renderRecording(id);
   };
   renderAllDays = function() {
     originalRenderAllDays();
@@ -438,29 +432,7 @@ function installWalkReview() {
 
   document.addEventListener('DOMContentLoaded', () => {
     document.body.appendChild(picker);
-    if (LOCAL_PREVIEW && new URLSearchParams(location.search).get('sample') === 'walk-line') {
-      const id = 1; // Первый день использует рыжий цвет в палитре журнала.
-      const points = [
-        [55.7947, 37.9460], [55.7959, 37.9458], [55.7970, 37.9477],
-        [55.7984, 37.9471], [55.7997, 37.9459], [55.8010, 37.9448],
-        [55.8000, 37.9427], [55.7985, 37.9434], [55.7970, 37.9477],
-        [55.7961, 37.9468], [55.7948, 37.9465]
-      ];
-      const [lat, lng] = points[0];
-      const meters = points.slice(1).reduce((total, point, i) =>
-        total + L.latLng(points[i]).distanceTo(L.latLng(point)), 0);
-      DAYS_DATA[id] = {
-        dateISO: '07.11.2026', date: 'Пример прогулки', icon: '🚶', walkMode: true, color: '#f5a623',
-        start: {lat, lng, name: 'Старт', icon: '🚶'}, stops: [],
-        walkReview: {phase: 'finished', segments: [points], meters}
-      };
-      redrawDay(id);
-      renderTabs();
-      renderAllDays();
-      switchDay(id);
-      return;
-    }
     renderTabs();
-    renderRecording(currentDay, true);
+    renderRecording(currentDay);
   });
 }

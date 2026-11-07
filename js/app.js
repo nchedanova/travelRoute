@@ -3007,10 +3007,7 @@ document.addEventListener('focusin', e => {
 
 setTimeout(() => {
   const d = DAYS_DATA[currentDay];
-  if (d) {
-    const coords = [[d.start.lat, d.start.lng], ...d.stops.map(s => [s.lat, s.lng])].filter(p => p[0] && p[1]);
-    if (coords.length) map.fitBounds(L.latLngBounds(coords), { padding:[40,40] });
-  }
+  if (d) fitDayMap(d, true);
   refreshSegments();
 }, 150);
 
@@ -3086,7 +3083,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '3.0.0';
-var APP_BUILD   = 6;
+var APP_BUILD   = 7;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 1;
 

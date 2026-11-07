@@ -571,8 +571,18 @@ function switchMapDay(d) {
   const data = DAYS_DATA[d];
   if (!data) return;
   if (viewer && data.hidden) return;
-  const pts = [[data.start.lat, data.start.lng], ...data.stops.map(s => [s.lat, s.lng])].filter(p => p[0] && p[1]);
-  if (pts.length > 1) map.fitBounds(L.latLngBounds(pts), { padding:[40,40] });
+  fitDayMap(data);
+}
+
+function fitDayMap(day, initial = false) {
+  const points = [[day.start.lat, day.start.lng], ...day.stops.map(s => [s.lat, s.lng]),
+    ...(day.walkReview?.segments || []).flat()].filter(([lat, lng]) =>
+    Number.isFinite(lat) && Number.isFinite(lng) && (lat !== 0 || lng !== 0));
+  if (!points.length || (points.length === 1 && !day.walkMode && !initial)) return;
+  // Startup can fit the cached day and then the selected day in quick succession.
+  const options = {padding: [40, 40], animate: false};
+  if (day.walkMode) options.maxZoom = 17;
+  map.fitBounds(L.latLngBounds(points), options);
 }
 
 // ── SEGMENT HIGHLIGHT (заполненные = яркие) ───────────────────────────────────

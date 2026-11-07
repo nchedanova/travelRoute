@@ -344,6 +344,7 @@ function renderRemoteWalk(id, walk, force, previousStructure) {
   }
   redrawDay(id);
   if (!DAYS_DATA[currentDay] || DAYS_DATA[currentDay].archived || DAYS_DATA[currentDay].hidden) switchDay(id);
+  else if (force && currentDay === id && !_userPanned) fitDayMap(DAYS_DATA[id]);
   if (!map.hasLayer(layers[id]) && currentDay === id) layers[id].addTo(map);
   renderTabs();
   renderAllDays();
