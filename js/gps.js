@@ -254,6 +254,7 @@ function _onPosition(pos) {
   _highlightNearest(lat, lng);
 
   if (_drivingMode) {
+    _checkRouteHints(pos.coords);
     _updateSpeedDisplay(kmh);
     const point = { lat, lng, speed: kmh, accuracy, ts: Date.now() };
     // Всегда пишем в IndexedDB (для GPX-экспорта и оффлайн)
@@ -344,7 +345,7 @@ function renderRemoteWalk(id, walk, force, previousStructure) {
   }
   redrawDay(id);
   if (!DAYS_DATA[currentDay] || DAYS_DATA[currentDay].archived || DAYS_DATA[currentDay].hidden) switchDay(id);
-  else if (force && currentDay === id && !_userPanned) fitDayMap(DAYS_DATA[id]);
+  else if (force && currentDay === id && !_userPanned) fitDayMap(id);
   if (!map.hasLayer(layers[id]) && currentDay === id) layers[id].addTo(map);
   renderTabs();
   renderAllDays();
@@ -591,8 +592,8 @@ function updateWalkGpsControls(position) {
 
 // ── РЕЖИМ "ЕДУ" — только владелец ─────────────────────────────────────────────
 function toggleDrivingMode() {
-  if (_walkGpsActive) return;
-  if (typeof isDemoMode === 'function' && isDemoMode()) {
+  if (_walkGpsActive || !isAdmin()) return;
+  if (typeof isDemoMode === 'function' && isDemoMode() && !routeHintsPreviewEnabled()) {
     showToast && showToast('📱 Это демо-режим. Настройте Firebase в ⚙ для GPS-трекинга');
     return;
   }
@@ -600,6 +601,7 @@ function toggleDrivingMode() {
   _lastOwnerPosition = null;
   _followCamera = _drivingMode;
   _userPanned   = false;
+  _resetRouteHints();
 
   const btn = document.getElementById('drivingBtn');
   if (btn) {
@@ -616,7 +618,7 @@ function toggleDrivingMode() {
   // Keep-alive: держим WebSocket живым для уведомлений
   if (_drivingMode) {
     startKeepAlive();
-    _acquireWakeLock();
+    if (!routeHintsPreviewEnabled()) _acquireWakeLock();
   } else {
     stopKeepAlive();
     _releaseWakeLock();
@@ -705,8 +707,6 @@ function _highlightNearest(lat, lng) {
   const dayData = DAYS_DATA[currentDay];
   if (!dayData?.stops?.length) return;
 
-  _checkRouteHints(lat, lng);
-
   // Ищем первую непосещённую точку (без arrA) — это текущая цель
   var firstUnvisited = -1;
   for (var fi = 0; fi < dayData.stops.length; fi++) {
@@ -772,61 +772,140 @@ function refreshGpsMarkerIcon() {
 
 // ── ROUTE HINTS ────────────────────────────────────────────────────────────────
 var _routeHintTimer      = null;
-var _routeHintProgressTimer = null;
-var _routeHintShownIds   = {};
-var _HINT_TYPES          = { 'Заправка': '⛽', 'Кафе': '🍜', 'Магазин': '🛒' };
-var _HINT_DIST_KM        = 1.0;
+const _routeHintShownIds = new Set();
+const _pendingDrivingLegs = new Map();
+const _HINT_TYPES = { 'Заправка': '⛽', 'Кафе': '☕', 'Магазин': '🛒' };
+const ROUTE_HINT_DURATION_MS = 10000;
+let _lastRouteDing = -Infinity;
+let _maneuverExpiry = null;
+let _visibleManeuverId = null;
 
-function _checkRouteHints(lat, lng) {
-  if (typeof currentDay === 'undefined' || typeof DAYS_DATA === 'undefined') return;
-  var dayData = DAYS_DATA[currentDay];
-  if (!dayData || !dayData.stops || !dayData.stops.length) return;
-  if (dayData.walkMode) return;
-  if (!document.body.classList.contains('driving-active')) return;
-
-  for (var i = 0; i < dayData.stops.length; i++) {
-    var s = dayData.stops[i];
-    if (!s.lat || !s.lng) continue;
-    if (!_HINT_TYPES[s.type]) continue;
-    if (s.arrA) continue;
-    if (_routeHintShownIds[s.id]) continue;
-    var dist = _haversineKmPts(lat, lng, s.lat, s.lng);
-    if (dist <= _HINT_DIST_KM && dist > 0.05) {
-      _routeHintShownIds[s.id] = true;
-      _showRouteHint(_HINT_TYPES[s.type] + ' ' + s.type + ' через 1 км');
-      break;
-    }
-  }
+function routeHintsPreviewEnabled() {
+  return typeof LOCAL_PREVIEW !== 'undefined' && LOCAL_PREVIEW && isAdmin() &&
+    new URLSearchParams(location.search).get('sample') === 'route-hints';
 }
 
-function _showRouteHint(msg) {
-  var el = document.getElementById('routeHint');
-  if (!el) return;
+function _setRouteHint(id, hint) {
+  const panel = document.getElementById('routeHint');
+  const row = document.getElementById(id);
+  row.hidden = !hint;
+  if (hint) {
+    row.querySelector('.route-hint-icon').textContent = hint.icon;
+    row.querySelector('strong').textContent = hint.title;
+    row.querySelector('.route-hint-detail').textContent = hint.detail;
+  }
+  panel.hidden = [...panel.children].every(child => child.hidden);
+}
 
+function _resetRouteHints() {
   clearTimeout(_routeHintTimer);
-  clearInterval(_routeHintProgressTimer);
+  clearTimeout(_maneuverExpiry);
+  _visibleManeuverId = null;
+  _routeHintShownIds.clear();
+  _lastRouteDing = -Infinity;
+  _setRouteHint('routeManeuver', null);
+  _setRouteHint('routePlace', null);
+}
 
-  var mainToast = document.getElementById('toast');
-  el.classList.toggle('toast-also-shown', !!(mainToast && mainToast.classList.contains('show')));
+function _dingRouteHint(id) {
+  if (_routeHintShownIds.has(id)) return;
+  _routeHintShownIds.add(id);
+  if (Date.now() - _lastRouteDing < 2000) return;
+  _lastRouteDing = Date.now();
+  if (typeof _playDing === 'function') _playDing();
+}
 
-  el.innerHTML = '<span>' + msg + '</span>'
-    + '<div class="route-hint-progress" id="routeHintBar" style="width:100%"></div>';
-  el.classList.add('show');
+function _maneuverLabel(maneuver) {
+  const {type, modifier, exit} = maneuver || {};
+  const direction = modifier?.endsWith('left') ? 'налево' : modifier?.endsWith('right') ? 'направо' : '';
+  const arrow = direction === 'налево' ? '↰' : direction ? '↱' : '↑';
+  if (modifier === 'uturn') return ['↶', 'Разворот'];
+  if (/roundabout|rotary/.test(type || '')) return ['↻', exit ? 'Кольцо · съезд ' + exit : 'Кольцо'];
+  if (type === 'off ramp' || type === 'on ramp') {
+    return [arrow, [type === 'off ramp' ? 'Съезд' : 'Въезд', direction].filter(Boolean).join(' ')];
+  }
+  if (type === 'fork' || type === 'merge') return [arrow, direction ? 'Держитесь ' + direction : 'Держитесь прямо'];
+  if (direction && ['turn', 'end of road', 'continue'].includes(type)) return [arrow, 'Поворот ' + direction];
+  return null;
+}
 
-  var bar = document.getElementById('routeHintBar');
-  var duration = 5000;
-  var start = Date.now();
-  _routeHintProgressTimer = setInterval(function() {
-    var elapsed = Date.now() - start;
-    var pct = Math.max(0, 100 - (elapsed / duration * 100));
-    if (bar) bar.style.width = pct + '%';
-    if (elapsed >= duration) clearInterval(_routeHintProgressTimer);
-  }, 100);
+function _nextDrivingManeuver(steps, {latitude, longitude, accuracy, heading}) {
+  const xScale = 111320 * Math.cos(latitude * Math.PI / 180);
+  const yScale = 111320;
+  let along = 0;
+  let closest = Math.min(55, Math.max(25, accuracy));
+  let progress = null;
+  const maneuvers = [];
+  steps.forEach((step, index) => {
+    const label = _maneuverLabel(step.maneuver);
+    if (label) maneuvers.push({along, label, index, street: step.name});
+    const line = step.geometry?.coordinates || [];
+    for (let i = 1; i < line.length; i++) {
+      const a = line[i - 1], b = line[i];
+      const dx = (b[0] - a[0]) * xScale, dy = (b[1] - a[1]) * yScale;
+      const length = Math.hypot(dx, dy);
+      if (!length) continue;
+      const x = (longitude - a[0]) * xScale, y = (latitude - a[1]) * yScale;
+      const ratio = Math.max(0, Math.min(1, (x * dx + y * dy) / (length * length)));
+      const offset = Math.hypot(x - ratio * dx, y - ratio * dy);
+      const bearing = Math.atan2(dx, dy) * 180 / Math.PI;
+      const aligned = !Number.isFinite(heading) || Math.cos((heading - bearing) * Math.PI / 180) > 0;
+      if (aligned && offset < closest) {
+        closest = offset;
+        progress = along + ratio * length;
+      }
+      along += length;
+    }
+  });
+  if (progress === null) return null;
+  const next = maneuvers.find(item => item.along >= progress && item.along - progress <= 400);
+  return next && {...next, meters: next.along - progress};
+}
 
-  _routeHintTimer = setTimeout(function() {
-    el.classList.remove('show');
-    clearInterval(_routeHintProgressTimer);
-  }, duration);
+function _checkRouteHints(fix) {
+  const day = DAYS_DATA[currentDay];
+  if (!_drivingMode || !isAdmin() || !day || day.walkMode || day.archived) return;
+  const id = currentDay;
+  const index = day.stops.findIndex(stop => !stop.arrA);
+  const to = day.stops[index];
+  const from = index > 0 ? day.stops[index - 1] : day.start;
+  const key = to && `driving|${from.lat},${from.lng}|${to.lat},${to.lng}`;
+  let maneuver;
+  if (key && (from.lat || from.lng) && (to.lat || to.lng) && fix.accuracy <= 50) {
+    if (!drivingSteps.has(key) && !routeHintsPreviewEnabled() && Date.now() >= osrmRetryAt &&
+        Date.now() >= (_pendingDrivingLegs.get(key) || 0)) {
+      _pendingDrivingLegs.set(key, Infinity);
+      fetchRoadSegment(from, to, 'driving', true).catch(() => {}).finally(() => {
+        _pendingDrivingLegs.set(key, Date.now() + 120000);
+      });
+    }
+    maneuver = _nextDrivingManeuver(drivingSteps.get(key) || [], fix);
+  }
+  if (maneuver) {
+    const maneuverId = id + ':' + key + ':' + maneuver.index;
+    if (!_routeHintShownIds.has(maneuverId)) {
+      clearTimeout(_maneuverExpiry);
+      _visibleManeuverId = maneuverId;
+      _dingRouteHint(maneuverId);
+      _maneuverExpiry = setTimeout(() => {
+        _visibleManeuverId = null;
+        _setRouteHint('routeManeuver', null);
+      }, ROUTE_HINT_DURATION_MS);
+    }
+    const [icon, title] = maneuver.label;
+    const meters = Math.min(400, Math.ceil(maneuver.meters / 10) * 10);
+    const detail = (meters ? 'Через ' + meters + ' м' : 'Сейчас') + (maneuver.street ? ' · ' + maneuver.street : '');
+    _setRouteHint('routeManeuver', _visibleManeuverId === maneuverId ? {icon, title, detail} : null);
+  } else _setRouteHint('routeManeuver', null);
+
+  if (!Number.isFinite(fix.accuracy) || fix.accuracy > 50) return;
+  const place = day.stops.find(stop => _HINT_TYPES[stop.type] && !stop.arrA &&
+    !_routeHintShownIds.has('place:' + stop.id) && (stop.lat || stop.lng) &&
+    _haversineKmPts(fix.latitude, fix.longitude, stop.lat, stop.lng) <= 1);
+  if (!place || !document.getElementById('routePlace').hidden) return;
+  _setRouteHint('routePlace', {icon: _HINT_TYPES[place.type], title: place.type, detail: 'В пределах 1 км'});
+  _dingRouteHint('place:' + place.id);
+  _routeHintTimer = setTimeout(() => _setRouteHint('routePlace', null), ROUTE_HINT_DURATION_MS);
 }
 
 function _haversineKmPts(lat1, lng1, lat2, lng2) {

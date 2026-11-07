@@ -47,7 +47,7 @@ function switchDay(d) {
   }
   // Обновить иконку GPS-маркера (🚗/🚶) при смене дня — без этого залипает
   if (typeof refreshGpsMarkerIcon === 'function') refreshGpsMarkerIcon();
-  if (typeof _routeHintShownIds !== 'undefined') _routeHintShownIds = {};
+  if (prev !== d && typeof _resetRouteHints === 'function') _resetRouteHints();
   if (prev !== d) _navPush();
 }
 
@@ -1394,6 +1394,7 @@ function setDayMode(day, mode) {
   if (!data) return;
 
   data.walkMode = (mode === 'walk');
+  if (day === currentDay && typeof _resetRouteHints === 'function') _resetRouteHints();
 
   // Flush stale OSRM requests so new profile (foot/driving) applies instantly
   if (typeof _flushQueue === 'function') _flushQueue();
@@ -3006,8 +3007,7 @@ document.addEventListener('focusin', e => {
 });
 
 setTimeout(() => {
-  const d = DAYS_DATA[currentDay];
-  if (d) fitDayMap(d, true);
+  fitDayMap(currentDay, true);
   refreshSegments();
 }, 150);
 
@@ -3083,11 +3083,19 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '3.0.0';
-var APP_BUILD   = 7;
+var APP_BUILD   = 8;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 1;
 
 var APP_CHANGELOG = [
+  { ver: '3.0.0 build 8', date: '07.11.2026', items: [
+    '🚗 В режиме «Еду» журнал подсказывает повороты и съезды за 400 м по маршруту. Кафе, заправки и магазины из списка остановок появляются в той же плашке в пределах 1 км. Подсказки видны до 10 секунд и сопровождаются коротким сигналом, если звук включён.',
+    '🗺 При открытии автомаршрута карта учитывает всю дорогу, включая петли и объезды между остановками.'
+  ], spectatorItems: [
+    '🗺 При открытии опубликованного автомаршрута карта учитывает всю дорогу, включая петли и объезды между остановками.'
+  ], demoItems: [
+    '🗺 Откройте автомаршрут, чтобы увидеть всю дорогу на карте. Масштаб учитывает петли и объезды между остановками.'
+  ]},
   { ver: '3.0.0 build 1', date: '07.11.2026', items: [
     '🚶 Гуляйте налегке. В меню «+ день» выберите «Запись прогулки» и нажмите ▶. Журнал нарисует пройденный путь по GPS и сам поставит точки каждые 500 м. Во время записи держите журнал открытым на включённом экране.',
     '📍 Нашли место для привала? Нажмите «+ Остановка». Журнал запомнит время прибытия, а когда продолжите запись, отметит отправление. Фото и заметки можно добавить в карточке остановки.',
@@ -3291,17 +3299,17 @@ function showChangelog() {
 function closeChangelog() {
   document.getElementById('changelogModal').classList.remove('show');
   try {
-    if (!isChatEnabled()) localStorage.setItem('changelog_spectator_seen', APP_VERSION);
-    else localStorage.setItem('changelog_seen', APP_VERSION);
+    if (!isChatEnabled()) localStorage.setItem('changelog_spectator_seen', APP_CHANGELOG[0].ver);
+    else localStorage.setItem('changelog_seen', APP_CHANGELOG[0].ver);
   } catch(e) {}
 }
 
-// Каждая роль видит новое описание один раз на версию.
+// Новая запись показывается один раз. Сборки без записи её не открывают повторно.
 function shouldShowChangelogOnLoad() {
   if (typeof LOCAL_PREVIEW !== 'undefined' && LOCAL_PREVIEW) return false;
   try {
-    if (!isChatEnabled()) return localStorage.getItem('changelog_spectator_seen') !== APP_VERSION;
-    return isAdmin() && localStorage.getItem('changelog_seen') !== APP_VERSION;
+    if (!isChatEnabled()) return localStorage.getItem('changelog_spectator_seen') !== APP_CHANGELOG[0].ver;
+    return isAdmin() && localStorage.getItem('changelog_seen') !== APP_CHANGELOG[0].ver;
   } catch(e) { return false; }
 }
 

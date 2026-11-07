@@ -30,6 +30,20 @@ test('owner sends published GPS only for a published active day; reader GPS rema
   ctx.currentDay=1;ctx.DAYS_DATA[1].archived=true;ctx._writePosition(12,22,32,4);
   assert.equal(writes[2].value.spectator,null);
 });
+test('driving alerts use distance along the road and ignore an off-route or opposite-heading fix', () => {
+  const {ctx} = setup(false);
+  const steps = [
+    {maneuver:{type:'depart'}, geometry:{coordinates:[[0,0],[0.004,0],[0.004,0.004],[0,0.004]]}},
+    {maneuver:{type:'off ramp', modifier:'right'}, geometry:{coordinates:[[0,0.004],[0,0.006]]}},
+  ];
+  assert.equal(ctx._nextDrivingManeuver(steps, {longitude:0,latitude:0.001,accuracy:10,heading:90}), null);
+  assert.equal(ctx._nextDrivingManeuver(steps, {longitude:0,latitude:0,accuracy:10,heading:90}), undefined);
+  const fix = {longitude:0.003,latitude:0.004,accuracy:10,heading:270};
+  const alert = ctx._nextDrivingManeuver(steps, fix);
+  assert.ok(alert.meters > 330 && alert.meters < 340);
+  assert.equal(alert.label[1], 'Съезд направо');
+  assert.equal(ctx._nextDrivingManeuver(steps, {...fix, heading:90}), null);
+});
 test('stopping, unpublishing or switching to an unpublished day clears the spectator branch',()=>{
   for(const action of ['_drivingMode=false','DAYS_DATA[1].publicationId=null','currentDay=2']) {
     const {ctx,writes,run}=setup(false);ctx._writePosition(10,20,30,4);run(action);

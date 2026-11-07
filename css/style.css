@@ -898,17 +898,17 @@ input.day-date-input {
 .toast.show { opacity:1; transform:translateY(0); }
 
 .route-hint-toast {
-  bottom:calc(20px + env(safe-area-inset-bottom, 0px)); right:20px;
-  border-color:var(--accent); color:var(--accent);
-  display:flex; flex-direction:column; gap:4px; min-width:160px;
+  position:absolute; z-index:900; top:12px; left:12px;
+  max-width:min(320px, calc(100% - 66px)); box-sizing:border-box;
+  border:1px solid var(--border); border-radius:12px;
+  background:var(--surface); color:var(--text);
+  box-shadow:0 5px 18px #0006; pointer-events:none;
 }
-.route-hint-toast.toast-also-shown {
-  bottom:calc(62px + env(safe-area-inset-bottom, 0px));
-}
-.route-hint-progress {
-  height:2px; background:var(--accent); border-radius:1px;
-  transition:width linear;
-}
+.route-hint-row {display:flex; align-items:center; gap:10px; padding:9px 12px; font:13px var(--font-ui);}
+.route-hint-row + .route-hint-row:not([hidden]) {border-top:1px solid var(--border);}
+.route-hint-toast [hidden] {display:none;}
+.route-hint-icon {color:var(--accent); font:24px/1 system-ui; flex:none;}
+.route-hint-detail {display:block; color:var(--muted); margin-top:2px; overflow-wrap:anywhere;}
 
 /* ── MOBILE ──────────────────────────────────────────── */
 @media (max-width:700px) {

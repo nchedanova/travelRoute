@@ -5,7 +5,29 @@ const segmentLayers = {};
 
 // ── OSRM ROUTING ──────────────────────────────────────────────────────────────
 const OSRM_CACHE_KEY = 'travel_route_cache_v2';
-const OSRM_DELAY_MS  = 650; // задержка между запросами (публичный OSRM ~600ms)
+const OSRM_DELAY_MS = 1050;
+let osrmRequestQueue = Promise.resolve();
+let osrmNextRequestAt = 0;
+let osrmRetryAt = 0;
+
+function fetchOsrm(url) {
+  const request = osrmRequestQueue.then(async () => {
+    if (Date.now() < osrmRetryAt) return null;
+    const wait = osrmNextRequestAt - Date.now();
+    if (wait > 0) await new Promise(resolve => setTimeout(resolve, wait));
+    osrmNextRequestAt = Date.now() + OSRM_DELAY_MS;
+    const response = await fetch(url);
+    if (response.status === 429) {
+      const retry = response.headers.get('Retry-After');
+      const delay = Number(retry) * 1000 || Date.parse(retry) - Date.now() || 0;
+      osrmRetryAt = Date.now() + Math.max(60000, delay);
+      return null;
+    }
+    return response;
+  });
+  osrmRequestQueue = request.catch(() => {});
+  return request;
+}
 
 // Кэш маршрутов: ключ = "profile|lat1,lng1|lat2,lng2" → массив [lat,lng]
 // Загружается из localStorage при старте → линии сразу по дорогам без OSRM-запроса
@@ -67,6 +89,7 @@ window.addEventListener('beforeunload', function() {
 
 // Очередь запросов: предотвращает rate-limit на публичном OSRM
 const _fetchQueue = [];
+const drivingSteps = new Map();
 let   _queueBusy  = false;
 
 function _flushQueue() {
@@ -81,20 +104,17 @@ async function _drainQueue() {
   if (_queueBusy) return;
   _queueBusy = true;
   while (_fetchQueue.length > 0) {
-    const { from, to, profile, resolve, reject } = _fetchQueue.shift();
-    try { resolve(await _osrmFetch(from, to, profile)); }
+    const { from, to, profile, withSteps, resolve, reject } = _fetchQueue.shift();
+    try { resolve(await _osrmFetch(from, to, profile, withSteps)); }
     catch (e) { reject(e); }
-    if (_fetchQueue.length > 0) {
-      await new Promise(r => setTimeout(r, OSRM_DELAY_MS));
-    }
   }
   _queueBusy = false;
 }
 
-async function _osrmFetch(from, to, profile) {
+async function _osrmFetch(from, to, profile, withSteps = false) {
   profile = profile || 'driving';
   const key = `${profile}|${from.lat},${from.lng}|${to.lat},${to.lng}`;
-  if (_routeCache[key]) return _routeCache[key];
+  if (_routeCache[key] && (!withSteps || drivingSteps.has(key))) return _routeCache[key];
 
   // router.project-osrm.org only supports driving profile.
   // For foot routing we use routing.openstreetmap.de which supports all profiles.
@@ -108,25 +128,23 @@ async function _osrmFetch(from, to, profile) {
       `${from.lng},${from.lat};${to.lng},${to.lat}` +
       `?overview=full&geometries=geojson`;
   }
+  if (withSteps) url += '&steps=true';
 
-  // До 3 попыток при ошибке / rate-limit
+  // Повторяем только сетевые ошибки обычного маршрута.
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      const r = await fetch(url);
-      if (r.status === 429) {
-        await new Promise(res => setTimeout(res, 1000 * (attempt + 1)));
-        continue;
-      }
-      if (!r.ok) return null;
+      const r = await fetchOsrm(url);
+      if (!r?.ok) return null;
       const data = await r.json();
       if (data.code !== 'Ok' || !data.routes?.length) return null;
       const coords = data.routes[0].geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+      if (withSteps) drivingSteps.set(key, data.routes[0].legs?.flatMap(leg => leg.steps || []) || []);
       _routeCache[key] = coords;
       if (data.routes[0].duration != null) _durationCache[key] = data.routes[0].duration;
       _persistCache(); // сохраняем в localStorage для следующей сессии
       return coords;
     } catch (_) {
-      if (attempt === 2) return null;
+      if (withSteps || attempt === 2) return null;
       await new Promise(res => setTimeout(res, 600));
     }
   }
@@ -139,16 +157,16 @@ async function _osrmFetch(from, to, profile) {
 let _routeLoadingEnabled = false;
 function enableRouteLoading() { _routeLoadingEnabled = true; }
 
-function fetchRoadSegment(from, to, profile) {
+function fetchRoadSegment(from, to, profile, withSteps = false) {
   profile = profile || 'driving';
   const key = `${profile}|${from.lat},${from.lng}|${to.lat},${to.lng}`;
   // Мгновенный ответ из кэша — без добавления в очередь
-  if (_routeCache[key]) return Promise.resolve(_routeCache[key]);
+  if (_routeCache[key] && (!withSteps || drivingSteps.has(key))) return Promise.resolve(_routeCache[key]);
   // Не отправляем OSRM пока не загружены реальные данные
   if (!_routeLoadingEnabled) return Promise.resolve(null);
 
   return new Promise((resolve, reject) => {
-    _fetchQueue.push({ from, to, profile, resolve, reject });
+    _fetchQueue.push({ from, to, profile, withSteps, resolve, reject });
     _drainQueue();
   });
 }
@@ -163,7 +181,6 @@ async function _drainDurQueue() {
     var item = _durQueue.shift();
     try { await _fetchDurationSingle(item.from, item.to, item.profile); } catch(_) {}
     if (item.cb) item.cb();
-    if (_durQueue.length > 0) await new Promise(function(r) { setTimeout(r, OSRM_DELAY_MS); });
   }
   _durBusy = false;
 }
@@ -181,8 +198,8 @@ async function _fetchDurationSingle(from, to, profile) {
       from.lng + ',' + from.lat + ';' + to.lng + ',' + to.lat + '?overview=false';
   }
   try {
-    var r = await fetch(url);
-    if (!r.ok) return;
+    var r = await fetchOsrm(url);
+    if (!r?.ok) return;
     var data = await r.json();
     if (data.code !== 'Ok' || !data.routes?.length) return;
     _durationCache[key] = data.routes[0].duration;
@@ -517,6 +534,7 @@ function drawDay(d) {
         if (!coords || !group.hasLayer(seg)) return;
         seg.setLatLngs(coords);
         if (segOutline && group.hasLayer(segOutline)) segOutline.setLatLngs(coords);
+        if (!isWalk) extendAutoRouteView(d, coords);
         refreshSegments();
         if (typeof autoFillTimes === 'function') autoFillTimes(d);
         if (typeof updateTravelStats === 'function') updateTravelStats(d);
@@ -571,18 +589,33 @@ function switchMapDay(d) {
   const data = DAYS_DATA[d];
   if (!data) return;
   if (viewer && data.hidden) return;
-  fitDayMap(data);
+  fitDayMap(d);
 }
 
-function fitDayMap(day, initial = false) {
+let autoRouteView = null;
+
+function fitDayMap(id, initial = false) {
+  const day = DAYS_DATA[id];
+  if (!day) return;
+  autoRouteView = null;
+  const route = day.walkReview
+    ? (day.walkReview.segments || []).flat()
+    : getDayRouteCoords(id).map(point => [point.lat, point.lng]);
   const points = [[day.start.lat, day.start.lng], ...day.stops.map(s => [s.lat, s.lng]),
-    ...(day.walkReview?.segments || []).flat()].filter(([lat, lng]) =>
+    ...route].filter(([lat, lng]) =>
     Number.isFinite(lat) && Number.isFinite(lng) && (lat !== 0 || lng !== 0));
   if (!points.length || (points.length === 1 && !day.walkMode && !initial)) return;
   // Startup can fit the cached day and then the selected day in quick succession.
-  const options = {padding: [40, 40], animate: false};
-  if (day.walkMode) options.maxZoom = 17;
+  const options = {padding: [40, 40], animate: false, maxZoom: day.walkMode ? 17 : 14};
   map.fitBounds(L.latLngBounds(points), options);
+  if (!day.walkMode) autoRouteView = {id, center: map.getCenter(), zoom: map.getZoom()};
+}
+
+function extendAutoRouteView(id, coords) {
+  if (id !== currentDay || autoRouteView?.id !== id || map.getZoom() !== autoRouteView.zoom ||
+      !map.getCenter().equals(autoRouteView.center)) return;
+  const visible = map.getBounds();
+  if (coords.some(point => !visible.contains(point))) fitDayMap(id);
 }
 
 // ── SEGMENT HIGHLIGHT (заполненные = яркие) ───────────────────────────────────

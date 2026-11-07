@@ -80,6 +80,9 @@ function spectatorPayload(payload) {
 
 function routeStorageKey() {
   if (typeof LOCAL_PREVIEW === 'undefined' || !LOCAL_PREVIEW) return 'travel_tracker_v3';
+  if (typeof location !== 'undefined' && new URLSearchParams(location.search).get('sample') === 'route-hints') {
+    return 'travel_route_hints_preview';
+  }
   return typeof LOCAL_WALK_REVIEW !== 'undefined' && LOCAL_WALK_REVIEW ? 'travel_walk_review_v1' : 'travel_preview_v1';
 }
 

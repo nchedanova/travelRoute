@@ -32,6 +32,54 @@ if (LOCAL_PREVIEW) {
     if (badge) badge.textContent = {admin:'локально · владелец',reader:'локально · читатель',spectator:'локально · зритель'}[PREVIEW_ROLE];
     var changelog = document.getElementById('changelogModal');
     if (changelog) changelog.classList.remove('show');
+    if (routeHintsPreviewEnabled()) {
+      const start = [37.940, 55.795];
+      const turn = [37.950, 55.795];
+      const exit = [37.950, 55.800];
+      const cafe = [37.952, 55.801];
+      const fuel = [37.952, 55.817];
+      const shop = [37.952, 55.833];
+      const place = (id, num, name, type, icon, [lng, lat]) =>
+        ({id, num, name, type, icon, lng, lat, arrP:'', arrA:'', depP:'', depA:'', notes:[]});
+      DAYS_DATA[1] = {...DAYS_DATA[1], date:'Подсказки в поездке', walkMode:false,
+        start:{name:'Старт', icon:'🚗', lng:start[0], lat:start[1]},
+        stops:[place('hint-cafe', 1, 'Кафе', 'Кафе', '☕', cafe),
+          place('hint-fuel', 2, 'Заправка', 'Заправка', '⛽', fuel),
+          place('hint-shop', 3, 'Магазин', 'Магазин', '🛒', shop)]};
+      const legKey = (a, b) => `driving|${a[1]},${a[0]}|${b[1]},${b[0]}`;
+      const cacheLine = (a, b, line) => { _routeCache[legKey(a, b)] = line.map(([lng, lat]) => [lat, lng]); };
+      cacheLine(start, cafe, [start, turn, exit, cafe]);
+      cacheLine(cafe, fuel, [cafe, fuel]);
+      cacheLine(fuel, shop, [fuel, shop]);
+      drivingSteps.set(legKey(start, cafe), [
+        {maneuver:{type:'depart'}, geometry:{coordinates:[start, turn]}},
+        {maneuver:{type:'turn', modifier:'left'}, name:'Живописная улица', geometry:{coordinates:[turn, exit]}},
+        {maneuver:{type:'off ramp', modifier:'right'}, geometry:{coordinates:[exit, cafe]}}
+      ]);
+      redrawDay(1);
+      renderTabs();
+      renderAllDays();
+      switchDay(1);
+      document.getElementById('drivingBtn').style.display = '';
+      for (const [label, longitude, latitude, heading] of [
+        ['GPS · поворот', 37.944, 55.795, 90],
+        ['GPS · съезд', 37.950, 55.797, 0],
+        ['GPS · кафе', 37.952, 55.805, 0],
+        ['GPS · заправка', 37.952, 55.810, 0],
+        ['GPS · магазин', 37.952, 55.830, 0],
+      ]) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'publication-btn';
+        button.textContent = label;
+        button.onclick = () => {
+          if (!_drivingMode) return;
+          _resetRouteHints();
+          _checkRouteHints({longitude, latitude, heading, accuracy:10});
+        };
+        bar.append(button);
+      }
+    }
   });
   window.addEventListener('storage', function(event) {
     if (event.key === routeStorageKey() && PREVIEW_ROLE !== 'admin') location.reload();
@@ -217,7 +265,7 @@ function installWalkReview() {
       if (!recording.startedAt) {
         recording.startedAt = fix.time;
         setRecordedStart(id, fix);
-        if (currentDay === id) fitDayMap(DAYS_DATA[id]);
+        if (currentDay === id) fitDayMap(id);
       } else {
         closeRecordedStop(id, recording, fix.time);
       }
