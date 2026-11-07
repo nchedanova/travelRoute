@@ -18,6 +18,8 @@ let _watchId        = null;   // navigator.geolocation watchId
 let _gpsMarker      = null;   // Leaflet marker — текущая позиция
 let _accuracyCircle = null;   // Leaflet circle — кружок погрешности
 let _drivingMode    = false;  // владелец нажал "Еду"
+let _walkGpsActive  = false;
+let _hasOwnerFix    = false;
 let _followCamera   = false;  // камера следит за позицией
 let _userPanned     = false;  // пользователь двигал карту вручную
 let _nearestStopId  = null;   // id ближайшей остановки
@@ -29,6 +31,7 @@ var _spectatorGpsListening = false;
 
 // ── INIT ───────────────────────────────────────────────────────────────────────
 function initGps() {
+  _initFollowPause();
   // Spectators receive only the published-day GPS branch, photos and reactions.
   if (SPECTATOR_MODE) { initSpectatorPhotos(); return; }
   // ── ДЕМО-РЕЖИМ ──────────────────────────────────────────────────────────────
@@ -154,13 +157,8 @@ function initGps() {
     // Зритель: слушаем Firebase, камера сразу следит
     _listenRemotePosition();
     _followCamera = true;
-    _showEl('gpsFollowBtn');
-    _showEl('speedDisplay');
   }
 
-  // Пауза слежения при ручном drag-е карты — автовозврат через 7 сек после отпускания
-  // dragstart/dragend — Leaflet-события, НЕ срабатывают на программный panTo
-  _initFollowPause();
 }
 
 function _initFollowPause() {
@@ -196,7 +194,6 @@ function initSpectatorPhotos() {
     if (!_spectatorGpsListening) {
       _spectatorGpsListening = true;
       _followCamera = true;
-      _initFollowPause();
       _db.ref('gps/spectator').on('value', function(snap) {
         _lastSpectatorPosition = snap.val();
         refreshSpectatorGpsVisibility();
@@ -227,9 +224,12 @@ function _startGpsWatch() {
 
 function _onPosition(pos) {
   const { latitude: lat, longitude: lng, accuracy, speed } = pos.coords;
-  const kmh = speed != null ? Math.round(speed * 3.6) : null;
+  _hasOwnerFix = true;
+  if (_walkGpsActive) return;
+  const kmh = gpsSpeedKmh(speed);
 
   _updateGpsMarker(lat, lng, accuracy, false);
+  _showEl('gpsFollowBtn');
   _highlightNearest(lat, lng);
 
   if (_drivingMode) {
@@ -256,12 +256,13 @@ function _listenRemotePosition() {
       // путешественник остановился — убираем подсветку и скорость
       document.body.classList.remove('driving-active');
       _updateSpeedDisplay(null);
-      const speedEl = document.getElementById('speedDisplay');
-      if (speedEl && !CLOUD_CONFIG.canWrite) speedEl.style.display = 'none';
+      _clearGpsMarker();
+      _setGpsControls(false, false);
       return;
     }
     // есть позиция — включаем подсветку как в режиме "Еду"
     document.body.classList.add('driving-active');
+    _setGpsControls(true, true);
     _updateGpsMarker(d.lat, d.lng, d.accuracy, true);
     _highlightNearest(d.lat, d.lng);
     _updateSpeedDisplay(d.speed);
@@ -295,16 +296,14 @@ function refreshSpectatorGpsVisibility() {
     day.spectatorPublicationId === point.publicationId &&
     Number.isFinite(point.lat) && Number.isFinite(point.lng) && Date.now() - point.ts < 120000;
   if (!visible) {
-    if (_gpsMarker && map) map.removeLayer(_gpsMarker);
-    if (_accuracyCircle && map) map.removeLayer(_accuracyCircle);
-    _gpsMarker = null; _accuracyCircle = null;
+    _clearGpsMarker();
     document.body.classList.remove('driving-active');
     _updateSpeedDisplay(null);
-    ['gpsFollowBtn','speedDisplay'].forEach(function(id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; });
+    _setGpsControls(false, false);
     document.querySelectorAll('.stop-card.gps-nearest').forEach(function(el) { el.classList.remove('gps-nearest'); el.style.borderLeftColor = ''; el.style.background = ''; });
     return;
   }
-  _showEl('gpsFollowBtn'); _showEl('speedDisplay');
+  _setGpsControls(true, true);
   document.body.classList.add('driving-active');
   _updateGpsMarker(point.lat, point.lng, point.accuracy, true);
   _highlightNearest(point.lat, point.lng);
@@ -374,8 +373,46 @@ function resumeGpsFollow() {
   }
 }
 
+function gpsSpeedKmh(speed) {
+  return Number.isFinite(speed) && speed >= 0 ? Math.round(speed * 3.6) : null;
+}
+
+function _setGpsControls(follow, speed) {
+  const followBtn = document.getElementById('gpsFollowBtn');
+  const speedEl = document.getElementById('speedDisplay');
+  if (followBtn) followBtn.style.display = follow ? 'flex' : 'none';
+  if (speedEl) speedEl.style.display = speed ? 'flex' : 'none';
+}
+
+function _clearGpsMarker() {
+  if (_gpsMarker && map) map.removeLayer(_gpsMarker);
+  if (_accuracyCircle && map) map.removeLayer(_accuracyCircle);
+  _gpsMarker = null;
+  _accuracyCircle = null;
+}
+
+function setWalkGpsActive(active) {
+  _walkGpsActive = active;
+  _followCamera = active;
+  _userPanned = false;
+  document.getElementById('gpsFollowBtn')?.classList.remove('paused');
+  _updateSpeedDisplay(null);
+  const showOwnerFix = !active && _hasOwnerFix && !!_gpsMarker;
+  _setGpsControls(showOwnerFix, active);
+  if (!active && !showOwnerFix) _clearGpsMarker();
+}
+
+function updateWalkGpsControls(position) {
+  const {latitude, longitude, accuracy, speed} = position.coords;
+  _updateGpsMarker(latitude, longitude, accuracy, false);
+  _showEl('gpsFollowBtn');
+  _updateSpeedDisplay(gpsSpeedKmh(speed));
+  if (_followCamera && !_userPanned) _panTo(latitude, longitude);
+}
+
 // ── РЕЖИМ "ЕДУ" — только владелец ─────────────────────────────────────────────
 function toggleDrivingMode() {
+  if (_walkGpsActive) return;
   if (typeof isDemoMode === 'function' && isDemoMode()) {
     showToast && showToast('📱 Это демо-режим. Настройте Firebase в ⚙ для GPS-трекинга');
     return;
@@ -393,14 +430,9 @@ function toggleDrivingMode() {
   }
   document.body.classList.toggle('driving-active', _drivingMode);
 
-  const speedEl = document.getElementById('speedDisplay');
-  if (speedEl) speedEl.style.display = _drivingMode ? 'flex' : 'none';
-
+  _setGpsControls(_drivingMode || _hasOwnerFix, _drivingMode);
   const followBtn = document.getElementById('gpsFollowBtn');
-  if (followBtn) {
-    followBtn.style.display = _drivingMode ? 'flex' : 'none';
-    followBtn.classList.remove('paused');
-  }
+  followBtn?.classList.remove('paused');
 
   // Keep-alive: держим WebSocket живым для уведомлений
   if (_drivingMode) {
@@ -547,7 +579,7 @@ function _showEl(id) {
 // Без этого иконка 🚗/🚶 залипает до следующего Firebase-события.
 function refreshGpsMarkerIcon() {
   if (!_gpsMarker) return; // демо-режим или GPS ещё не запущен — ничего не делаем
-  var isRemote = typeof CLOUD_CONFIG !== 'undefined' && !CLOUD_CONFIG.canWrite;
+  var isRemote = !_walkGpsActive && typeof CLOUD_CONFIG !== 'undefined' && !CLOUD_CONFIG.canWrite;
   var newIcon = _makeCarIcon(isRemote);
   _gpsMarker.setIcon(newIcon);
   // Обновляем тултип — он создаётся один раз при первом появлении маркера

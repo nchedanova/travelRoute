@@ -159,6 +159,7 @@ function installWalkReview() {
     session = null;
     if (active.watchId != null) navigator.geolocation.clearWatch(active.watchId);
     active.wakeLock?.release().catch(() => {});
+    setWalkGpsActive(false);
   }
 
   function suspendRecording(message) {
@@ -191,6 +192,7 @@ function installWalkReview() {
         // После длительного провала GPS не дорисовываем неизвестный участок.
         recording.segments.push([fix.point]);
       } else if (meters < Math.max(5, Math.min(15, (accuracy + previous.accuracy) / 2))) {
+        updateWalkGpsControls(position);
         recording.lastAt = fix.time;
         updateRecordingReadout(id, recording);
         return;
@@ -218,6 +220,7 @@ function installWalkReview() {
       }
     }
     active.last = fix;
+    updateWalkGpsControls(position);
     active.lastSignalAt = fix.time;
     recording.lastAt = fix.time;
     refreshWalkTrackLine(id);
@@ -241,6 +244,7 @@ function installWalkReview() {
     }
     const active = {id, recording, last: null, watchId: null, wakeLock: null};
     session = active;
+    setWalkGpsActive(true);
     renderRecording(id);
     try {
       active.watchId = navigator.geolocation.watchPosition(
@@ -249,6 +253,7 @@ function installWalkReview() {
           if (session !== active) return;
           if (error.code === 1) suspendRecording('Разрешите доступ к геолокации в браузере.');
           else {
+            _updateSpeedDisplay(null);
             const hint = document.querySelector('#day' + id + ' .walk-review-panel p');
             if (hint) hint.textContent = 'GPS пока недоступен. Ждём сигнал…';
           }
