@@ -69,6 +69,11 @@ if (LOCAL_PREVIEW) {
       renderAllDays();
       switchDay(1);
       document.getElementById('drivingBtn').style.display = '';
+      const showPreviewFix = (longitude, latitude, heading) => {
+        _updateGpsMarker(latitude, longitude, 10, false, heading);
+        if (_drivingMode) _checkRouteHints({longitude, latitude, heading, accuracy:10});
+      };
+      showPreviewFix(...start, 90);
       let advancePlace = null;
       for (const [label, longitude, latitude, heading, target] of [
         ['GPS · поворот', 37.9421, 55.795, 90],
@@ -85,12 +90,10 @@ if (LOCAL_PREVIEW) {
         button.className = 'publication-btn';
         button.textContent = label;
         button.onclick = () => {
-          if (!_drivingMode) return;
           _resetRouteHints();
-          _checkRouteHints({longitude, latitude, heading, accuracy:10});
-          advancePlace = target && (() => _checkRouteHints({
-            longitude: (target[0] + longitude) / 2, latitude: (target[1] + latitude) / 2, heading, accuracy:10
-          }));
+          showPreviewFix(longitude, latitude, heading);
+          advancePlace = target && (() =>
+            showPreviewFix((target[0] + longitude) / 2, (target[1] + latitude) / 2, heading));
         };
         bar.append(button);
       }
@@ -98,7 +101,7 @@ if (LOCAL_PREVIEW) {
       closer.type = 'button';
       closer.className = 'publication-btn';
       closer.textContent = 'GPS · ближе';
-      closer.onclick = () => { if (_drivingMode) advancePlace?.(); };
+      closer.onclick = () => advancePlace?.();
       bar.append(closer);
     }
   });

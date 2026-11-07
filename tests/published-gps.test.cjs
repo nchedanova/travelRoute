@@ -43,11 +43,16 @@ test('pressing Drive restarts a GPS watch that started before location was enabl
   assert.ok(calls.some(call => call[0] === 'pan' && call[1] === 10 && call[2] === 20));
 });
 test('owner sends published GPS only for a published active day; reader GPS remains intact',()=>{
-  const {ctx,writes}=setup(false);
-  ctx._writePosition(10,20,30,4);
+  const {ctx,writes,run}=setup(false);
+  run('_gpsVehicleStyle = "arrow"');
+  ctx._writePosition(10,20,30,4,270);
   assert.equal(writes[0].path,'gps');
   assert.equal(writes[0].value.lat,10);
   assert.equal(writes[0].value.spectator.publicationId,'p');
+  assert.equal(writes[0].value.heading,270);
+  assert.equal(writes[0].value.spectator.heading,270);
+  assert.equal(writes[0].value.vehicleStyle,'arrow');
+  assert.equal(writes[0].value.spectator.vehicleStyle,'arrow');
   ctx.currentDay=2;ctx._writePosition(11,21,31,4);
   assert.equal(writes[1].value.lat,11);
   assert.equal(writes[1].value.spectator,null);
@@ -94,9 +99,9 @@ test('stopping, unpublishing or switching to an unpublished day clears the spect
 });
 test('spectator sees live movement, but not archived, unpublished, different-day or stale positions',()=>{
   const {ctx,calls,removed,elements,run}=setup(true);
-  ctx._lastSpectatorPosition={publicationId:'p',lat:10,lng:20,speed:30,accuracy:4,ts:Date.now()};
+  ctx._lastSpectatorPosition={publicationId:'p',lat:10,lng:20,speed:30,accuracy:4,vehicleStyle:'sport',ts:Date.now()};
   ctx.refreshSpectatorGpsVisibility();
-  assert.ok(calls.some(c=>c[0]==='marker'&&c[1]===10&&c[2]===20));
+  assert.ok(calls.some(c=>c[0]==='marker'&&c[1]===10&&c[2]===20&&c[6]==='sport'));
   assert.ok(calls.some(c=>c[0]==='pan'));
   for(const action of ['DAYS_DATA[1].spectatorLive=false','currentDay=2','_lastSpectatorPosition.publicationId="other"','_lastSpectatorPosition.ts=Date.now()-120001']) {
     ctx.currentDay=1;ctx.DAYS_DATA[1].spectatorLive=true;ctx._lastSpectatorPosition.publicationId='p';ctx._lastSpectatorPosition.ts=Date.now();
@@ -109,15 +114,26 @@ test('spectator sees live movement, but not archived, unpublished, different-day
 });
 test('published walking day uses the walking icon, driving day uses the car',()=>{
   const {ctx}=setup(true);
-  assert.match(ctx._makeCarIcon(true).html,/🚗/);
-  ctx.DAYS_DATA[1].walkMode=true;assert.match(ctx._makeCarIcon(true).html,/🚶/);
+  assert.match(ctx._makeCarIcon().html,/class="gps-car"/);
+  ctx.DAYS_DATA[1].walkMode=true;assert.match(ctx._makeCarIcon().html,/🚶/);
+});
+test('car faces its GPS course and ignores position jitter without a heading', () => {
+  const {ctx} = setup(false);
+  ctx._updateGpsCourse(55, 37, 5, 270);
+  assert.match(ctx._makeCarIcon().html, /rotate\(270deg\)/);
+  ctx._updateGpsCourse(55, 37.00001, 5, null);
+  assert.match(ctx._makeCarIcon().html, /rotate\(270deg\)/);
+  ctx._updateGpsCourse(55, 37.0005, 5, null);
+  assert.match(ctx._makeCarIcon().html, /rotate\(90deg\)/);
+  ctx._updateGpsCourse(54.9995, 37.0005, 5, null);
+  assert.match(ctx._makeCarIcon().html, /rotate\(180deg\)/);
 });
 test('reader continues following the original GPS stream even when day is unpublished',()=>{
   const {ctx,calls,subscriptions}=setup(false);
   ctx._listenRemotePosition();
   assert.equal(subscriptions[0].path,'gps');
-  subscriptions[0].callback({val:()=>({lat:10,lng:20,speed:30,accuracy:4,spectator:null})});
-  assert.ok(calls.some(c=>c[0]==='marker'&&c[1]===10));
+  subscriptions[0].callback({val:()=>({lat:10,lng:20,speed:30,accuracy:4,vehicleStyle:'arrow',spectator:null})});
+  assert.ok(calls.some(c=>c[0]==='marker'&&c[1]===10&&c[6]==='arrow'));
 });
 test('published track reaches an already open spectator even with no checkpoints yet', () => {
   const owner = setup(false);

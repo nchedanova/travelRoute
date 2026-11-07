@@ -31,13 +31,13 @@ test('latest changes are visible and full compact history is expandable', () => 
   const { run, body, shown } = load();
   run('showChangelog()');
   assert.equal(shown(), true);
-  assert.match(body.innerHTML, /v3\.0\.0 build 10/);
-  assert.match(body.innerHTML, /ближайший манёвр появляется за 500 м/);
+  assert.match(body.innerHTML, /v3\.0\.0 build 11/);
+  assert.match(body.innerHTML, /загораются фары/);
   assert.match(body.innerHTML, /Unbounded \+ Onest/);
-  assert.match(body.innerHTML, /Поиск значков закреплён снизу/);
+  assert.match(body.innerHTML, /цветные значки остановок с поиском/);
   assert.match(body.innerHTML, /<details class="changelog-history">/);
   assert.match(body.innerHTML, /Личные чаты/);
-  assert.match(body.innerHTML, /общий чат, ответы, реакции/);
+  assert.match(body.innerHTML, /Общий чат, ответы, реакции/);
   assert.match(body.innerHTML, /точные версии и даты не восстановлены/);
 });
 
@@ -54,14 +54,14 @@ test('app and service worker use the same release and build', () => {
 
 test('release notes are available to admin, demo and spectator but never the reader',()=>{
   for(const [role, headline] of [
-    ['admin', /ближайший манёвр появляется за 500 м/],
-    ['demo', /Откройте автомаршрут/],
-    ['spectator', /По ссылке зрителя/]
+    ['admin', /Выберите значок на карте/],
+    ['demo', /попробуйте разные значки/],
+    ['spectator', /значок, который выбрал водитель/]
   ]){
     const page = load(role);
     page.run('showChangelog()');
     assert.equal(page.shown(),true);
-    assert.match(page.body.innerHTML,/v3\.0\.0 build 10/);
+    assert.match(page.body.innerHTML,/v3\.0\.0 build 11/);
     assert.match(page.body.innerHTML.split('<details')[0], headline);
   }
   const reader=load('reader');
