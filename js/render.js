@@ -70,14 +70,21 @@ function padTime(el) {
   const prev = el.dataset.prevVal ?? el.defaultValue ?? '';
   const val = el.value.trim();
   if (typeof _markBlurCommit === 'function') _markBlurCommit();
-  if (!val) { if (val !== prev) saveData(); return; }
   const digits = val.replace(/[^0-9]/g, '');
   let padded = val;
   if (digits.length === 3) padded = '0' + digits[0] + ':' + digits.slice(1);
   if (/^\d:\d\d$/.test(val)) padded = '0' + val;
   el.value = padded;
   el.classList.toggle('empty', !padded);
-  if (padded !== prev) saveData();
+  saveActualTimeEdit(el, prev);
+}
+
+function saveActualTimeEdit(el, previousTime) {
+  if (el.value === previousTime) return;
+  snapshotForUndo('Изменено фактическое время', el.id, previousTime);
+  el.dataset.prevVal = el.value;
+  updateProgress();
+  saveData();
 }
 
 function fillOnTime(el) {
@@ -96,7 +103,7 @@ function fillOnTime(el) {
   el.value = t;
   el.classList.remove('empty');
   applyMask(el);
-  saveData();
+  saveActualTimeEdit(el, '');
 }
 
 function _parseTime(s) {
@@ -208,26 +215,32 @@ function cascadeAutoFillFrom(day, stopId) {
 }
 
 // ── PROGRESS + DELTAS ─────────────────────────────────────────────────────────
+function updateRouteProgress(day, gpsFraction = 0) {
+  const fill = document.getElementById('d' + day + '-fill');
+  if (!fill) return;
+  const data = DAYS_DATA[day];
+  const reached = data.stops.findLastIndex(stop => [stop.arrA, stop.depA].some(time => _parseTime(time) !== null)) + 1;
+  const totalKm = getDayRouteKm(day);
+  const markedKm = reached ? getDayRouteKm(day, reached) : 0;
+  const fraction = Math.max(gpsFraction, totalKm ? markedKm / totalKm : reached / (data.stops.length || 1));
+  const km = totalKm * fraction;
+  fill.parentElement.style.setProperty('--route-progress', (fraction * 100) + '%');
+  const color = data.color || '#f5a623';
+  fill.style.background = 'linear-gradient(90deg,' + color + ',' + color + '99)';
+  document.getElementById('d' + day + '-pct').textContent = km.toLocaleString('ru', {maximumFractionDigits: 1}) + ' км';
+}
+
 function updateProgress() {
   dayKeys().forEach(day => {
     const stops = DAYS_DATA[day].stops;
-    let filled = 0, lastDelta = null;
+    let lastDelta = null;
     stops.forEach(s => {
-      if (s.arrA && s.arrA.length >= 4) filled++;
       const dArr = timeDelta(s.arrP, s.arrA);
       if (dArr !== null) lastDelta = dArr;
       const dDep = timeDelta(s.depP, s.depA);
       if (dDep !== null) lastDelta = dDep;
     });
-    const pct   = Math.round((filled / (stops.length || 1)) * 100);
-    const fill  = document.getElementById('d' + day + '-fill');
-    const pctEl = document.getElementById('d' + day + '-pct');
-    if (fill) {
-      fill.style.width = pct + '%';
-      var dc = DAYS_DATA[day].color || '#f5a623';
-      fill.style.background = 'linear-gradient(90deg,' + dc + ',' + dc + '99)';
-    }
-    if (pctEl) pctEl.textContent = pct + '%';
+    updateRouteProgress(day);
 
     const dEl = document.getElementById('d' + day + '-delta-val');
     if (dEl) {
@@ -581,6 +594,7 @@ function dayActionIcon(name) {
     box:'<path d="m3 6 9-4 9 4v12l-9 4-9-4ZM3 6l9 4 9-4M12 10v12M8 4l9 4"/>',
     check:'<path d="m5 12 4 4L20 5"/>',
     reply:'<path d="m9 4-6 6 6 6M3 10h10a7 7 0 0 1 7 7v3"/>',
+    undo:'<path d="m9 5-5 5 5 5M4 10h10a5 5 0 0 1 0 10h-3"/>',
     chat:'<path d="M21 11a8 8 0 0 1-8 8H7l-4 3V11a9 9 0 0 1 18 0ZM7 10h10M7 14h6"/>',
     palette:'<path d="M12 3a9 9 0 1 0 0 18h1a2 2 0 0 0 1-4c-1-1 0-3 2-3h2a3 3 0 0 0 3-3 9 9 0 0 0-9-8Z"/><circle cx="7" cy="9" r=".8" fill="currentColor"/><circle cx="11" cy="6.5" r=".8" fill="currentColor"/><circle cx="16" cy="8" r=".8" fill="currentColor"/><circle cx="6.5" cy="14" r=".8" fill="currentColor"/>',
     settings:'<path fill="currentColor" fill-rule="evenodd" stroke="none" d="M19.43 12.98a7.2 7.2 0 0 0 0-1.96l2.11-1.65a.5.5 0 0 0 .12-.64l-2-3.46a.5.5 0 0 0-.6-.22l-2.49 1a7.8 7.8 0 0 0-1.68-.98l-.38-2.65a.5.5 0 0 0-.49-.42h-4a.5.5 0 0 0-.49.42l-.38 2.65a7.8 7.8 0 0 0-1.68.98l-2.49-1a.5.5 0 0 0-.6.22l-2 3.46a.5.5 0 0 0 .12.64l2.11 1.65a7.2 7.2 0 0 0 0 1.96l-2.11 1.65a.5.5 0 0 0-.12.64l2 3.46a.5.5 0 0 0 .6.22l2.49-1c.52.4 1.07.73 1.68.98l.38 2.65a.5.5 0 0 0 .49.42h4a.5.5 0 0 0 .49-.42l.38-2.65a7.8 7.8 0 0 0 1.68-.98l2.49 1a.5.5 0 0 0 .6-.22l2-3.46a.5.5 0 0 0-.12-.64ZM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z"/>',
@@ -702,6 +716,7 @@ function startPointNameMarkup(start) {
   return '<span class="depart-start-icon">' + pointIconMarkup(start.icon) + '</span><span class="depart-name-text">' + name + '</span>';
 }
 function renderDaySection(d) {
+  const canDrive = isAdmin();
   if (typeof discardInlinePlanTimeForDay === 'function') discardInlinePlanTimeForDay(d);
   const data    = DAYS_DATA[d];
   const sec     = document.createElement('div');
@@ -791,8 +806,15 @@ function renderDaySection(d) {
     </div>
     <div class="weather-strip" id="ws-d${d}-start" style="display:none" onclick="toggleWeatherStrip('d${d}-start')"></div>
     <div class="day-progress">
-      <div class="progress-label"><span>Прогресс</span><span id="d${d}-pct">0%</span></div>
-      <div class="progress-bar"><div class="progress-fill" id="d${d}-fill"></div></div>
+      <div class="progress-label"><span>Пройдено</span><span id="d${d}-pct">0 км</span></div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="d${d}-fill"></div>
+        ${!data.walkReview ? `<div class="progress-drive-track">
+          ${canDrive ? '<button type="button" class="progress-drive" onclick="toggleDrivingMode()">' : '<span class="progress-marker" aria-hidden="true">'}
+            ${data.walkMode ? dayActionIcon('walk') : `<span class="progress-drive-vehicle" aria-hidden="true">${typeof progressVehicleGlyph === 'function' ? progressVehicleGlyph() : dayActionIcon('car')}</span>`}
+            ${canDrive ? `<span class="progress-drive-start">${data.walkMode ? 'Иду' : 'Еду'}</span><span class="progress-drive-stop">Стоп</span></button>` : '</span>'}
+        </div>` : ''}
+      </div>
     </div>
     <div class="stats-row">
       <div class="stat-box"><div class="stat-val" id="d${d}-stop-count">${data.stops.length}</div><div class="stat-key">ОСТАНОВОК</div></div>
@@ -812,15 +834,22 @@ function renderAllDays() {
     if (DAYS_DATA[d].archived) return;
     if (!admin && DAYS_DATA[d].hidden) return;
     container.appendChild(renderDaySection(d));
+    updateRouteProgress(d);
     renderStops(d);
     updateDayRoute(d);
     updateTravelStats(d);
   });
   if (!container.children.length) {
+    const hasArchive = admin && dayKeys().some(d => DAYS_DATA[d].archived);
+    const emptyText = admin
+      ? (hasArchive ? 'Добавьте день или восстановите маршрут из архива.' : 'Добавьте день, чтобы начать маршрут.')
+      : (SPECTATOR_MODE ? 'Владелец ещё не опубликовал дни или снял их с публикации.' : 'Доступных дней пока нет.');
     container.innerHTML = '<div class="route-empty"><div class="route-empty-icon">' + (SPECTATOR_MODE ? '👁' : '📦') + '</div><h3>'
       + (SPECTATOR_MODE ? 'Нет опубликованных дней' : 'Нет активных дней') + '</h3><p>'
-      + (SPECTATOR_MODE ? 'Владелец ещё не опубликовал дни или снял их с публикации.' : 'Завершённые дни сохранены в архиве. Опубликованные копии по-прежнему доступны зрителям.')
-      + '</p>' + (admin ? '<button class="publication-btn" onclick="addNewDay()">＋ Новый день</button>' : '') + '</div>';
+      + emptyText + '</p>' + (admin ? '<div class="route-empty-actions"><button type="button" class="publication-btn" onclick="addNewDay(event)">＋ Добавить день</button>'
+        + (hasArchive ? '<button type="button" class="publication-btn route-empty-archive" onclick="toggleArchive(this)">Открыть архив</button>' : '') + '</div>' : '') + '</div>';
+  } else if (admin && !container.querySelector('.day-section.visible')) {
+    switchDay(Number(container.firstElementChild.dataset.day));
   }
 }
 

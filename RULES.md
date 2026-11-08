@@ -260,6 +260,7 @@ Firebase `/note_reactions/{stopId}/{noteIdx}/{sid}`. При удалении з�
 - [ ] Все JS файлы проходят `node --check`
 - [ ] `APP_VERSION` и `APP_BUILD` совпадают в app.js и sw.js; сочетание версии и build новое
 - [ ] Все локальные `?v=` теги в index.html обновлены до `X.Y.Z-N`
+- [ ] Если релиз включает «Что нового», показать его администратору, в демо и зрителю. Для читателя диалог скрыт. Подписи для каждой роли описывают доступные ей возможности.
 - [ ] sw.js: `normalUrl.search = ''` в staleWhileRevalidate
 - [ ] Новые stops содержат `notes: []`
 - [ ] `currentDay` через `_pickVisibleDay()`, НЕ через `<= dayKeys().length`

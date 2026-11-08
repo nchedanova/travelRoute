@@ -5,6 +5,7 @@ if (LOCAL_PREVIEW) {
   document.addEventListener('DOMContentLoaded', function() {
     var bar = document.createElement('div');
     bar.className = 'local-preview-bar';
+    if (new URLSearchParams(location.search).has('hidePreviewBar')) bar.style.display = 'none';
     bar.innerHTML = '<span>Локально · без записи в облако</span>'
       + (PREVIEW_ROLE === 'admin' ? '<button class="publication-btn" id="loadLocalHistory">Мой маршрут · восстановленная копия</button>' : '')
       + '<div class="preview-roles" role="group" aria-label="Режим проверки">'
@@ -69,9 +70,16 @@ if (LOCAL_PREVIEW) {
       renderAllDays();
       switchDay(1);
       document.getElementById('drivingBtn').style.display = '';
-      const showPreviewFix = (longitude, latitude, heading) => {
-        _updateGpsMarker(latitude, longitude, 10, false, heading);
-        if (_drivingMode) _checkRouteHints({longitude, latitude, heading, accuracy:10});
+      let previewPosition = [...start, 90];
+      const showPreviewFix = (longitude, latitude, heading, speed = 40) => {
+        previewPosition = [longitude, latitude, heading];
+        _updateGpsMarker(latitude, longitude, 10, false, heading, undefined, _drivingMode && _drivingBrakeLights(speed));
+        if (_drivingMode) _updateSpeedDisplay(speed);
+        if (_drivingMode) {
+          const fix = {longitude, latitude, heading, accuracy:10};
+          _updateDriveProgress(fix);
+          _checkRouteHints(fix);
+        }
       };
       showPreviewFix(...start, 90);
       let advancePlace = null;
@@ -103,6 +111,17 @@ if (LOCAL_PREVIEW) {
       closer.textContent = 'GPS · ближе';
       closer.onclick = () => advancePlace?.();
       bar.append(closer);
+      for (const [label, speed] of [['40 км/ч', 40], ['Торможение · 15 км/ч', 15], ['Остановка · 0 км/ч', 0]]) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'publication-btn';
+        button.textContent = label;
+        button.onclick = () => {
+          if (!_drivingMode) toggleDrivingMode();
+          showPreviewFix(...previewPosition, speed);
+        };
+        bar.append(button);
+      }
     }
   });
   window.addEventListener('storage', function(event) {

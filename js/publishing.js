@@ -80,6 +80,9 @@ function spectatorPayload(payload) {
 
 function routeStorageKey() {
   if (typeof LOCAL_PREVIEW === 'undefined' || !LOCAL_PREVIEW) return 'travel_tracker_v3';
+  if (typeof location !== 'undefined' && new URLSearchParams(location.search).get('sample') === 'route-progress') {
+    return 'travel_route_progress_preview';
+  }
   if (typeof location !== 'undefined' && new URLSearchParams(location.search).get('sample') === 'route-hints') {
     return 'travel_route_hints_preview';
   }
@@ -87,6 +90,29 @@ function routeStorageKey() {
 }
 
 function initializePublicationView() {
+  if (routeStorageKey() === 'travel_route_progress_preview') {
+    const publicationId = 'route-progress-demo';
+    const day = {
+      dateISO: '08.11.2026',
+      date: 'Казань → Свияжск',
+      color: '#f5a623',
+      departP: '09:00',
+      departA: '09:00',
+      publicationId,
+      start: { name: 'Казань', lat: 55.798, lng: 49.106, icon: '🏙️' },
+      stops: [
+        { id: 'd1s1', type: 'Другое', name: 'Залесный', lat: 55.858, lng: 48.942, icon: '📍', arrP: '09:30', arrA: '09:32', notes: [] },
+        { id: 'd1s2', type: 'Другое', name: 'Зеленодольск', lat: 55.846, lng: 48.517, icon: '📍', arrP: '10:15', arrA: '10:18', notes: [] },
+        { id: 'd1s3', type: 'Другое', name: 'Свияжск', lat: 55.773, lng: 48.66, icon: '🏁', arrP: '11:00', arrA: '', notes: [] },
+      ],
+    };
+    applyPayload({
+      daysData: { 1: day },
+      actuals: {},
+      spectatorPublications: { [publicationId]: { day, status: 'live' } },
+    });
+    return;
+  }
   var raw = localStorage.getItem(routeStorageKey());
   if (typeof LOCAL_PREVIEW !== 'undefined' && LOCAL_PREVIEW && !raw) {
     raw = (routeStorageKey() === 'travel_walk_review_v1' && localStorage.getItem('travel_preview_v1'))

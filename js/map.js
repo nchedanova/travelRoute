@@ -547,6 +547,7 @@ function drawDay(d) {
         refreshSegments();
         if (typeof autoFillTimes === 'function') autoFillTimes(d);
         if (typeof updateTravelStats === 'function') updateTravelStats(d);
+        if (typeof updateRouteProgress === 'function') updateRouteProgress(d);
       }).catch(() => {});
     }
     // Кешированный случай: redrawDay вызовет refreshSegments() после drawDay — стили применятся там
@@ -715,12 +716,14 @@ function refreshSegments() {
 // Возвращает фактическое расстояние по маршруту в км для одного дня.
 // Берёт координаты из _routeCache (реальные дороги/тропы от OSRM).
 // Если сегмент ещё не загружен — fallback на haversine для этого сегмента.
-function getDayRouteKm(d) {
+function getDayRouteKm(d, stopCount) {
   var data = DAYS_DATA[d];
   if (!data) return 0;
   var profile = data.walkMode ? 'foot' : 'driving';
   var pts = [{ lat: data.start.lat, lng: data.start.lng }];
-  data.stops.forEach(function(s) { pts.push({ lat: s.lat, lng: s.lng }); });
+  data.stops.slice(0, stopCount ?? data.stops.length).forEach(function(s) {
+    pts.push({ lat: s.lat, lng: s.lng });
+  });
 
   var totalKm = 0;
   for (var i = 0; i < pts.length - 1; i++) {

@@ -18,6 +18,7 @@ function _markBlurCommit() {
 }
 
 function switchDay(d) {
+  if (isAdmin()) d = _pickVisibleDay(d);
   var prev = currentDay;
   currentDay = d;
   document.querySelectorAll('.day-tab').forEach(t =>
@@ -26,6 +27,9 @@ function switchDay(d) {
   document.querySelectorAll('.day-section').forEach(s =>
     s.classList.toggle('visible', parseInt(s.dataset.day) === d)
   );
+  if (document.querySelector('.day-section.visible')) {
+    document.querySelector('#daySections > .route-empty')?.remove();
+  }
   document.querySelectorAll('.day-tab').forEach(tab => {
     const day = parseInt(tab.dataset.day);
     tab.style.backgroundColor = '';
@@ -1248,9 +1252,9 @@ function closeArchive() {
   document.removeEventListener('click', _archiveOutsideClick);
 }
 
-function toggleArchive() {
+function toggleArchive(anchor) {
   var dd = document.getElementById('archiveDropdown');
-  var btn = document.getElementById('archiveBtn');
+  var btn = anchor || document.getElementById('archiveBtn');
   if (!dd || !btn) return;
   var isOpen = dd.classList.contains('show');
   closeDayMenus();
@@ -1274,7 +1278,7 @@ function toggleArchive() {
 }
 
 function _archiveOutsideClick(e) {
-  if (e.target.closest('#archiveWrap, #archiveDropdown')) return;
+  if (e.target.closest('#archiveWrap, #archiveDropdown, .route-empty-archive')) return;
   var dd = document.getElementById('archiveDropdown');
   if (dd) dd.classList.remove('show');
   document.removeEventListener('click', _archiveOutsideClick);
@@ -1521,10 +1525,17 @@ function doDeleteDay() {
 const undoStack = [];
 const UNDO_LIMIT = 20;
 
-function snapshotForUndo(label) {
+function snapshotForUndo(label, timeField, previousTime) {
   const snapshot = {
     label,
-    days: Object.fromEntries(dayKeys().map(d => [d, { stops: DAYS_DATA[d].stops.map(s => ({...s})) }]))
+    days: Object.fromEntries(dayKeys().map(d => [d, {
+      departA: timeField === 'd' + d + '-depart' ? previousTime : DAYS_DATA[d].departA,
+      stops: DAYS_DATA[d].stops.map(s => ({
+        ...s,
+        arrA: timeField === 'arr-' + s.id ? previousTime : s.arrA,
+        depA: timeField === 'dep-' + s.id ? previousTime : s.depA
+      }))
+    }]))
   };
   undoStack.push(snapshot);
   if (undoStack.length > UNDO_LIMIT) undoStack.shift();
@@ -1535,7 +1546,15 @@ function undoAction() {
   if (!undoStack.length) return;
   const snapshot = undoStack.pop();
   dayKeys().forEach(d => {
-    if (snapshot.days[d]) DAYS_DATA[d].stops = snapshot.days[d].stops;
+    const day = snapshot.days[d];
+    if (!day) return;
+    DAYS_DATA[d].stops = day.stops;
+    DAYS_DATA[d].departA = day.departA;
+    const depart = document.getElementById('d' + d + '-depart');
+    if (depart) {
+      depart.value = day.departA || '';
+      depart.classList.toggle('empty', !depart.value);
+    }
   });
   dayKeys().forEach(d => { renderStops(d); redrawDay(d); updateDayRoute(d); });
   updateProgress();
@@ -3083,11 +3102,21 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '3.0.0';
-var APP_BUILD   = 15;
+var APP_BUILD   = 16;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 1;
 
 var APP_CHANGELOG = [
+  { ver: '3.0.0 build 16', date: '08.11.2026', items: [
+    '🚗 Выбранная машинка теперь движется по шкале маршрута.',
+    '📏 Над шкалой видно, сколько километров уже пройдено.',
+    '📱 На телефоне «Еду» и «Стоп» теперь прямо на шкале маршрута.'
+  ], spectatorItems: [
+    '🚗 На шкале опубликованного маршрута появилась машинка, а над ней видно, сколько километров уже пройдено.'
+  ], demoItems: [
+    '🚗 Примерьте машинку на шкале маршрута и посмотрите пройденные километры.',
+    '📱 На телефоне попробуйте новую кнопку «Еду» прямо на шкале.'
+  ]},
   { ver: '3.0.0 build 13', date: '07.11.2026', items: [
     '🚗 Седан, спорткар и внедорожник получили новые силуэты, стёкла и фонари. Шоколадный Hyundai ix35 тоже стал детальнее.',
     '🧭 Навигационная стрелка стала объёмной. Попробуйте её в меню «Оформление» → «Значок на карте».'

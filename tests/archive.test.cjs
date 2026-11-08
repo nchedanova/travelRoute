@@ -22,7 +22,7 @@ function load() {
     },
     closeDayMenus() {}, renderArchiveBtn() {}, setTimeout: callback => callback(),
   });
-  vm.runInContext(app.slice(app.indexOf('function toggleArchive()'), app.indexOf('// ── REVERSE DAY ROUTE')), ctx);
+  vm.runInContext(app.slice(app.indexOf('function toggleArchive('), app.indexOf('// ── REVERSE DAY ROUTE')), ctx);
   return { dropdown, run: code => vm.runInContext(code, ctx) };
 }
 

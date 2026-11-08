@@ -21,6 +21,8 @@ let _gpsCourse = null;
 let _gpsCourseAnchor = null;
 let _gpsVehicleStyle = 'compact';
 let _gpsRemoteVehicleStyle = null;
+let _gpsBraking = false;
+let _previousDrivingSpeed = null;
 let _accuracyCircle = null;   // Leaflet circle — кружок погрешности
 let _drivingMode    = false;  // владелец нажал "Еду"
 let _walkGpsActive  = false;
@@ -267,11 +269,13 @@ function _onPosition(pos) {
   _lastOwnerHintFix = {coords: pos.coords, at: Date.now()};
   const kmh = gpsSpeedKmh(speed);
 
-  _updateGpsMarker(lat, lng, accuracy, false, heading);
+  const braking = _drivingMode && _drivingBrakeLights(kmh);
+  _updateGpsMarker(lat, lng, accuracy, false, heading, undefined, braking);
   _showEl('gpsFollowBtn');
   _highlightNearest(lat, lng);
 
   if (_drivingMode) {
+    _updateDriveProgress(pos.coords);
     _checkRouteHints(pos.coords);
     _updateSpeedDisplay(kmh);
     const point = { lat, lng, speed: kmh, accuracy, ts: Date.now() };
@@ -281,7 +285,7 @@ function _onPosition(pos) {
     if (typeof bufferGpsForSync === 'function' && bufferGpsForSync(point)) {
       // Буферизировано — нет сети
     } else {
-      _writePosition(lat, lng, kmh, accuracy, _gpsCourse);
+      _writePosition(lat, lng, kmh, accuracy, _gpsCourse, braking);
     }
     if (_followCamera && !_userPanned) _panTo(lat, lng);
   }
@@ -305,7 +309,7 @@ function _listenRemotePosition() {
     // есть позиция — включаем подсветку как в режиме "Еду"
     document.body.classList.add('driving-active');
     _setGpsControls(true, true);
-    _updateGpsMarker(d.lat, d.lng, d.accuracy, true, d.heading, d.vehicleStyle);
+    _updateGpsMarker(d.lat, d.lng, d.accuracy, true, d.heading, d.vehicleStyle, d.braking ?? d.speed === 0);
     _highlightNearest(d.lat, d.lng);
     _updateSpeedDisplay(d.speed);
     if (_followCamera && !_userPanned) _panTo(d.lat, d.lng);
@@ -469,11 +473,14 @@ function stopWalkBroadcast(id = _broadcastWalkDay) {
 }
 
 // ── FIREBASE WRITE — владелец едет ────────────────────────────────────────────
-function _writePosition(lat, lng, speed, accuracy, heading) {
+function _writePosition(lat, lng, speed, accuracy, heading, braking = false) {
   if (!_db) return;
   _lastOwnerPosition = { lat, lng, speed, accuracy, ts: Date.now() };
   if (Number.isFinite(heading)) _lastOwnerPosition.heading = heading;
-  if (!DAYS_DATA[currentDay]?.walkMode) _lastOwnerPosition.vehicleStyle = _gpsVehicleStyle;
+  if (!DAYS_DATA[currentDay]?.walkMode) {
+    _lastOwnerPosition.vehicleStyle = _gpsVehicleStyle;
+    _lastOwnerPosition.braking = braking;
+  }
   _db.ref('gps').set(Object.assign({}, _lastOwnerPosition, { spectator: spectatorGpsPayload(_lastOwnerPosition) }));
 }
 
@@ -505,7 +512,7 @@ function refreshSpectatorGpsVisibility() {
   }
   _setGpsControls(true, true);
   document.body.classList.add('driving-active');
-  _updateGpsMarker(point.lat, point.lng, point.accuracy, true, point.heading, point.vehicleStyle);
+  _updateGpsMarker(point.lat, point.lng, point.accuracy, true, point.heading, point.vehicleStyle, point.braking ?? point.speed === 0);
   _highlightNearest(point.lat, point.lng);
   _updateSpeedDisplay(point.speed);
   if (_followCamera && !_userPanned) _panTo(point.lat, point.lng);
@@ -598,6 +605,56 @@ const GPS_CAR_SHAPES = {
   },
 };
 
+const GPS_CAR_PROFILES = {
+  compact: {
+    body: 'M1.5 13v-2.5l5-1.5 4-4h8l5 4 5 1.5 2 2V16H1.5Z',
+    glass: 'm8.5 9 3-3h6.5l4 3Z',
+  },
+  sport: {
+    body: 'M1.5 14v-3L7 10l5-3.5h6l5 3.5 5.5 1 2 2V16H1.5Z',
+    glass: 'm9 10 3.5-2.5H18l3.7 2.5Z',
+  },
+  suv: {
+    body: 'M2 15V6l2-2h15l5 4 5 1.5 1 2V16H2Z',
+    glass: 'M4 6h14.5l4 3H4Z',
+  },
+  ix35: {
+    body: 'M1.5 14V9l3-3 6-2h7l6 4 5 1.5 2 2V16H2Z',
+    glass: 'm5 9 5.7-3.6h6.5l4.5 3.6Z',
+  },
+};
+
+function progressVehicleGlyph() {
+  let style = _gpsRemoteVehicleStyle ?? _gpsVehicleStyle;
+  if (typeof LOCAL_PREVIEW !== 'undefined' && LOCAL_PREVIEW &&
+      new URLSearchParams(location.search).get('sample') === 'route-progress') {
+    const selected = localStorage.getItem('travel_gps_vehicle');
+    style = Object.hasOwn(GPS_CAR_SHAPES, selected) ? selected : 'ix35';
+  }
+  if (style === 'arrow') {
+    return '<svg viewBox="0 0 32 20" aria-hidden="true"><path d="m6 3 22 7-22 7 4-7Z" fill="currentColor"/><path d="m10 10 18 0-22 7Z" fill="#000" opacity=".28"/></svg>';
+  }
+  const profile = GPS_CAR_PROFILES[style];
+  const paint = GPS_CAR_SHAPES[style].color || 'var(--gps-theme-paint, var(--accent))';
+  return `<svg viewBox="0 0 32 20" aria-hidden="true">
+    <path d="${profile.body}" fill="${paint}" stroke="color-mix(in srgb,${paint},white 40%)" stroke-linejoin="round"/>
+    <path d="${profile.glass}" fill="#233744" stroke="#91a8b5" stroke-width=".6"/>
+    <path d="M15 6v3m-3 4h9" stroke="#151d24" stroke-width=".8"/>
+    <path d="M2 11h2m23 0 2 1" stroke="#fff3d9" stroke-width="1.2" stroke-linecap="round"/>
+    <path d="M2 11h2" stroke="#ff7770" stroke-width="1.3" stroke-linecap="round"/>
+    <circle cx="7" cy="15.5" r="3.2" fill="#171a21" stroke="#9ca5ad"/>
+    <circle cx="25" cy="15.5" r="3.2" fill="#171a21" stroke="#9ca5ad"/>
+    <path d="M7 15.5h.01m18 0h.01" stroke="#d5dce1" stroke-width="2" stroke-linecap="round"/>
+  </svg>`;
+}
+
+function refreshProgressVehicleIcons() {
+  const glyph = progressVehicleGlyph();
+  document.querySelectorAll('.progress-drive-vehicle').forEach(icon => { icon.innerHTML = glyph; });
+}
+
+document.addEventListener('DOMContentLoaded', refreshProgressVehicleIcons);
+
 function initGpsVehiclePicker() {
   const options = document.getElementById('gpsVehicleOptions');
   if (!options || options.childElementCount || !isAdmin()) return;
@@ -622,16 +679,18 @@ function initGpsVehiclePicker() {
         option.setAttribute('aria-pressed', String(option === button));
       }
       refreshGpsMarkerIcon();
+      refreshProgressVehicleIcons();
     };
     options.append(button);
   }
   refreshGpsMarkerIcon();
+  refreshProgressVehicleIcons();
 }
 
 let _gpsCarPaintId = 0;
 
-function _gpsCarGlyph(style, course = 0, headlightsOn = false) {
-  const {body, lights, tailLights, details, color = 'var(--accent)'} = GPS_CAR_SHAPES[style];
+function _gpsCarGlyph(style, course = 0, headlightsOn = false, braking = false) {
+  const {body, lights, tailLights, details, color = lights ? 'var(--gps-theme-paint, var(--accent))' : 'var(--accent)'} = GPS_CAR_SHAPES[style];
   const paint = 'gps-car-paint-' + (++_gpsCarPaintId);
   const beam = lights && headlightsOn ? paint + '-beam' : null;
   // The headlights face the top of the SVG (north on the map).
@@ -650,11 +709,15 @@ function _gpsCarGlyph(style, course = 0, headlightsOn = false) {
         </linearGradient>` : ''}
       </defs>
       ${beam ? `<path d="M6 7 0-14h12L9 7Zm9 0-3-21h12L18 7Z" fill="url(#${beam})"/>` : ''}
+      ${lights ? `<path d="${body}" fill="none" stroke="#14131a" stroke-width="2.8" stroke-linejoin="round"/>` : ''}
       <path d="${body}" fill="url(#${paint}) ${color}"
         stroke="color-mix(in srgb,var(--gps-paint),white 42%)" stroke-width="${details ? .85 : 1.4}" stroke-linejoin="round"/>
       ${details || ''}
       ${lights ? `<path d="${lights}" fill="none" stroke="#fff8de" stroke-width="${details ? 1.55 : 2}" stroke-linecap="round"/>` : ''}
-      ${tailLights ? `<path d="${tailLights}" fill="none" stroke="#ff7771" stroke-width="1.4" stroke-linecap="round"/>` : ''}
+      ${tailLights && braking ? `
+        <path d="${tailLights}" fill="none" stroke="#4a111b" stroke-width="3.4" stroke-linecap="round"/>
+        <path d="${tailLights}" fill="none" stroke="#ff263b" stroke-width="5" stroke-linecap="round" opacity=".7" style="filter:blur(1.5px)"/>` : ''}
+      ${tailLights ? `<path d="${tailLights}" fill="none" stroke="${braking ? '#ff8c91' : '#a74742'}" stroke-width="${braking ? 2.2 : 1.4}" stroke-linecap="round"/>` : ''}
     </svg>`;
 }
 
@@ -662,7 +725,7 @@ function _makeCarIcon() {
   const ringColor = _getDayColor();
   const isWalk = typeof currentDay !== 'undefined' && DAYS_DATA[currentDay]?.walkMode;
   const headlightsOn = _drivingMode || _gpsRemoteVehicleStyle !== null;
-  const glyph = isWalk ? '🚶' : _gpsCarGlyph(_gpsRemoteVehicleStyle ?? _gpsVehicleStyle, _gpsCourse ?? 0, headlightsOn);
+  const glyph = isWalk ? '🚶' : _gpsCarGlyph(_gpsRemoteVehicleStyle ?? _gpsVehicleStyle, _gpsCourse ?? 0, headlightsOn, headlightsOn && _gpsBraking);
   const html = `
     <div style="position:relative;width:44px;height:44px;">
       <div class="gps-ring" style="--gps-color:${ringColor};position:absolute;inset:0;border-radius:50%;background:${ringColor};opacity:0.25;"></div>
@@ -672,11 +735,14 @@ function _makeCarIcon() {
     html, className: '', iconSize: [44, 44], iconAnchor: [22, 22]
   });
 }
-function _updateGpsMarker(lat, lng, accuracy, isRemote, heading, vehicleStyle) {
+function _updateGpsMarker(lat, lng, accuracy, isRemote, heading, vehicleStyle, braking = false) {
   _updateGpsCourse(lat, lng, accuracy, heading);
+  _gpsBraking = braking === true;
+  const previousStyle = _gpsRemoteVehicleStyle;
   _gpsRemoteVehicleStyle = isRemote
     ? (typeof vehicleStyle === 'string' && Object.hasOwn(GPS_CAR_SHAPES, vehicleStyle) ? vehicleStyle : 'compact')
     : null;
+  if (previousStyle !== _gpsRemoteVehicleStyle) refreshProgressVehicleIcons();
   if (!map) return;
   const ringColor = _getDayColor();
 
@@ -723,6 +789,13 @@ function gpsSpeedKmh(speed) {
   return Number.isFinite(speed) && speed >= 0 ? Math.round(speed * 3.6) : null;
 }
 
+function _drivingBrakeLights(speed) {
+  const braking = Number.isFinite(speed) &&
+    (speed === 0 || (_previousDrivingSpeed !== null && speed < _previousDrivingSpeed));
+  _previousDrivingSpeed = Number.isFinite(speed) ? speed : null;
+  return braking;
+}
+
 function _setGpsControls(follow, speed) {
   const followBtn = document.getElementById('gpsFollowBtn');
   const speedEl = document.getElementById('speedDisplay');
@@ -738,6 +811,8 @@ function _clearGpsMarker() {
   _gpsCourse = null;
   _gpsCourseAnchor = null;
   _gpsRemoteVehicleStyle = null;
+  _gpsBraking = false;
+  _previousDrivingSpeed = null;
 }
 
 function setWalkGpsActive(active) {
@@ -767,6 +842,8 @@ function toggleDrivingMode() {
     return;
   }
   _drivingMode  = !_drivingMode;
+  _gpsBraking = false;
+  _previousDrivingSpeed = null;
   _lastOwnerPosition = null;
   _followCamera = _drivingMode;
   _userPanned   = false;
@@ -1110,6 +1187,33 @@ function _drivingLeg(day, index) {
   const from = index > 0 ? day.stops[index - 1] : day.start;
   if (!to || !from || !(from.lat || from.lng) || !(to.lat || to.lng)) return null;
   return {from, to, key: `driving|${from.lat},${from.lng}|${to.lat},${to.lng}`};
+}
+
+function _updateDriveProgress(fix) {
+  const day = DAYS_DATA[currentDay];
+  const fill = document.getElementById('d' + currentDay + '-fill');
+  if (!day || !fill || !Number.isFinite(fix.accuracy) || fix.accuracy > MANEUVER_MAX_GPS_ACCURACY_M) return;
+  const profile = day.walkMode ? 'foot' : 'driving';
+  const matchFix = {
+    latitude: fix.latitude,
+    longitude: fix.longitude,
+    accuracy: fix.accuracy,
+    heading: fix.speed >= 1.5 || !Number.isFinite(fix.speed) ? fix.heading : undefined
+  };
+  let total = 0, distance = null, closest = Infinity;
+  for (let index = 0; index < day.stops.length; index++) {
+    const leg = _drivingLeg(day, index);
+    const line = leg && _routeCache[leg.key.replace('driving|', profile + '|')];
+    if (!line?.length) return;
+    const measured = _measureDrivingLine(line, matchFix);
+    if (measured.progress !== null && measured.closest < closest) {
+      closest = measured.closest;
+      distance = total + measured.progress;
+    }
+    total += measured.length;
+  }
+  if (distance === null || !total) return;
+  updateRouteProgress(currentDay, distance / total);
 }
 
 function _findDrivingHintLeg(day, preferredIndex, fix) {

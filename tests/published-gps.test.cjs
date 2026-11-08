@@ -45,12 +45,14 @@ test('pressing Drive restarts a GPS watch that started before location was enabl
 test('owner sends published GPS only for a published active day; reader GPS remains intact',()=>{
   const {ctx,writes,run}=setup(false);
   run('_gpsVehicleStyle = "arrow"');
-  ctx._writePosition(10,20,30,4,270);
+  ctx._writePosition(10,20,30,4,270,true);
   assert.equal(writes[0].path,'gps');
   assert.equal(writes[0].value.lat,10);
   assert.equal(writes[0].value.spectator.publicationId,'p');
   assert.equal(writes[0].value.heading,270);
   assert.equal(writes[0].value.spectator.heading,270);
+  assert.equal(writes[0].value.braking,true);
+  assert.equal(writes[0].value.spectator.braking,true);
   assert.equal(writes[0].value.vehicleStyle,'arrow');
   assert.equal(writes[0].value.spectator.vehicleStyle,'arrow');
   ctx.currentDay=2;ctx._writePosition(11,21,31,4);
@@ -58,6 +60,11 @@ test('owner sends published GPS only for a published active day; reader GPS rema
   assert.equal(writes[1].value.spectator,null);
   ctx.currentDay=1;ctx.DAYS_DATA[1].archived=true;ctx._writePosition(12,22,32,4);
   assert.equal(writes[2].value.spectator,null);
+});
+test('brake lights come on when slowing or stopped and turn off when accelerating', () => {
+  const {ctx} = setup(false);
+  assert.deepEqual([40, 15, 0, 0, 12, 12, null, 8].map(ctx._drivingBrakeLights),
+    [false, true, true, true, false, false, false, false]);
 });
 test('driving alerts use distance along the road and ignore an off-route or opposite-heading fix', () => {
   const {ctx} = setup(false);
