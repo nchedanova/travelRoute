@@ -42,6 +42,54 @@ test('pressing Drive restarts a GPS watch that started before location was enabl
   assert.ok(calls.some(call => call[0] === 'marker' && call[1] === 10 && call[2] === 20));
   assert.ok(calls.some(call => call[0] === 'pan' && call[1] === 10 && call[2] === 20));
 });
+test('GPS cannot jump to the return leg of a loop before the intermediate stop is confirmed', () => {
+  const {ctx} = setup(false);
+  const fractions = [];
+  const start = {lat:55, lng:37};
+  const stop = {lat:55, lng:37.02, arrA:''};
+  ctx.DAYS_DATA[1] = {start, stops:[stop, {...start}]};
+  ctx.document.getElementById = () => ({});
+  ctx.reachedRouteStopCount = stops => stops.findLastIndex(point => point.arrA) + 1;
+  ctx.getDayRouteKm = (_, count = 2) => count;
+  ctx.updateRouteProgress = (_, fraction) => fractions.push(fraction);
+  ctx._haversineKmPts = (lat, lng, toLat, toLng) => Math.hypot(toLat - lat, toLng - lng) * 100;
+  ctx._routeCache = {
+    'driving|55,37|55,37.02': [[55,37],[55,37.02]],
+    'driving|55,37.02|55,37': [[55,37.02],[55,37]],
+  };
+  const gps = (longitude, heading) => ctx._updateDriveProgress({latitude:55, longitude, heading, speed:8, accuracy:10});
+  gps(37, 270);
+  gps(37.01, 90);
+  gps(37, 270);
+  assert.equal(fractions.length, 1);
+  assert.ok(Math.abs(fractions[0] - 0.25) < 0.001);
+  stop.arrA = '10:15';
+  gps(37, 270);
+  gps(37.01, 270);
+  assert.deepEqual(fractions.slice(1), [1, 1]);
+});
+
+test('a single loop leg cannot match its finish when starting with a reverse heading', () => {
+  const {ctx} = setup(false);
+  const fractions = [];
+  const start = {lat:55, lng:37};
+  ctx.DAYS_DATA[1] = {start, stops:[{...start}]};
+  ctx.document.getElementById = () => ({});
+  ctx.reachedRouteStopCount = () => 0;
+  ctx.getDayRouteKm = (_, count = 1) => count;
+  ctx.updateRouteProgress = (_, fraction) => fractions.push(fraction);
+  ctx._haversineKmPts = (lat, lng, toLat, toLng) => Math.hypot(toLat - lat, toLng - lng) * 100;
+  ctx._routeCache = {'driving|55,37|55,37': [[55,37],[55,37.02],[55,37]]};
+  const gps = (longitude, heading) => ctx._updateDriveProgress({latitude:55, longitude, heading, speed:8, accuracy:10});
+  gps(37, 270);
+  gps(37, 90);
+  gps(37, 270);
+  assert.deepEqual(fractions, [0]);
+  gps(37.01, 270);
+  gps(37, 270);
+  assert.equal(fractions.at(-1), 1);
+});
+
 test('owner sends published GPS only for a published active day; reader GPS remains intact',()=>{
   const {ctx,writes,run}=setup(false);
   run('_gpsVehicleStyle = "arrow"');

@@ -842,6 +842,7 @@ function toggleDrivingMode() {
     return;
   }
   _drivingMode  = !_drivingMode;
+  _driveProgressMatch = null;
   _gpsBraking = false;
   _previousDrivingSpeed = null;
   _lastOwnerPosition = null;
@@ -1156,7 +1157,7 @@ function _routePlaceType(stop) {
   return null;
 }
 
-function _measureDrivingLine(line, fix) {
+function _measureDrivingLine(line, fix, maxProgress = Infinity) {
   const radians = Math.PI / 180;
   const eastScale = 111320 * Math.cos(fix.latitude * radians);
   let length = 0;
@@ -1173,9 +1174,11 @@ function _measureDrivingLine(line, fix) {
     const fraction = Math.max(0, Math.min(1, (x * dx + y * dy) / segment ** 2));
     const offset = Math.hypot(x - fraction * dx, y - fraction * dy);
     const bearing = Math.atan2(dx, dy);
-    if (offset < closest && (!Number.isFinite(fix.heading) || Math.cos(fix.heading * radians - bearing) > 0)) {
+    const along = length + fraction * segment;
+    if (along <= maxProgress && offset < closest &&
+        (!Number.isFinite(fix.heading) || Math.cos(fix.heading * radians - bearing) > 0)) {
       closest = offset;
-      progress = length + fraction * segment;
+      progress = along;
     }
     length += segment;
   }
@@ -1189,31 +1192,45 @@ function _drivingLeg(day, index) {
   return {from, to, key: `driving|${from.lat},${from.lng}|${to.lat},${to.lng}`};
 }
 
+let _driveProgressMatch = null;
+
 function _updateDriveProgress(fix) {
   const day = DAYS_DATA[currentDay];
   const fill = document.getElementById('d' + currentDay + '-fill');
   if (!day || !fill || !Number.isFinite(fix.accuracy) || fix.accuracy > MANEUVER_MAX_GPS_ACCURACY_M) return;
-  const profile = day.walkMode ? 'foot' : 'driving';
+  // An actual time confirms the preceding leg. GPS only refines the next leg.
+  const reached = reachedRouteStopCount(day.stops);
+  const leg = _drivingLeg(day, reached);
+  if (!leg) return;
+  const key = day.walkMode ? leg.key.replace('driving|', 'foot|') : leg.key;
+  const line = _routeCache[key];
+  if (!line || line.length < 2) return;
+  if (_driveProgressMatch?.day !== currentDay || _driveProgressMatch.index !== reached || _driveProgressMatch.line !== line) {
+    _driveProgressMatch = {day: currentDay, index: reached, line, meters: 0};
+  }
   const matchFix = {
     latitude: fix.latitude,
     longitude: fix.longitude,
     accuracy: fix.accuracy,
     heading: fix.speed >= 1.5 || !Number.isFinite(fix.speed) ? fix.heading : undefined
   };
-  let total = 0, distance = null, closest = Infinity;
-  for (let index = 0; index < day.stops.length; index++) {
-    const leg = _drivingLeg(day, index);
-    const line = leg && _routeCache[leg.key.replace('driving|', profile + '|')];
-    if (!line?.length) return;
-    const measured = _measureDrivingLine(line, matchFix);
-    if (measured.progress !== null && measured.closest < closest) {
-      closest = measured.closest;
-      distance = total + measured.progress;
-    }
-    total += measured.length;
+  let measured = _measureDrivingLine(line, matchFix);
+  const previous = _driveProgressMatch.meters;
+  const [startLat, startLng] = line[0];
+  const [endLat, endLng] = line.at(-1);
+  const nearStart = _haversineKmPts(startLat, startLng, fix.latitude, fix.longitude) < 0.12;
+  const closedLeg = _haversineKmPts(startLat, startLng, endLat, endLng) < 0.12;
+  if (closedLeg && nearStart && previous < measured.length / 2 && measured.progress > measured.length / 2) {
+    measured = _measureDrivingLine(line, matchFix, measured.length / 2);
   }
-  if (distance === null || !total) return;
-  updateRouteProgress(currentDay, distance / total);
+  if (measured.progress === null || !measured.length) return;
+  _driveProgressMatch.meters = Math.max(previous, measured.progress);
+  const totalKm = getDayRouteKm(currentDay);
+  if (!totalKm) return;
+  const markedKm = getDayRouteKm(currentDay, reached);
+  const nextKm = getDayRouteKm(currentDay, reached + 1);
+  const distanceKm = markedKm + (nextKm - markedKm) * (_driveProgressMatch.meters / measured.length);
+  updateRouteProgress(currentDay, distanceKm / totalKm);
 }
 
 function _findDrivingHintLeg(day, preferredIndex, fix) {

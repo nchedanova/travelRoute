@@ -215,11 +215,15 @@ function cascadeAutoFillFrom(day, stopId) {
 }
 
 // ── PROGRESS + DELTAS ─────────────────────────────────────────────────────────
+function reachedRouteStopCount(stops) {
+  return stops.findLastIndex(stop => _parseTime(stop.arrA) !== null || _parseTime(stop.depA) !== null) + 1;
+}
+
 function updateRouteProgress(day, gpsFraction = 0) {
   const fill = document.getElementById('d' + day + '-fill');
   if (!fill) return;
   const data = DAYS_DATA[day];
-  const reached = data.stops.findLastIndex(stop => [stop.arrA, stop.depA].some(time => _parseTime(time) !== null)) + 1;
+  const reached = reachedRouteStopCount(data.stops);
   const totalKm = getDayRouteKm(day);
   const markedKm = reached ? getDayRouteKm(day, reached) : 0;
   const fraction = Math.max(gpsFraction, totalKm ? markedKm / totalKm : reached / (data.stops.length || 1));
