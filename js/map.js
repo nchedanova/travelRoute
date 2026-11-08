@@ -214,7 +214,7 @@ function _fetchDuration(from, to, profile, cb) {
 
 function initMap() {
   map = L.map('map', { center:[51.5, 39.5], zoom:5, zoomControl:true, attributionControl:false });
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
   // Offline: cap zoom to highest fully-cached level.
   // Both walk and auto now cache z18 (walk: route, auto: around stops).
@@ -719,6 +719,17 @@ function refreshSegments() {
 function getDayRouteKm(d, stopCount) {
   var data = DAYS_DATA[d];
   if (!data) return 0;
+  const recording = data.walkReview;
+  if (recording && stopCount === undefined) {
+    if (Number.isFinite(recording.meters) && recording.meters >= 0) return recording.meters / 1000;
+    let recordedKm = 0;
+    for (const segment of recording.segments || []) {
+      for (let i = 1; i < segment.length; i++) {
+        recordedKm += _haversineKmPts(...segment[i - 1], ...segment[i]);
+      }
+    }
+    return recordedKm;
+  }
   var profile = data.walkMode ? 'foot' : 'driving';
   var pts = [{ lat: data.start.lat, lng: data.start.lng }];
   data.stops.slice(0, stopCount ?? data.stops.length).forEach(function(s) {

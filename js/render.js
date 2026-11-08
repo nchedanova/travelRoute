@@ -225,7 +225,7 @@ function updateRouteProgress(day, gpsFraction = 0) {
   const data = DAYS_DATA[day];
   const reached = reachedRouteStopCount(data.stops);
   const totalKm = getDayRouteKm(day);
-  const markedKm = reached ? getDayRouteKm(day, reached) : 0;
+  const markedKm = data.walkReview ? totalKm : reached ? getDayRouteKm(day, reached) : 0;
   const fraction = Math.max(gpsFraction, totalKm ? markedKm / totalKm : reached / (data.stops.length || 1));
   const km = totalKm * fraction;
   fill.parentElement.style.setProperty('--route-progress', (fraction * 100) + '%');
@@ -346,7 +346,7 @@ function updateTravelStats(d) {
 
   // ── Distance: фактическое по маршруту из OSRM кэша, fallback haversine ──
   var km = (typeof getDayRouteKm === 'function') ? getDayRouteKm(d) : 0;
-  if (!km) {
+  if (!km && !data.walkReview) {
     const pts2 = [
       { lat: data.start.lat, lng: data.start.lng },
       ...data.stops.map(s => ({ lat: s.lat, lng: s.lng }))
