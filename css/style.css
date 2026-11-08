@@ -969,7 +969,8 @@ input.day-date-input {
   .main { flex-direction:column; }
   .sidebar {
     width:100%; border-right:none; border-bottom:none;
-    flex-shrink:0; max-height:0; overflow:hidden; transition:max-height 0.32s ease;
+    flex-shrink:0; height:var(--sheet-h, 55vh); max-height:0;
+    overflow:hidden; transition:max-height 0.32s ease;
   }
   .sidebar.open { max-height:var(--sheet-h, 55vh); overflow:hidden; }
   #map { flex:1; min-height:60px; }
@@ -1023,12 +1024,6 @@ input.day-date-input {
   .sidebar.open {
     overscroll-behavior: contain;
     overscroll-behavior-y: contain;
-  }
-  #tabPanelRoute,
-  #tabPanelNotes,
-  #tabPanelChat {
-    max-height: calc(var(--sheet-h, 55vh) - 90px);
-    min-height: calc(var(--sheet-h, 55vh) - 90px);
   }
   #tabPanelRoute::-webkit-scrollbar { width: 6px; }
   #tabPanelRoute::-webkit-scrollbar-track { background: transparent; }

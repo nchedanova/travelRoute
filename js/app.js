@@ -3102,7 +3102,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '3.0.0';
-var APP_BUILD   = 17;
+var APP_BUILD   = 18;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 1;
 
@@ -3296,7 +3296,7 @@ history.replaceState(_navState(), '');
     handle.setPointerCapture(e.pointerId);
     dragging = true;
     startY   = e.clientY;
-    startVh  = currentVh;
+    startVh  = sidebar.getBoundingClientRect().height / window.innerHeight * 100;
     sidebar.classList.add('dragging');
     handle.classList.add('dragging');
   });
