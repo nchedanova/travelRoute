@@ -2,7 +2,7 @@
 if (LOCAL_PREVIEW) {
   const reviewWalk = LOCAL_WALK_REVIEW;
   const reviewSuffix = reviewWalk ? '&walk=1' : '';
-  document.addEventListener('DOMContentLoaded', function() {
+  document.addEventListener('DOMContentLoaded', async function() {
     var bar = document.createElement('div');
     bar.className = 'local-preview-bar';
     if (new URLSearchParams(location.search).has('hidePreviewBar')) bar.style.display = 'none';
@@ -33,6 +33,29 @@ if (LOCAL_PREVIEW) {
     if (badge) badge.textContent = {admin:'локально · владелец',reader:'локально · читатель',spectator:'локально · зритель'}[PREVIEW_ROLE];
     var changelog = document.getElementById('changelogModal');
     if (changelog) changelog.classList.remove('show');
+    if (new URLSearchParams(location.search).get('sample') === 'walker') {
+      await routeStateReady;
+      const path = [[55.7954, 37.946], [55.7962, 37.947], [55.7967, 37.9484], [55.7972, 37.948]];
+      const [lat, lng] = path[0];
+      DAYS_DATA[1] = {...DAYS_DATA[1], date:'Прогулка в парке', walkMode:true,
+        start:{name:'Старт прогулки', icon:'🚶', lat, lng}, stops:[],
+        archived:false, hidden:false, walkReview:{phase:'recording', segments:[path], meters:280}};
+      redrawDay(1);
+      renderTabs();
+      renderAllDays();
+      switchDay(1);
+      const [walkLat, walkLng] = path[2];
+      const showFix = (heading, speed) => _updateGpsMarker(walkLat, walkLng, 8, false, heading, undefined, false, speed);
+      showFix(55, 4);
+      for (const [label, heading, speed] of [['Сменить направление', 210, 4], ['На месте', 0, 0], ['Вперёд', 55, 4]]) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'publication-btn';
+        button.textContent = label;
+        button.onclick = () => showFix(heading, speed);
+        bar.append(button);
+      }
+    }
     if (routeHintsPreviewEnabled()) {
       const start = [37.940, 55.795];
       const turn = [37.950, 55.795];
@@ -200,7 +223,7 @@ function installWalkReview() {
     day.departA = recordedTime(fix.time);
     day.departP ||= day.departA;
     document.getElementById('d' + id + '-departP-display').textContent = day.departP;
-    document.getElementById('d' + id + '-start-name').innerHTML = startPointNameMarkup(day.start);
+    document.getElementById('d' + id + '-start-name').innerHTML = startPointNameMarkup(day.start, true);
     const actual = document.getElementById('d' + id + '-depart');
     actual.value = day.departA;
     actual.classList.remove('empty');

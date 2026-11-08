@@ -715,9 +715,15 @@ document.addEventListener('DOMContentLoaded', function() {
     el.innerHTML = dayActionIcon(el.dataset.uiIcon);
   });
 });
-function startPointNameMarkup(start) {
+function startPointIconMarkup(icon, recorded) {
+  if (recorded && (!icon || icon === '🚶' || icon === '🚶‍♂️' || icon === '🚶‍♀️')) {
+    return '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4c5-4 9 4 14 0v10c-5 4-9-4-14 0"/></svg>';
+  }
+  return pointIconMarkup(icon);
+}
+function startPointNameMarkup(start, recorded = false) {
   const name = String(start.name || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  return '<span class="depart-start-icon">' + pointIconMarkup(start.icon) + '</span><span class="depart-name-text">' + name + '</span>';
+  return '<span class="depart-start-icon">' + startPointIconMarkup(start.icon, recorded) + '</span><span class="depart-name-text">' + name + '</span>';
 }
 function renderDaySection(d) {
   const canDrive = isAdmin();
@@ -788,7 +794,7 @@ function renderDaySection(d) {
       <div class="depart-icon" id="d${d}-depart-icon">${dayActionIcon(data.walkMode ? 'walk' : 'car')}</div>
       <div class="depart-label" style="${isAdmin() ? 'cursor:pointer' : ''}"
            ${isAdmin() ? `onclick="openEditStart(${d})" title="Изменить точку старта"` : ''}>
-        <span class="depart-start-name" id="d${d}-start-name">${startPointNameMarkup(data.start)}</span>
+        <span class="depart-start-name" id="d${d}-start-name">${startPointNameMarkup(data.start, !!data.walkReview)}</span>
         ${isAdmin() ? `<span class="depart-edit-icon">${dayActionIcon('edit')}</span>` : ''}
       </div>
       <span class="weather-badge" id="wb-d${d}-start" style="display:none" onclick="event.stopPropagation();toggleWeatherStrip('d${d}-start')"></span>

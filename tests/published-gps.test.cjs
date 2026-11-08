@@ -15,6 +15,7 @@ function setup(spectator) {
     map:{removeLayer:m=>removed.push(m)},L:{divIcon:options=>options},calls,
   });
   vm.runInContext(fs.readFileSync(path.join(__dirname,'../js/gps.js'),'utf8'),ctx);
+  ctx.realUpdateGpsMarker = ctx._updateGpsMarker;
   vm.runInContext('_db=fakeDb; _drivingMode=true; _followCamera=true; _updateGpsMarker=(...args)=>calls.push(["marker",...args]); _highlightNearest=()=>{}; _updateSpeedDisplay=v=>calls.push(["speed",v]); _panTo=(...args)=>calls.push(["pan",...args]);',ctx);
   return {ctx,writes,calls,removed,subscriptions,elements,run:code=>vm.runInContext(code,ctx)};
 }
@@ -216,7 +217,17 @@ test('spectator sees live movement, but not archived, unpublished, different-day
 test('published walking day uses the walking icon, driving day uses the car',()=>{
   const {ctx}=setup(true);
   assert.match(ctx._makeCarIcon().html,/class="gps-car"/);
-  ctx.DAYS_DATA[1].walkMode=true;assert.match(ctx._makeCarIcon().html,/🚶/);
+  ctx.DAYS_DATA[1].walkMode = true;
+  assert.match(ctx._makeCarIcon().html, /class="gps-walker"/);
+  ctx.map = null;
+  ctx.realUpdateGpsMarker(55, 37, 8, true, 90, undefined, false, 4, 'dog');
+  const walking = ctx._makeCarIcon().html;
+  assert.match(walking, /viewBox="0 0 54 40"/);
+  assert.match(walking, /gps-walk-marker is-walking/);
+  assert.match(walking, /class="gps-walk-direction" style="transform:rotate\(90deg\)"/);
+  ctx.realUpdateGpsMarker(55, 37, 8, true, 90, undefined, false, 0, 'dog');
+  assert.doesNotMatch(ctx._makeCarIcon().html, /is-walking/);
+  assert.doesNotMatch(ctx._makeCarIcon().html, /gps-walk-direction/);
 });
 test('car faces its GPS course and ignores position jitter without a heading', () => {
   const {ctx} = setup(false);

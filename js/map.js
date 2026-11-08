@@ -298,14 +298,14 @@ function makeIcon(emoji, color, size = 34, active = false, num = 0, type = null)
   return L.divIcon({ html, className:'', iconSize:[size+pad*2,size+pad*2], iconAnchor:[size/2+pad,size+pad] });
 }
 
-function makeStartIcon(emoji, color) {
+function makeStartIcon(emoji, color, recorded = false) {
   const bg = hexRgba(color, 0.7, 0.45);
   const html = `<div style="
     width:38px;height:38px;border-radius:50%;
     background:${bg};border:2px solid rgba(255,255,255,0.18);
     display:flex;align-items:center;justify-content:center;
     font-size:17px;box-shadow:0 2px 12px rgba(0,0,0,0.8), 0 0 0 1px rgba(0,0,0,0.4);
-    filter:drop-shadow(0 1px 3px rgba(0,0,0,0.9));">${pointIconMarkup(emoji)}</div>`;
+    filter:drop-shadow(0 1px 3px rgba(0,0,0,0.9));">${recorded ? startPointIconMarkup(emoji, true) : pointIconMarkup(emoji)}</div>`;
   return L.divIcon({ html, className:'', iconSize:[38,38], iconAnchor:[19,19] });
 }
 
@@ -490,8 +490,8 @@ function drawDay(d) {
   const reviewTrack = data.walkReview;
 
   // Стартовый маркер — иконка зависит от режима дня (авто/пешком)
-  const startEmoji = data.walkMode ? '🚶' : (data.start.icon || '🚗');
-  const startM = L.marker([data.start.lat, data.start.lng], { icon: makeStartIcon(startEmoji, color) });
+  const startEmoji = reviewTrack ? data.start.icon : (data.walkMode ? '🚶' : (data.start.icon || '🚗'));
+  const startM = L.marker([data.start.lat, data.start.lng], { icon: makeStartIcon(startEmoji, color, !!reviewTrack) });
   if (!reviewTrack || data.start.lat || data.start.lng) group.addLayer(startM);
 
   // Сегменты маршрута по дорогам (OSRM)

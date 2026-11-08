@@ -21,6 +21,15 @@ let _gpsCourse = null;
 let _gpsCourseAnchor = null;
 let _gpsVehicleStyle = 'compact';
 let _gpsRemoteVehicleStyle = null;
+const GPS_WALK_LABELS = {person: 'Городской пешеход', dog: 'С собакой'};
+let _gpsWalkStyle = 'person';
+let _gpsRemoteWalkStyle = null;
+let _gpsWalkCourse = null;
+let _gpsWalkMoving = false;
+try {
+  const saved = localStorage.getItem('travel_gps_walker');
+  if (Object.hasOwn(GPS_WALK_LABELS, saved)) _gpsWalkStyle = saved;
+} catch {}
 let _gpsBraking = false;
 let _previousDrivingSpeed = null;
 let _accuracyCircle = null;   // Leaflet circle — кружок погрешности
@@ -270,7 +279,7 @@ function _onPosition(pos) {
   const kmh = gpsSpeedKmh(speed);
 
   const braking = _drivingMode && _drivingBrakeLights(kmh);
-  _updateGpsMarker(lat, lng, accuracy, false, heading, undefined, braking);
+  _updateGpsMarker(lat, lng, accuracy, false, heading, undefined, braking, kmh);
   _showEl('gpsFollowBtn');
   _highlightNearest(lat, lng);
 
@@ -309,7 +318,7 @@ function _listenRemotePosition() {
     // есть позиция — включаем подсветку как в режиме "Еду"
     document.body.classList.add('driving-active');
     _setGpsControls(true, true);
-    _updateGpsMarker(d.lat, d.lng, d.accuracy, true, d.heading, d.vehicleStyle, d.braking ?? d.speed === 0);
+    _updateGpsMarker(d.lat, d.lng, d.accuracy, true, d.heading, d.vehicleStyle, d.braking ?? d.speed === 0, d.speed, d.walkStyle);
     _highlightNearest(d.lat, d.lng);
     _updateSpeedDisplay(d.speed);
     if (_followCamera && !_userPanned) _panTo(d.lat, d.lng);
@@ -449,8 +458,9 @@ function broadcastWalkPosition(id, position) {
   if (!walk && !spectatorWalk) { stopWalkBroadcast(); return; }
   _lastWalkBroadcastAt = Date.now();
   _broadcastWalkDay = id;
-  const {latitude: lat, longitude: lng, accuracy, speed} = position.coords;
-  const point = {lat, lng, accuracy, speed: gpsSpeedKmh(speed), ts: Date.now()};
+  const {latitude: lat, longitude: lng, accuracy, speed, heading} = position.coords;
+  const point = {lat, lng, accuracy, speed: gpsSpeedKmh(speed), ts: Date.now(), walkStyle: _gpsWalkStyle};
+  if (Number.isFinite(heading) && heading >= 0 && heading < 360) point.heading = heading;
   const spectator = spectatorWalk && {...point, ...spectatorWalk};
   _db.ref('gps').set(walk ? {...point, walk, spectator} : {spectator}).catch(error => console.warn('Walk GPS:', error));
 }
@@ -480,6 +490,8 @@ function _writePosition(lat, lng, speed, accuracy, heading, braking = false) {
   if (!DAYS_DATA[currentDay]?.walkMode) {
     _lastOwnerPosition.vehicleStyle = _gpsVehicleStyle;
     _lastOwnerPosition.braking = braking;
+  } else {
+    _lastOwnerPosition.walkStyle = _gpsWalkStyle;
   }
   _db.ref('gps').set(Object.assign({}, _lastOwnerPosition, { spectator: spectatorGpsPayload(_lastOwnerPosition) }));
 }
@@ -512,7 +524,7 @@ function refreshSpectatorGpsVisibility() {
   }
   _setGpsControls(true, true);
   document.body.classList.add('driving-active');
-  _updateGpsMarker(point.lat, point.lng, point.accuracy, true, point.heading, point.vehicleStyle, point.braking ?? point.speed === 0);
+  _updateGpsMarker(point.lat, point.lng, point.accuracy, true, point.heading, point.vehicleStyle, point.braking ?? point.speed === 0, point.speed, point.walkStyle);
   _highlightNearest(point.lat, point.lng);
   _updateSpeedDisplay(point.speed);
   if (_followCamera && !_userPanned) _panTo(point.lat, point.lng);
@@ -687,6 +699,93 @@ function initGpsVehiclePicker() {
   refreshProgressVehicleIcons();
 }
 
+let _gpsWalkerPaintId = 0;
+function gpsWalkerGlyph(style) {
+  const withDog = style === 'dog';
+  const id = 'walker-paint-' + ++_gpsWalkerPaintId;
+  return `<svg class="gps-walker" viewBox="0 0 ${withDog ? 54 : 32} 40" aria-hidden="true">
+    <defs>
+      <linearGradient id="${id}-coat" x2="1" y2=".75" gradientUnits="objectBoundingBox">
+        <stop stop-color="color-mix(in srgb,currentColor,white 44%)"/>
+        <stop offset=".55" stop-color="currentColor"/>
+        <stop offset="1" stop-color="color-mix(in srgb,currentColor,#15121b 62%)"/>
+      </linearGradient>
+      <radialGradient id="${id}-skin" cx=".34" cy=".26" r=".76">
+        <stop stop-color="#ffe1bd"/><stop offset="1" stop-color="#a96346"/>
+      </radialGradient>
+      <linearGradient id="${id}-fur" x2=".45" y2="1">
+        <stop stop-color="#a57e58"/><stop offset=".52" stop-color="#79513b"/><stop offset="1" stop-color="#3f2923"/>
+      </linearGradient>
+    </defs>
+    <ellipse cx="15" cy="36" rx="13" ry="2.5" fill="#08090e" opacity=".55"/>
+    <g class="gps-human-step gps-human-step-back" transform="translate(-2 0)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path class="gps-human-leg" d="M15 24L13 30L10 34" stroke="#11151f" stroke-width="7"/>
+      <path class="gps-human-leg" d="M15 24L13 30L10 34" stroke="#46536b" stroke-width="4.8"/>
+      <path class="gps-human-shoe" d="M9 35h3" stroke="#e0d9cb" stroke-width="3"/>
+    </g>
+    <g class="gps-human-step" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path class="gps-human-leg" d="M15 24L20 28L24 34" stroke="#11151f" stroke-width="7"/>
+      <path class="gps-human-leg" d="M15 24L20 28L24 34" stroke="#72829c" stroke-width="4.8"/>
+      <path class="gps-human-shoe" d="M9 35h4" transform="translate(14 0)" stroke="#e0d9cb" stroke-width="3"/>
+    </g>
+    <path d="m15 13-6 3-3 5" fill="none" stroke="url(#${id}-coat)" stroke-width="4.5" stroke-linecap="round"/>
+    <path d="M12 12q4-3 9 1l-2 11q-5 2-10-1l1-8Z" fill="url(#${id}-coat)" stroke="#17141e" stroke-width="1"/>
+    <path d="M13 14q-2 3-2 6" stroke="#fff" opacity=".42" fill="none" stroke-linecap="round"/>
+    <path d="m19 14 3 5 4 1" fill="none" stroke="#261d29" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="m19 14 3 5 4 1" fill="none" stroke="url(#${id}-coat)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="27" cy="20" r="1.6" fill="url(#${id}-skin)"/>
+    <path d="M14 7q-1-5 4-5 5 0 5 5l1 2-2 1q-1 3-5 2l-2-2Z" fill="url(#${id}-skin)" stroke="#332226" stroke-width="1"/>
+    <path d="M14 8q-2-5 3-6 5-2 6 3l-4 1-2 3Z" fill="#45332e"/>
+    <path d="m16 4 4-1" stroke="#927061" stroke-linecap="round"/>
+    ${withDog ? `
+      <path d="M28 20q6 6 16.5 5.7" fill="none" stroke="#ebdbc8" stroke-width="1"/>
+      <g transform="translate(5.8 5.3) scale(.9 .85)">
+      <ellipse cx="42" cy="36" rx="10" ry="2" fill="#08090e" opacity=".5"/>
+      <path d="M34 28q-4 1-5-1t-2-6" fill="none" stroke="#52372b" stroke-width="3.3" stroke-linecap="round"/>
+      <path d="M32 28q-3-1-4-5" fill="none" stroke="#967050" stroke-width="1" stroke-linecap="round"/>
+      <g fill="none" stroke-linecap="round">
+        <g class="gps-walk-step gps-dog-step" style="transform-origin:35px 30px"><path d="m35 30-1 4" stroke="#79523c" stroke-width="2.6"/><path d="M34 34h.6" stroke="#efe1cd" stroke-width="1.4"/></g>
+        <g class="gps-walk-step gps-dog-step gps-walk-step-back" style="transform-origin:38px 31px"><path d="m38 31 1 4" stroke="#79523c" stroke-width="2.6"/><path d="M39 35h.7" stroke="#efe1cd" stroke-width="1.4"/></g>
+        <g class="gps-walk-step gps-dog-step gps-walk-step-back" style="transform-origin:44px 31px"><path d="m44 31-1 4" stroke="#79523c" stroke-width="2.6"/><path d="M43 35h.6" stroke="#efe1cd" stroke-width="1.4"/></g>
+        <g class="gps-walk-step gps-dog-step" style="transform-origin:47px 30px"><path d="m47 30 1 4" stroke="#79523c" stroke-width="2.6"/><path d="M48 34h.6" stroke="#efe1cd" stroke-width="1.4"/></g>
+      </g>
+      <path d="M32 27q2-4 11-3l1-3q3-3 6 0l1 2 2 1q0 3-4 3l-2 4q-7 2-13 0-3-1-2-4Z" fill="url(#${id}-fur)" stroke="#35241e" stroke-width="1"/>
+      <path d="m44 22-1-6q2-2 5 5m0 0 1-5q2 0 2 6" fill="#9c634b" stroke="#35241e" stroke-width="1"/>
+      <path d="m44.5 17 1.5 3m3.5-3 .4 3" stroke="#e8ab99" stroke-width=".8" stroke-linecap="round"/>
+      <path d="m35 25-1 3m4-3-1 4m4-4-1 4" stroke="#4b302a" stroke-width="1.2" stroke-linecap="round"/>
+      <path d="M43 23l1-2 1 .7-1 4.3-1.3 2-.8-.4Z" fill="#eee1d0"/>
+      <path d="M48 24l2-.5 2 1.2-1.5 1.1-2 .2-1 3.5-1.4.6 1-4Z" fill="#f3e6d5"/>
+      <path d="m47 20 .65.3.65 3-.8.2Z" fill="#fff4e6"/>
+      <circle cx="49" cy="22.5" r=".75" fill="#251c19"/>
+      <circle cx="52" cy="24.5" r="1" fill="#251c19"/>
+      </g>` : ''}
+  </svg>`;
+}
+
+function initGpsWalkPicker() {
+  const options = document.getElementById('gpsWalkOptions');
+  if (!options || options.childElementCount || !isAdmin()) return;
+  const value = document.getElementById('appearanceWalkValue');
+  value.textContent = GPS_WALK_LABELS[_gpsWalkStyle];
+  for (const [style, label] of Object.entries(GPS_WALK_LABELS)) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'theme-option gps-vehicle-option';
+    button.setAttribute('aria-pressed', String(style === _gpsWalkStyle));
+    button.innerHTML = gpsWalkerGlyph(style) + '<span>' + label + '</span>';
+    button.onclick = () => {
+      _gpsWalkStyle = style;
+      value.textContent = label;
+      try { localStorage.setItem('travel_gps_walker', style); } catch {}
+      for (const option of options.children) {
+        option.setAttribute('aria-pressed', String(option === button));
+      }
+      refreshGpsMarkerIcon();
+    };
+    options.append(button);
+  }
+}
+
 let _gpsCarPaintId = 0;
 
 function _gpsCarGlyph(style, course = 0, headlightsOn = false, braking = false) {
@@ -725,7 +824,16 @@ function _makeCarIcon() {
   const ringColor = _getDayColor();
   const isWalk = typeof currentDay !== 'undefined' && DAYS_DATA[currentDay]?.walkMode;
   const headlightsOn = _drivingMode || _gpsRemoteVehicleStyle !== null;
-  const glyph = isWalk ? '🚶' : _gpsCarGlyph(_gpsRemoteVehicleStyle ?? _gpsVehicleStyle, _gpsCourse ?? 0, headlightsOn, headlightsOn && _gpsBraking);
+  if (isWalk) {
+    const walkerStyle = _gpsRemoteWalkStyle ?? _gpsWalkStyle;
+    const direction = _gpsWalkCourse === null ? '' :
+      `<div class="gps-walk-direction" style="transform:rotate(${_gpsWalkCourse}deg)"><svg viewBox="0 0 12 10" aria-hidden="true"><path d="M1 9 6 1l5 8-5-2Z"/></svg></div>`;
+    return L.divIcon({
+      html: `<div class="gps-walk-marker${_gpsWalkMoving ? ' is-walking' : ''}" data-walk-style="${walkerStyle}">${gpsWalkerGlyph(walkerStyle)}${direction}</div>`,
+      className: '', iconSize: [44, 44], iconAnchor: [22, 22]
+    });
+  }
+  const glyph = _gpsCarGlyph(_gpsRemoteVehicleStyle ?? _gpsVehicleStyle, _gpsCourse ?? 0, headlightsOn, headlightsOn && _gpsBraking);
   const html = `
     <div style="position:relative;width:44px;height:44px;">
       <div class="gps-ring" style="--gps-color:${ringColor};position:absolute;inset:0;border-radius:50%;background:${ringColor};opacity:0.25;"></div>
@@ -735,8 +843,17 @@ function _makeCarIcon() {
     html, className: '', iconSize: [44, 44], iconAnchor: [22, 22]
   });
 }
-function _updateGpsMarker(lat, lng, accuracy, isRemote, heading, vehicleStyle, braking = false) {
-  _updateGpsCourse(lat, lng, accuracy, heading);
+function _updateGpsMarker(lat, lng, accuracy, isRemote, heading, vehicleStyle, braking = false, speed, walkStyle) {
+  const walking = !!DAYS_DATA[currentDay]?.walkMode;
+  if (walking && speed === 0) {
+    _gpsCourse = null;
+    _gpsCourseAnchor = null;
+  } else {
+    _updateGpsCourse(lat, lng, accuracy, heading);
+  }
+  _gpsWalkCourse = walking && speed !== 0 ? _gpsCourse : null;
+  _gpsWalkMoving = walking && speed > 0;
+  _gpsRemoteWalkStyle = isRemote ? (Object.hasOwn(GPS_WALK_LABELS, walkStyle) ? walkStyle : 'person') : null;
   _gpsBraking = braking === true;
   const previousStyle = _gpsRemoteVehicleStyle;
   _gpsRemoteVehicleStyle = isRemote
@@ -757,12 +874,19 @@ function _updateGpsMarker(lat, lng, accuracy, isRemote, heading, vehicleStyle, b
     }).addTo(map);
   }
 
-  const icon = _makeCarIcon();
-
   if (_gpsMarker) {
-    _gpsMarker.setLatLng([lat, lng]).setIcon(icon);
+    _gpsMarker.setLatLng([lat, lng]);
+    const walker = walking ? _gpsMarker.getElement()?.querySelector('.gps-walk-marker') : null;
+    const direction = walker?.querySelector('.gps-walk-direction');
+    if (walker?.dataset.walkStyle === (_gpsRemoteWalkStyle ?? _gpsWalkStyle) &&
+        !!direction === (_gpsWalkCourse !== null)) {
+      walker.classList.toggle('is-walking', _gpsWalkMoving);
+      if (direction) direction.style.transform = `rotate(${_gpsWalkCourse}deg)`;
+    } else {
+      _gpsMarker.setIcon(_makeCarIcon());
+    }
   } else {
-    _gpsMarker = L.marker([lat, lng], { icon, zIndexOffset: 1000 }).addTo(map);
+    _gpsMarker = L.marker([lat, lng], { icon: _makeCarIcon(), zIndexOffset: 1000 }).addTo(map);
     _gpsMarker.bindTooltip(isRemote ? '🚗 Путешественник' : '📍 Вы здесь',
       { permanent: false, direction: 'top', offset: [0, -14] });
   }
@@ -810,6 +934,9 @@ function _clearGpsMarker() {
   _accuracyCircle = null;
   _gpsCourse = null;
   _gpsCourseAnchor = null;
+  _gpsWalkCourse = null;
+  _gpsWalkMoving = false;
+  _gpsRemoteWalkStyle = null;
   _gpsRemoteVehicleStyle = null;
   _gpsBraking = false;
   _previousDrivingSpeed = null;
@@ -827,8 +954,8 @@ function setWalkGpsActive(active) {
 }
 
 function updateWalkGpsControls(position) {
-  const {latitude, longitude, accuracy, speed} = position.coords;
-  _updateGpsMarker(latitude, longitude, accuracy, false);
+  const {latitude, longitude, accuracy, speed, heading} = position.coords;
+  _updateGpsMarker(latitude, longitude, accuracy, false, heading, undefined, false, gpsSpeedKmh(speed));
   _showEl('gpsFollowBtn');
   _updateSpeedDisplay(gpsSpeedKmh(speed));
   if (_followCamera && !_userPanned) _panTo(latitude, longitude);

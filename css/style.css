@@ -3660,6 +3660,60 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 .theme-picker-dropdown .gps-vehicle-option {gap:7px;min-height:44px;font-size:11px;border:1px solid transparent;}
 .theme-picker-dropdown .gps-vehicle-option[aria-pressed="true"] {background:var(--accent-bg);border-color:var(--accent);}
 .gps-vehicle-option .gps-car {flex:none;}
+.gps-walker {display:block;width:auto;height:37px;flex:none;color:var(--accent);}
+.gps-vehicle-option .gps-walker {height:24px;}
+.gps-walk-marker {
+  position:relative;display:grid;place-items:center;width:44px;height:44px;
+  isolation:isolate;color:var(--accent);
+}
+.gps-walk-marker .gps-walker {filter:drop-shadow(0 1px 2px #080a10);}
+@media (prefers-reduced-motion: no-preference) {
+  .gps-walk-marker.is-walking .gps-human-step {
+    --human-cycle:.96s;
+    --human-phase:0s;
+  }
+  .gps-walk-marker.is-walking .gps-human-step-back {--human-phase:calc(var(--human-cycle) / -2);}
+  .gps-walk-marker.is-walking .gps-human-leg {
+    animation:gps-human-leg var(--human-cycle) linear var(--human-phase) infinite;
+  }
+  .gps-walk-marker.is-walking .gps-human-shoe {
+    animation:gps-human-shoe var(--human-cycle) linear var(--human-phase) infinite;
+  }
+  .gps-walk-marker.is-walking .gps-walk-step {
+    --step-cycle:.78s;
+    --step-angle:19deg;
+    animation:gps-walk-step var(--step-cycle) ease-in-out infinite;
+  }
+  .gps-walk-marker.is-walking .gps-dog-step {
+    --step-cycle:.52s;
+    --step-angle:25deg;
+  }
+  .gps-walk-marker.is-walking .gps-walk-step-back {animation-delay:calc(var(--step-cycle) / -2);}
+}
+@keyframes gps-human-leg {
+  0%,100% {d:path("M15 24L20 29L23 34");}
+  26% {d:path("M15 24L16 30L16 34");}
+  53% {d:path("M15 24L13 30L10 34");}
+  72% {d:path("M15 24L17 28L12 30");}
+  88% {d:path("M15 24L21 27L20 31");}
+}
+@keyframes gps-human-shoe {
+  0%,100% {transform:translate(13px,0);}
+  26% {transform:translate(6px,0);}
+  53% {transform:translate(0,0);}
+  72% {transform:translate(2px,-4px);}
+  88% {transform:translate(10px,-3px);}
+}
+@keyframes gps-walk-step {
+  0%,100% {transform:rotate(calc(-1 * var(--step-angle)));}
+  50% {transform:rotate(var(--step-angle));}
+}
+.gps-walk-direction {position:absolute;inset:0;pointer-events:none;}
+.gps-walk-direction svg {
+  position:absolute;top:-13px;left:13px;width:18px;height:15px;
+  fill:color-mix(in srgb,currentColor,white 42%);stroke:#14151a;stroke-width:1.25;stroke-linejoin:round;
+  filter:drop-shadow(0 1px 2px #080a10);
+}
 .leaflet-marker-icon .gps-car {width:calc(26px * var(--gps-marker-scale, 1));height:max(27px,calc(35px * var(--gps-marker-scale, 1)));}
 .leaflet-marker-icon .gps-ring {scale:var(--gps-marker-scale, 1);}
 .theme-picker-dropdown .font-sample {display:flex;align-items:center;justify-content:center;flex-basis:44px;height:36px;font-size:17px;color:var(--muted);}

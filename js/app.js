@@ -873,7 +873,7 @@ function doEditStart() {
   DAYS_DATA[day].departP = document.getElementById('edit-start-departP').value.trim();
   closeEditStart();
   const nameEl = document.getElementById('d' + day + '-start-name');
-  if (nameEl) nameEl.innerHTML = startPointNameMarkup({icon:icon,name:name});
+  if (nameEl) nameEl.innerHTML = startPointNameMarkup({icon:icon,name:name}, !!DAYS_DATA[day].walkReview);
   const planTimeEl = document.querySelector(`#day${day} .depart-row .time-pair:first-child .time-val`);
   if (planTimeEl) planTimeEl.textContent = DAYS_DATA[day].departP || '—';
   updateDayRoute(day);
@@ -3010,7 +3010,7 @@ if (layers[currentDay]) layers[currentDay].addTo(map);
 renderTabs();
 renderAllDays();
 updateProgress();
-loadState().then(() => startPolling());
+const routeStateReady = loadState().then(() => startPolling());
 
 // Fix 4: scroll active time input into view when mobile/tablet keyboard opens
 document.addEventListener('focusin', e => {
@@ -3102,11 +3102,19 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '3.0.0';
-var APP_BUILD   = 19;
+var APP_BUILD   = 20;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 1;
 
 var APP_CHANGELOG = [
+  { ver: '3.0.0 build 20', date: '08.11.2026', items: [
+    '🚶 Выберите городской значок или прогулку с корги в меню «Оформление» → «Значок прогулки».',
+    '🐾 На карте пешеход шагает, корги перебирает лапами, а стрелка показывает направление. На остановке фигурки замирают.'
+  ], spectatorItems: [
+    '🐾 На открытой прогулке видно, кого выбрал автор маршрута: городского пешехода или пешехода с корги. Фигурки шагают во время движения, а стрелка показывает направление.'
+  ], demoItems: [
+    '🚶 Примерьте городского пешехода или пешехода с корги в меню «Оформление» → «Значок прогулки». На карте фигурки шагают во время движения и замирают на остановке.'
+  ]},
   { ver: '3.0.0 build 16', date: '08.11.2026', items: [
     '🚗 Выбранная машинка теперь движется по шкале маршрута.',
     '📏 Над шкалой видно, сколько километров уже пройдено.',
