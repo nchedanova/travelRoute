@@ -358,3 +358,26 @@ test('a late recovery snapshot cannot replace a completed reader route',()=>{
   assert.equal(ctx.mergeReaderWalk({routeId:'route',dayId:1,updatedAt:800,day:full},900),true);
   assert.equal(ctx.DAYS_DATA[1].stops.length,2);
 });
+
+test('a saved correction replaces a reader’s finished track even if its finish time is earlier', () => {
+  const {ctx, run} = setup(false);
+  const storage = fs.readFileSync(path.join(__dirname, '../js/storage.js'), 'utf8');
+  run(storage.slice(storage.indexOf('function applyPayload('), storage.indexOf('// ── LOAD STATE')));
+  run("CLOUD_CONFIG = {canWrite:false,binId:'route'}; var state = {}; var dayKeys = () => [1];");
+  const corrected = {
+    walkReview: {id:'walk',phase:'finished',finishedAt:400,segments:[[[10,20],[10,21],[10,22]]]},
+    stops: [{id:'500',notes:[{text:'photo'}]},{id:'1000',notes:[]},{id:'finish',notes:[]}]
+  };
+  const wrong = {
+    walkReview: {id:'walk',phase:'finished',finishedAt:500,segments:[[[10,20],[11,21]]]},
+    stops: [{id:'500',notes:[]},{id:'finish',notes:[]}]
+  };
+  ctx.DAYS_DATA[1] = wrong;
+  ctx.lateWalk = {routeId:'route',dayId:1,updatedAt:700,day:wrong};
+  run('_readerWalk = lateWalk');
+  ctx.applyPayload({_savedAt:600,daysData:{1:corrected}}, true);
+  assert.equal(ctx.restoreReaderWalk(600), false);
+  assert.equal(ctx.mergeReaderWalk(ctx.lateWalk, 600), false);
+  assert.deepEqual(ctx.DAYS_DATA[1].walkReview.segments, corrected.walkReview.segments);
+  assert.deepEqual(ctx.DAYS_DATA[1].stops, corrected.stops);
+});

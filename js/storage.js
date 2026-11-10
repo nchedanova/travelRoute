@@ -200,7 +200,9 @@ function applyPayload(saved, fromCloud = false) {
         (dayData.walkReview.id ? dayData.walkReview.id === local.walkReview.id : dayData.dateISO === local.dateISO) &&
         local.walkReview.lastAt > (dayData.walkReview.lastAt || 0);
       const reader = readerWalks[dayStr];
-      const keepReaderTrack = reader && !dayData.hidden && !dayData.archived &&
+      // A saved finish is authoritative even if an older live track finished later.
+      const keepReaderTrack = reader && dayData.walkReview?.phase !== 'finished' &&
+        !dayData.hidden && !dayData.archived &&
         typeof sameRecordedWalk === 'function' && sameRecordedWalk(reader, dayData) &&
         compareWalkProgress(reader, dayData) > 0;
       if (keepReaderTrack) {
@@ -575,6 +577,7 @@ async function pollCloud() {
     if (hash === _lastCloudHash) return;
     _lastCloudHash = hash;
 
+    const geoHashBefore = _buildGeoHash();
     applyPayload(saved, true);
     if (typeof restoreReaderWalk === 'function') restoreReaderWalk(saved._savedAt || 0);
     try {
@@ -590,7 +593,7 @@ async function pollCloud() {
     // Если нет — не трогаем слои карты: читатель не видит вспышку прямых линий
     // при каждом поллинге из-за изменения только времён/факта.
     const newGeoHash = _buildGeoHash();
-    const geoChanged = (newGeoHash !== _lastGeoHash);
+    const geoChanged = newGeoHash !== _lastGeoHash || newGeoHash !== geoHashBefore;
     _lastGeoHash = newGeoHash;
 
     if (geoChanged) {

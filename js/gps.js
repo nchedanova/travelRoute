@@ -352,7 +352,7 @@ function mergeReaderWalk(walk, cloudSavedAt = 0) {
   const existing = DAYS_DATA[walk.dayId];
   if (existing?.hidden || existing?.archived) return false;
   if (existing) {
-    if (!sameRecordedWalk(existing, walk.day)) return false;
+    if (!sameRecordedWalk(existing, walk.day) || existing.walkReview.phase === 'finished') return false;
     const progress = compareWalkProgress(walk.day, existing);
     if (progress < 0 || (progress === 0 && cloudSavedAt >= walk.updatedAt)) return false;
   } else if (cloudSavedAt >= walk.updatedAt) return false;
@@ -393,7 +393,8 @@ function mergeSpectatorWalk(point = _lastSpectatorWalk) {
     DAYS_DATA[id].spectatorPublicationId === point.publicationId);
   if (id == null) return null;
   const day = DAYS_DATA[id];
-  if (day.walkReview && (!sameRecordedWalk(day, walk.day) || compareWalkProgress(walk.day, day) <= 0)) return null;
+  if (day.walkReview && (day.walkReview.phase === 'finished' ||
+      !sameRecordedWalk(day, walk.day) || compareWalkProgress(walk.day, day) <= 0)) return null;
   const existing = new Map(day.stops.map(stop => [stop._walkSourceId, stop]));
   Object.assign(day, {
     walkReview: walk.day.walkReview, start: walk.day.start, departA: walk.day.departA, departP: walk.day.departP,
