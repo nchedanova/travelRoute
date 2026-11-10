@@ -25,7 +25,8 @@ const GPS_WALK_LABELS = {person: 'Городской пешеход', dog: 'С �
 let _gpsWalkStyle = 'person';
 let _gpsRemoteWalkStyle = null;
 let _gpsWalkCourse = null;
-let _gpsWalkMoving = false;
+let _gpsWalkCadence = 0;
+let _gpsWalkIdleTimer = null;
 try {
   const saved = localStorage.getItem('travel_gps_walker');
   if (Object.hasOwn(GPS_WALK_LABELS, saved)) _gpsWalkStyle = saved;
@@ -829,7 +830,7 @@ function _makeCarIcon() {
     const direction = _gpsWalkCourse === null ? '' :
       `<div class="gps-walk-direction" style="transform:rotate(${_gpsWalkCourse}deg)"><svg viewBox="0 0 12 10" aria-hidden="true"><path d="M1 9 6 1l5 8-5-2Z"/></svg></div>`;
     return L.divIcon({
-      html: `<div class="gps-walk-marker${_gpsWalkMoving ? ' is-walking' : ''}" data-walk-style="${walkerStyle}">${gpsWalkerGlyph(walkerStyle)}${direction}</div>`,
+      html: `<div class="gps-walk-marker${_gpsWalkCadence ? ' is-walking' : ''}${_gpsWalkCourse > 180 ? ' faces-left' : ''}" data-walk-style="${walkerStyle}" style="--walk-cycle-factor:${_gpsWalkCadence ? 3 / _gpsWalkCadence : 1}">${gpsWalkerGlyph(walkerStyle)}${direction}</div>`,
       className: '', iconSize: [44, 44], iconAnchor: [22, 22]
     });
   }
@@ -852,7 +853,7 @@ function _updateGpsMarker(lat, lng, accuracy, isRemote, heading, vehicleStyle, b
     _updateGpsCourse(lat, lng, accuracy, heading);
   }
   _gpsWalkCourse = walking && speed !== 0 ? _gpsCourse : null;
-  _gpsWalkMoving = walking && speed > 0;
+  _gpsWalkCadence = walking && Number.isFinite(speed) ? Math.min(3, Math.max(0, Math.round(speed))) : 0;
   _gpsRemoteWalkStyle = isRemote ? (Object.hasOwn(GPS_WALK_LABELS, walkStyle) ? walkStyle : 'person') : null;
   _gpsBraking = braking === true;
   const previousStyle = _gpsRemoteVehicleStyle;
@@ -861,6 +862,11 @@ function _updateGpsMarker(lat, lng, accuracy, isRemote, heading, vehicleStyle, b
     : null;
   if (previousStyle !== _gpsRemoteVehicleStyle) refreshProgressVehicleIcons();
   if (!map) return;
+  clearTimeout(_gpsWalkIdleTimer);
+  _gpsWalkIdleTimer = _gpsWalkCadence ? setTimeout(() => {
+    _gpsWalkCadence = 0;
+    _gpsMarker?.getElement()?.querySelector('.gps-walk-marker')?.classList.remove('is-walking');
+  }, 10000) : null;
   const ringColor = _getDayColor();
 
   if (_accuracyCircle) {
@@ -880,7 +886,9 @@ function _updateGpsMarker(lat, lng, accuracy, isRemote, heading, vehicleStyle, b
     const direction = walker?.querySelector('.gps-walk-direction');
     if (walker?.dataset.walkStyle === (_gpsRemoteWalkStyle ?? _gpsWalkStyle) &&
         !!direction === (_gpsWalkCourse !== null)) {
-      walker.classList.toggle('is-walking', _gpsWalkMoving);
+      walker.classList.toggle('is-walking', _gpsWalkCadence > 0);
+      walker.style.setProperty('--walk-cycle-factor', _gpsWalkCadence ? 3 / _gpsWalkCadence : 1);
+      walker.classList.toggle('faces-left', _gpsWalkCourse > 180);
       if (direction) direction.style.transform = `rotate(${_gpsWalkCourse}deg)`;
     } else {
       _gpsMarker.setIcon(_makeCarIcon());
@@ -935,7 +943,9 @@ function _clearGpsMarker() {
   _gpsCourse = null;
   _gpsCourseAnchor = null;
   _gpsWalkCourse = null;
-  _gpsWalkMoving = false;
+  _gpsWalkCadence = 0;
+  clearTimeout(_gpsWalkIdleTimer);
+  _gpsWalkIdleTimer = null;
   _gpsRemoteWalkStyle = null;
   _gpsRemoteVehicleStyle = null;
   _gpsBraking = false;

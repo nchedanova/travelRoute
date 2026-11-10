@@ -828,6 +828,9 @@ input.edit-input-time,
 .day-icon-wrap { display:inline-flex; align-items:center; gap:2px; cursor:pointer; }
 .day-icon-wrap:hover .day-date-edit-icon { opacity:1; }
 .day-icon-val { font-size:14px; line-height:1; }
+.day-walker-icon {display:inline-flex;vertical-align:middle;align-items:center;}
+.day-walker-icon .gps-walker {height:17px;}
+.day-icon-picker .day-walker-icon .gps-walker {height:22px;}
 .day-icon-picker {
   position:fixed; z-index:2000;
   background:var(--surface); border:1px solid var(--border); border-radius:14px;
@@ -3665,11 +3668,13 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 .gps-walk-marker {
   position:relative;display:grid;place-items:center;width:44px;height:44px;
   isolation:isolate;color:var(--accent);
+  scale:var(--gps-marker-scale, 1);
 }
 .gps-walk-marker .gps-walker {filter:drop-shadow(0 1px 2px #080a10);}
+.gps-walk-marker.faces-left .gps-walker {transform:scaleX(-1);}
 @media (prefers-reduced-motion: no-preference) {
   .gps-walk-marker.is-walking .gps-human-step {
-    --human-cycle:.96s;
+    --human-cycle:calc(.96s * var(--walk-cycle-factor, 1));
     --human-phase:0s;
   }
   .gps-walk-marker.is-walking .gps-human-step-back {--human-phase:calc(var(--human-cycle) / -2);}
@@ -3685,7 +3690,7 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
     animation:gps-walk-step var(--step-cycle) ease-in-out infinite;
   }
   .gps-walk-marker.is-walking .gps-dog-step {
-    --step-cycle:.52s;
+    --step-cycle:calc(.52s * var(--walk-cycle-factor, 1));
     --step-angle:25deg;
   }
   .gps-walk-marker.is-walking .gps-walk-step-back {animation-delay:calc(var(--step-cycle) / -2);}

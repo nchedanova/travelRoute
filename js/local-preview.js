@@ -38,7 +38,7 @@ if (LOCAL_PREVIEW) {
       const path = [[55.7954, 37.946], [55.7962, 37.947], [55.7967, 37.9484], [55.7972, 37.948]];
       const [lat, lng] = path[0];
       DAYS_DATA[1] = {...DAYS_DATA[1], date:'Прогулка в парке', walkMode:true,
-        start:{name:'Старт прогулки', icon:'🚶', lat, lng}, stops:[],
+        icon:'walker:person', start:{name:'Старт прогулки', icon:'🚶', lat, lng}, stops:[],
         archived:false, hidden:false, walkReview:{phase:'recording', segments:[path], meters:280}};
       redrawDay(1);
       renderTabs();
@@ -47,7 +47,7 @@ if (LOCAL_PREVIEW) {
       const [walkLat, walkLng] = path[2];
       const showFix = (heading, speed) => _updateGpsMarker(walkLat, walkLng, 8, false, heading, undefined, false, speed);
       showFix(55, 4);
-      for (const [label, heading, speed] of [['Сменить направление', 210, 4], ['На месте', 0, 0], ['Вперёд', 55, 4]]) {
+      for (const [label, heading, speed] of [['Сменить направление', 210, 3], ['На месте', 0, 0], ['1 км/ч', 55, 1], ['2 км/ч', 55, 2], ['Вперёд · 3 км/ч', 55, 3]]) {
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'publication-btn';
@@ -202,7 +202,7 @@ function installWalkReview() {
     if (mode !== 'record') return;
     const today = new Date();
     Object.assign(DAYS_DATA[id], {
-      dateISO: today.toLocaleDateString('ru-RU'), date: 'Прогулка', icon: '🚶',
+      dateISO: today.toLocaleDateString('ru-RU'), date: 'Прогулка', icon: 'walker:person',
       walkReview: { id: crypto.randomUUID(), phase: 'ready', segments: [], meters: 0, checkpoints: 0 }
     });
     redrawDay(id);

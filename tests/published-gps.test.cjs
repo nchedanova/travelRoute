@@ -8,7 +8,7 @@ function setup(spectator) {
   const elements=new Map(['gpsFollowBtn','speedDisplay'].map(id=>[id,{style:{}}]));
   const days={1:{publicationId:'p',spectatorPublicationId:'p',spectatorLive:true,walkMode:false,stops:[]},2:{stops:[]}};
   const ctx=vm.createContext({
-    console,Date,Number,setInterval(){},SPECTATOR_MODE:spectator,DAYS_DATA:days,currentDay:1,
+    console,Date,Number,setInterval(){},clearTimeout(){},SPECTATOR_MODE:spectator,DAYS_DATA:days,currentDay:1,
     CLOUD_CONFIG:{canWrite:!spectator},publicationEntry:d=>days[d]?.publicationId?{}:null,
     fakeDb:{ref:p=>({set:value=>{writes.push({path:p,value});return Promise.resolve();},on:(event,callback)=>subscriptions.push({path:p,callback})})},
     document:{addEventListener(){},body:{classList:{add(){},remove(){}}},getElementById:id=>elements.get(id)||null,querySelectorAll:()=>[]},
@@ -224,7 +224,15 @@ test('published walking day uses the walking icon, driving day uses the car',()=
   const walking = ctx._makeCarIcon().html;
   assert.match(walking, /viewBox="0 0 54 40"/);
   assert.match(walking, /gps-walk-marker is-walking/);
+  assert.match(walking, /--walk-cycle-factor:1"/);
   assert.match(walking, /class="gps-walk-direction" style="transform:rotate\(90deg\)"/);
+  assert.doesNotMatch(walking, /faces-left/);
+  ctx.realUpdateGpsMarker(55, 37, 8, true, 270, undefined, false, 4, 'dog');
+  assert.match(ctx._makeCarIcon().html, /faces-left/);
+  ctx.realUpdateGpsMarker(55, 37, 8, true, 90, undefined, false, 1, 'dog');
+  assert.match(ctx._makeCarIcon().html, /--walk-cycle-factor:3"/);
+  ctx.realUpdateGpsMarker(55, 37, 8, true, 90, undefined, false, 2, 'dog');
+  assert.match(ctx._makeCarIcon().html, /--walk-cycle-factor:1\.5"/);
   ctx.realUpdateGpsMarker(55, 37, 8, true, 90, undefined, false, 0, 'dog');
   assert.doesNotMatch(ctx._makeCarIcon().html, /is-walking/);
   assert.doesNotMatch(ctx._makeCarIcon().html, /gps-walk-direction/);

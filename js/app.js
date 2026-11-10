@@ -980,6 +980,21 @@ function editDesc(day, wrapEl) {
 var _DAY_ICONS = ['🏠','🏡','🏕️','⛺','🌴','🏖️','🏔️','⛰️','🗺️','🌅','🌄',
                   '✈️','🚂','🚗','🚌','🛳️','🚀','🎡','🎪','🏛️','🌿','🎯'];
 
+function dayIconPickerButtons(day, icons) {
+  const current = dayIconValue(DAYS_DATA[day]);
+  return icons.map(icon => {
+    const label = Object.hasOwn(WALK_DAY_ICONS, icon) ? WALK_DAY_ICONS[icon] : 'Иконка дня ' + icon;
+    return '<button class="icon-pick-stop-btn' + (icon === current ? ' ip-sel' : '') +
+      '" title="' + _escHtml(label) + '" aria-label="' + _escHtml(label) + '" aria-pressed="' + (icon === current) +
+      '" onmousedown="event.preventDefault()" onclick="selectDayIcon(' + day + ',\'' + icon + '\')">' +
+      dayIconMarkup(icon) + '</button>';
+  }).join('');
+}
+
+function defaultDayIconChoices(day) {
+  return DAYS_DATA[day].walkReview ? [...Object.keys(WALK_DAY_ICONS), ..._DAY_ICONS] : _DAY_ICONS;
+}
+
 function editDayIcon(d, triggerEl) {
   if (!isAdmin()) return;
   document.removeEventListener('click', _dayIconOutside);
@@ -989,7 +1004,6 @@ function editDayIcon(d, triggerEl) {
     if (existing.dataset.forDay === String(d)) return;
   }
 
-  var current = DAYS_DATA[d] && DAYS_DATA[d].icon || '';
   var picker = document.createElement('div');
   picker.id = 'dayIconPickerInline';
   picker.className = 'day-icon-picker';
@@ -997,10 +1011,7 @@ function editDayIcon(d, triggerEl) {
   picker.setAttribute('aria-label','Иконка дня');
   picker.dataset.forDay = String(d);
 
-  var btns = _DAY_ICONS.map(function(ic) {
-    return '<button class="icon-pick-stop-btn' + (ic === current ? ' ip-sel' : '') +
-           '" aria-label="Иконка дня ' + ic + '" aria-pressed="' + (ic === current) + '" onmousedown="event.preventDefault()" onclick="selectDayIcon(' + d + ',\'' + ic + '\')">' + ic + '</button>';
-  }).join('');
+  var btns = dayIconPickerButtons(d, defaultDayIconChoices(d));
 
   var customRow =
     '<div class="dip-custom-row"><label class="ip-search-field">' +
@@ -1038,12 +1049,10 @@ function _dayIconInput(input, day) {
   if (/\p{Emoji}/u.test(value) && !/^[a-zA-Z\u0400-\u04FF0-9\s]+$/.test(value)) {
     selectDayIcon(day, value); return;
   }
-  var results = value ? searchEmoji(value) : _DAY_ICONS;
+  var results = value ? searchEmoji(value) : defaultDayIconChoices(day);
   var grid = document.getElementById('dipIcons');
   if (!grid) return;
-  grid.innerHTML = results.map(function(icon) {
-    return '<button class="icon-pick-stop-btn" aria-label="Иконка дня ' + icon + '" onmousedown="event.preventDefault()" onclick="selectDayIcon(' + day + ',\'' + icon + '\')">' + icon + '</button>';
-  }).join('') || '<span class="ip-search-empty">Нет совпадений</span>';
+  grid.innerHTML = dayIconPickerButtons(day, results) || '<span class="ip-search-empty">Нет совпадений</span>';
   grid.scrollTop = 0;
 }
 
@@ -1059,7 +1068,7 @@ function selectDayIcon(d, icon) {
   if (!DAYS_DATA[d]) return;
   DAYS_DATA[d].icon = icon;
   var iconEl = document.getElementById('d' + d + '-day-icon');
-  if (iconEl) iconEl.textContent = icon || '📅';
+  if (iconEl) iconEl.innerHTML = dayIconMarkup(icon || '📅');
   renderTabs();
   saveData();
   document.removeEventListener('click', _dayIconOutside);
@@ -3102,7 +3111,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '3.0.0';
-var APP_BUILD   = 20;
+var APP_BUILD   = 21;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 1;
 

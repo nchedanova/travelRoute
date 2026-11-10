@@ -715,6 +715,26 @@ document.addEventListener('DOMContentLoaded', function() {
     el.innerHTML = dayActionIcon(el.dataset.uiIcon);
   });
 });
+const WALK_DAY_ICONS = {'walker:person': 'Городской пешеход', 'walker:dog': 'С корги'};
+
+function dayIconValue(day) {
+  if (day.walkReview && (day.icon == null || /^🚶(?:\u200d[♂♀]\ufe0f?)?$/u.test(day.icon))) return 'walker:person';
+  return day.icon || '';
+}
+
+function dayIconMarkup(icon) {
+  if (!Object.hasOwn(WALK_DAY_ICONS, icon)) return _escHtml(icon);
+  const style = icon.slice('walker:'.length);
+  const glyph = typeof gpsWalkerGlyph === 'function' ? gpsWalkerGlyph(style) : dayActionIcon('walk');
+  return `<span class="day-walker-icon" data-day-walker="${style}" aria-hidden="true">${glyph}</span>`;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('[data-day-walker]').forEach(icon => {
+    if (!icon.querySelector('.gps-walker')) icon.innerHTML = gpsWalkerGlyph(icon.dataset.dayWalker);
+  });
+});
+
 function startPointIconMarkup(icon, recorded) {
   if (recorded && (!icon || icon === '🚶' || icon === '🚶‍♂️' || icon === '🚶‍♀️')) {
     return '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4c5-4 9 4 14 0v10c-5 4-9-4-14 0"/></svg>';
@@ -729,6 +749,7 @@ function renderDaySection(d) {
   const canDrive = isAdmin();
   if (typeof discardInlinePlanTimeForDay === 'function') discardInlinePlanTimeForDay(d);
   const data    = DAYS_DATA[d];
+  const dayIcon = dayIconValue(data);
   const sec     = document.createElement('div');
   sec.className  = 'day-section' + (d === currentDay ? ' visible' : '');
   sec.dataset.day = d;
@@ -738,7 +759,7 @@ function renderDaySection(d) {
     <div class="day-header">
       <div style="flex:1;min-width:0">
         <div class="day-label" style="color:${data.color};">
-          ${isAdmin() ? `<span class="day-icon-wrap" id="d${d}-day-icon-wrap" onclick="editDayIcon(${d}, this)" title="Иконка дня"><span class="day-icon-val" id="d${d}-day-icon">${data.icon || '📅'}</span><span class="day-date-edit-icon">${dayActionIcon('edit')}</span></span> · ` : (data.icon ? `<span class="day-icon-val">${data.icon}</span> · ` : '')}
+          ${isAdmin() ? `<span class="day-icon-wrap" id="d${d}-day-icon-wrap" onclick="editDayIcon(${d}, this)" title="Иконка дня"><span class="day-icon-val" id="d${d}-day-icon">${dayIconMarkup(dayIcon || '📅')}</span><span class="day-date-edit-icon">${dayActionIcon('edit')}</span></span> · ` : (dayIcon ? `<span class="day-icon-val">${dayIconMarkup(dayIcon)}</span> · ` : '')}
           <span class="day-date-wrap" ${isAdmin() ? `onclick="editDayDate(${d}, this)" title="Нажмите для изменения даты"` : ''}>
             <span class="day-date-text">${data.dateISO || 'Дата'}</span>
             ${isAdmin() ? `<span class="day-date-edit-icon">${dayActionIcon('edit')}</span>` : ''}
@@ -930,9 +951,10 @@ function renderTabs() {
     btn.dataset.day = d;
     var shortDate = data.dateISO ? fmtDateShort(data.dateISO) : (typeof _dayLabel === 'function' ? _dayLabel(d) : 'День ' + d);
     var dateParts = shortDate.split(' ');
-    btn.innerHTML = '<span class="day-tab-number">' + _escHtml((data.icon ? data.icon + ' ' : '') + dateParts[0]) + '</span>'
+    const icon = dayIconValue(data);
+    btn.innerHTML = '<span class="day-tab-number">' + (icon ? dayIconMarkup(icon) + ' ' : '') + _escHtml(dateParts[0]) + '</span>'
       + '<span class="day-tab-month">' + _escHtml(dateParts.slice(1).join(' ')) + '</span>';
-    btn.setAttribute('aria-label', (data.icon ? data.icon + ' ' : '') + shortDate);
+    btn.setAttribute('aria-label', (icon ? (Object.hasOwn(WALK_DAY_ICONS, icon) ? WALK_DAY_ICONS[icon] : icon) + ' ' : '') + shortDate);
     btn.onclick = () => switchDay(d);
     btn.style.setProperty('--dc', data.color);
     if (d === currentDay) {
