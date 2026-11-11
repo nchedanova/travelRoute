@@ -187,6 +187,7 @@ function applyPayload(saved, fromCloud = false) {
     if (SPECTATOR_MODE) saved = spectatorPayload(saved);
   }
   state.actuals = saved.actuals || {};
+  routeAppearance = saved.appearance || {};
 
   if (saved.daysData) {
     const localWalks = fromCloud && CLOUD_CONFIG.canWrite
@@ -451,6 +452,7 @@ function saveData(localOnly = false) {
     });
 
     const payload = { _savedAt: Date.now(), actuals: state.actuals, daysData,
+      appearance: typeof routeAppearance === 'object' ? {...routeAppearance} : {},
       spectatorPublications: typeof spectatorPublications !== 'undefined' ? spectatorPublications : {}, ...deps };
 
     // Всегда сохраняем в localStorage как кэш
@@ -517,7 +519,7 @@ function _buildViewerHash() {
       });
       return s;
     });
-    return strHash(parts.join(';'));
+    return strHash(parts.join(';') + ';appearance:' + JSON.stringify(typeof routeAppearance === 'object' ? routeAppearance : {}));
   } catch(e) { return null; }
 }
 

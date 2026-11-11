@@ -578,6 +578,7 @@ function dayActionIcon(name) {
     navigate:'<path d="m21 3-7 18-3-8-8-3Z"/>',
     more:'<path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="2"/><circle cx="15" cy="17" r="2"/>',
     car:'<path d="M3 16H2v-4l4-1 3-5h7l3 6 3 1v4h-3M7 17h8M6 11h13M13 6v5"/><circle cx="5" cy="17" r="2"/><circle cx="17" cy="17" r="2"/>',
+    walk2d:'<circle cx="14" cy="4" r="2"/><path d="m7 21 3-7m6 7-2-6-3-3 2-5 3 4h4M7 12l2-4 4-1"/>',
     walk:'<circle cx="14" cy="4" r="2"/><path d="m7 21 3-7m6 7-2-6-3-3 2-5 3 4h4M7 12l2-4 4-1"/>',
     plus:'<path d="M12 5v14M5 12h14"/>',
     edit:'<path d="m16 3 5 5-12 12-6 1 1-6Z M13 6l5 5"/>',
@@ -976,7 +977,7 @@ function renderDaySection(d) {
               <div class="day-mode-label">Передвижение</div>
               <div class="day-mode-pills">
                 <button class="day-mode-pill ${!data.walkMode ? 'active' : ''}" aria-label="На машине" onclick="setDayMode(${d},'auto')">${dayActionIcon('car')}</button>
-                <button class="day-mode-pill ${data.walkMode ? 'active' : ''}" aria-label="Пешком" onclick="setDayMode(${d},'walk')">${dayActionIcon('walk')}</button>
+                <button class="day-mode-pill ${data.walkMode ? 'active' : ''}" aria-label="Пешком" onclick="setDayMode(${d},'walk')">${dayActionIcon('walk2d')}</button>
               </div>
             </div>
           </div>

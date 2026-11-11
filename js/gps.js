@@ -13,6 +13,7 @@ const FIREBASE_CONFIG = {
 };
 
 // ── STATE ──────────────────────────────────────────────────────────────────────
+var routeAppearance = typeof routeAppearance === 'object' && routeAppearance ? routeAppearance : {};
 let _db             = null;
 let _watchId        = null;   // navigator.geolocation watchId
 let _gpsWatchFailed = false;
@@ -34,14 +35,15 @@ function walkStyleValue(base, season) { return base + (season === 'autumn' ? '' 
 function walkIconStyle(day) {
   const remote = typeof isAdmin === 'function' && !isAdmin();
   const target = day || DAYS_DATA[currentDay];
-  const style = remote ? ((target === DAYS_DATA[currentDay] ? _gpsRemoteWalkStyle : null) || target?.gpsWalkStyle || 'person') : _gpsWalkStyle;
+  const style = remote ? ((target === DAYS_DATA[currentDay] ? _gpsRemoteWalkStyle : null) || routeAppearance.walkStyle || target?.gpsWalkStyle || 'person') : _gpsWalkStyle;
   return Object.hasOwn(GPS_WALK_LABELS, style) ? style : 'person';
 }
 function _rememberWalkStyle() {
   const day = DAYS_DATA[currentDay];
-  if (!day?.walkMode || day.gpsWalkStyle === _gpsWalkStyle) return;
-  day.gpsWalkStyle = _gpsWalkStyle;
-  if (typeof saveData === 'function') saveData();
+  const changed = routeAppearance.walkStyle !== _gpsWalkStyle || (day?.walkMode && day.gpsWalkStyle !== _gpsWalkStyle);
+  routeAppearance.walkStyle = _gpsWalkStyle;
+  if (day?.walkMode) day.gpsWalkStyle = _gpsWalkStyle;
+  if (changed && typeof saveData === 'function') saveData();
 }
 let _gpsWalkStyle = 'person';
 let _gpsRemoteWalkStyle = null;
@@ -372,7 +374,8 @@ function _listenRemotePosition() {
     const d = snap.val();
     if (d?.walk && d.walk.routeId === CLOUD_CONFIG.binId) applyReaderWalk(d.walk);
     if (!d || !Number.isFinite(d.lat) || !Number.isFinite(d.lng) ||
-        (d.walk && (currentDay !== d.walk.dayId || Date.now() - d.ts > 120000))) {
+        (Number.isFinite(d.ts) && Date.now() - d.ts > 120000) ||
+        (d.walk && currentDay !== d.walk.dayId)) {
       // путешественник остановился — убираем подсветку и скорость
       document.body.classList.remove('driving-active');
       _updateSpeedDisplay(null);
@@ -435,7 +438,7 @@ function applyReaderWalk(walk) {
 }
 
 function renderRemoteWalk(id, walk, force, previousStructure) {
-  const structure = JSON.stringify([walk.day.start, walk.day.departA, walk.day.stops]);
+  const structure = JSON.stringify([walk.day.start, walk.day.departA, walk.day.stops, walk.day.gpsWalkStyle]);
   if (!force && previousStructure === structure && walkTrackLines[id]) {
     refreshWalkTrackLine(id);
     return structure;
@@ -462,6 +465,7 @@ function mergeSpectatorWalk(point = _lastSpectatorWalk) {
       !sameRecordedWalk(day, walk.day) || compareWalkProgress(walk.day, day) <= 0)) return null;
   const existing = new Map(day.stops.map(stop => [stop._walkSourceId, stop]));
   Object.assign(day, {
+    gpsWalkStyle: walk.day.gpsWalkStyle || day.gpsWalkStyle,
     walkReview: walk.day.walkReview, start: walk.day.start, departA: walk.day.departA, departP: walk.day.departP,
     stops: (walk.day.stops || []).map((stop, index) => ({
       ...stop, id: 'pub' + id + 's' + (index + 1), _walkSourceId: stop.id,
@@ -487,6 +491,7 @@ function walkBroadcastPayload(id, spectator = false) {
     day: {
       date: day.date, dateISO: day.dateISO, color: day.color, icon: day.icon,
       start: {lat, lng, name, icon}, walkMode: true, departA: day.departA, departP: day.departP,
+      gpsWalkStyle: day.gpsWalkStyle,
       walkReview: {...day.walkReview},
       stops: day.stops.map(({id, num, name, lat, lng, type, icon, arrA, arrP, depA, depP}) =>
         ({id, num, name, lat, lng, type, icon, arrA, arrP, depA, depP}))
@@ -736,10 +741,13 @@ function _storeDriveProgress(dayId, fraction, vehicleStyle) {
 }
 function _rememberDriveVehicleStyle() {
   const day = DAYS_DATA[currentDay];
-  if (!day || day.walkMode || day.gpsVehicleStyle === _gpsVehicleStyle) return;
-  day.gpsVehicleStyle = _gpsVehicleStyle;
-  _storeDriveProgress(currentDay, undefined, _gpsVehicleStyle);
-  if (typeof saveData === 'function') saveData();
+  const changed = routeAppearance.vehicleStyle !== _gpsVehicleStyle || (day && !day.walkMode && day.gpsVehicleStyle !== _gpsVehicleStyle);
+  routeAppearance.vehicleStyle = _gpsVehicleStyle;
+  if (day && !day.walkMode) {
+    day.gpsVehicleStyle = _gpsVehicleStyle;
+    _storeDriveProgress(currentDay, undefined, _gpsVehicleStyle);
+  }
+  if (changed && typeof saveData === 'function') saveData();
 }
 function _applyRemoteDriveState(point) {
   const day = DAYS_DATA[currentDay];
@@ -762,20 +770,21 @@ function _applyRemoteDriveState(point) {
 }
 
 function progressVehicleGlyph(dayId = currentDay) {
-  let style = routeDriveState(dayId)?.vehicleStyle || DAYS_DATA[dayId]?.gpsVehicleStyle || _gpsRemoteVehicleStyle || _gpsVehicleStyle;
+  const liveStyle = Number(dayId) === Number(currentDay) && !DAYS_DATA[currentDay]?.walkMode ? _gpsRemoteVehicleStyle : null;
+  let style = liveStyle || routeAppearance.vehicleStyle || routeDriveState(dayId)?.vehicleStyle || DAYS_DATA[dayId]?.gpsVehicleStyle || _gpsVehicleStyle;
   if (typeof LOCAL_PREVIEW !== 'undefined' && LOCAL_PREVIEW &&
       new URLSearchParams(location.search).get('sample') === 'route-progress') {
     const selected = localStorage.getItem('travel_gps_vehicle');
     style = Object.hasOwn(GPS_CAR_SHAPES, selected) ? selected : 'ix35';
   }
   if (style === 'arrow') {
-    return '<svg viewBox="0 0 32 20" aria-hidden="true"><path d="m6 3 22 7-22 7 4-7Z" fill="currentColor"/><path d="m10 10 18 0-22 7Z" fill="#000" opacity=".28"/></svg>';
+    return '<svg data-vehicle-style="arrow" viewBox="0 0 32 20" aria-hidden="true"><path d="m6 3 22 7-22 7 4-7Z" fill="currentColor"/><path d="m10 10 18 0-22 7Z" fill="#000" opacity=".28"/></svg>';
   }
   const profile = GPS_CAR_PROFILES[style] || GPS_CAR_PROFILES.ix35;
   const paint = GPS_CAR_SHAPES[style]?.color || 'var(--gps-theme-paint, var(--accent))';
   const uid = 'progress-car-' + (progressVehicleGlyph._serial = (progressVehicleGlyph._serial || 0) + 1);
   if (style === 'ix35') {
-    return `<svg viewBox="0 0 84 40" aria-hidden="true">
+    return `<svg data-vehicle-style="ix35" viewBox="0 0 84 40" aria-hidden="true">
       <defs>
         <linearGradient id="${uid}-ixbody" x2=".15" y2="1"><stop stop-color="#b7a59c"/><stop offset=".22" stop-color="#80665b"/><stop offset=".5" stop-color="#5a4038"/><stop offset=".72" stop-color="#362720"/><stop offset="1" stop-color="#76564a"/></linearGradient>
         <linearGradient id="${uid}-ixglass" x2=".8" y2="1"><stop stop-color="#9aafb1"/><stop offset=".18" stop-color="#31434a"/><stop offset=".7" stop-color="#101d26"/><stop offset="1" stop-color="#55666b"/></linearGradient>
@@ -800,7 +809,7 @@ function progressVehicleGlyph(dayId = currentDay) {
     </svg>`;
   }
   const wheel = x => `<g transform="translate(${x} 27)"><ellipse rx="6.2" ry="6.5" fill="#0b1016"/><ellipse rx="4.5" ry="5" fill="url(#${uid}-rim)" stroke="#171f29" stroke-width=".7"/><path d="M0-4V4M-3.4-2l6.8 4M-3.4 2l6.8-4" stroke="#d8dfe5" stroke-width=".85"/><ellipse rx="1.3" ry="1.5" fill="#525c68"/><path d="M-3.8-3.8q4-3 7.4 0" fill="none" stroke="#6c737c" stroke-width=".7"/></g>`;
-  return `<svg viewBox="0 0 64 36" aria-hidden="true">
+  return `<svg data-vehicle-style="${style}" viewBox="0 0 64 36" aria-hidden="true">
     <defs>
       <linearGradient id="${uid}-body" x1="0" y1="0" x2=".15" y2="1"><stop stop-color="#fff" stop-opacity=".48"/><stop offset=".28" stop-color="#fff" stop-opacity=".09"/><stop offset=".52" stop-color="#000" stop-opacity=".08"/><stop offset=".74" stop-color="#000" stop-opacity=".44"/><stop offset="1" stop-color="#fff" stop-opacity=".16"/></linearGradient>
       <linearGradient id="${uid}-glass" x2=".8" y2="1"><stop stop-color="#10202d"/><stop offset=".5" stop-color="#536f7c"/><stop offset=".56" stop-color="#263d4b"/><stop offset="1" stop-color="#0c1720"/></linearGradient>
@@ -832,6 +841,30 @@ function refreshProgressVehicleIcons() {
 }
 
 document.addEventListener('DOMContentLoaded', refreshProgressVehicleIcons);
+function initSharedAppearance() {
+  if (typeof isAdmin !== 'function' || !isAdmin()) return;
+  let publish = false;
+  if (Object.hasOwn(GPS_CAR_SHAPES, routeAppearance.vehicleStyle)) _gpsVehicleStyle = routeAppearance.vehicleStyle;
+  else { routeAppearance.vehicleStyle = _gpsVehicleStyle; publish = true; }
+  if (Object.hasOwn(GPS_WALK_LABELS, routeAppearance.walkStyle)) _gpsWalkStyle = routeAppearance.walkStyle;
+  else { routeAppearance.walkStyle = _gpsWalkStyle; publish = true; }
+  try {
+    localStorage.setItem('travel_gps_vehicle', _gpsVehicleStyle);
+    localStorage.setItem('travel_gps_walker', _gpsWalkStyle);
+  } catch {}
+  const labels = {compact:'Седан', sport:'Спорткар', suv:'Внедорожник', arrow:'Стрелка', ix35:'Hyundai ix35'};
+  const currentLabel = document.getElementById('appearanceVehicleValue');
+  if (currentLabel) currentLabel.textContent = labels[_gpsVehicleStyle];
+  document.querySelectorAll('#gpsVehicleOptions [data-vehicle-style]').forEach(option => {
+    option.setAttribute('aria-pressed', String(option.dataset.vehicleStyle === _gpsVehicleStyle));
+  });
+  if (publish && typeof saveData === 'function') saveData();
+  refreshProgressVehicleIcons();
+  refreshGpsMarkerIcon();
+}
+document.addEventListener('DOMContentLoaded', () => {
+  if (typeof routeStateReady !== 'undefined') routeStateReady.then(initSharedAppearance);
+});
 
 function initGpsVehiclePicker() {
   const options = document.getElementById('gpsVehicleOptions');
@@ -847,6 +880,7 @@ function initGpsVehiclePicker() {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'theme-option gps-vehicle-option';
+    button.dataset.vehicleStyle = style;
     button.setAttribute('aria-pressed', String(style === _gpsVehicleStyle));
     button.innerHTML = _gpsCarGlyph(style) + '<span>' + label + '</span>';
     button.onclick = () => {
@@ -871,9 +905,9 @@ function gpsWalkerGlyph(style) {
   const {base, season} = walkStyleParts(style);
   const withDog = base === 'dog';
   const summer = season === 'summer', winter = season === 'winter';
-  const backLeg = summer ? '#c18d70' : winter ? '#7c8799' : season === 'spring' ? 'color-mix(in srgb,currentColor,#263139 38%)' : '#46536b';
-  const frontLeg = summer ? '#e5b28e' : winter ? '#a7b3c4' : season === 'spring' ? 'currentColor' : '#72829c';
-  const coat = summer ? ['#fff4dc','#ded4b9','#9c927b'] : winter ? ['#e2eaf0','#acbecd','#71889c'] : season === 'spring' ? ['#ced4a4','#929b72','#525d45'] : ['color-mix(in srgb,currentColor,white 44%)','currentColor','color-mix(in srgb,currentColor,#15121b 62%)'];
+  const backLeg = summer ? '#c18d70' : winter ? '#56647b' : season === 'spring' ? 'color-mix(in srgb,currentColor,#263139 38%)' : '#46536b';
+  const frontLeg = summer ? '#e5b28e' : winter ? '#8696ae' : season === 'spring' ? 'currentColor' : '#72829c';
+  const coat = summer ? ['#fff4dc','#ded4b9','#9c927b'] : winter ? ['#d8e5ac','#a3b77d','#6a8057'] : season === 'spring' ? ['#ced4a4','#929b72','#525d45'] : ['color-mix(in srgb,currentColor,white 44%)','currentColor','color-mix(in srgb,currentColor,#15121b 62%)'];
   const bodyPath = winter ? 'M10 12q6-4 13 1l-1 12q-8 3-14-1l1-9Z' : 'M12 12q4-3 9 1l-2 11q-5 2-10-1l1-8Z';
   const id = 'walker-paint-' + ++_gpsWalkerPaintId;
   return `<svg class="gps-walker" data-season="${season}" viewBox="0 0 ${withDog ? 54 : 32} 40" aria-hidden="true">
@@ -896,13 +930,13 @@ function gpsWalkerGlyph(style) {
       <path class="gps-human-leg" d="M15 24L13 30L10 34" stroke="#11151f" stroke-width="7"/>
       <path class="gps-human-leg" d="M15 24L13 30L10 34" stroke="${backLeg}" stroke-width="4.8"/>
       ${summer ? '<path d="M15 24l-2 5" stroke="color-mix(in srgb,currentColor,#263139 38%)" stroke-width="5.8"/>' : ''}
-      <path class="gps-human-shoe" d="M9 35h3" stroke="${winter ? '#795642' : '#e0d9cb'}" stroke-width="${winter ? 4 : 3}"/>
+      <path class="gps-human-shoe" d="M9 35h3" stroke="${winter ? 'color-mix(in srgb,currentColor,#29323d 30%)' : '#e0d9cb'}" stroke-width="${winter ? 4 : 3}"/>
     </g>
     <g class="gps-human-step" fill="none" stroke-linecap="round" stroke-linejoin="round">
       <path class="gps-human-leg" d="M15 24L20 28L24 34" stroke="#11151f" stroke-width="7"/>
       <path class="gps-human-leg" d="M15 24L20 28L24 34" stroke="${frontLeg}" stroke-width="4.8"/>
       ${summer ? '<path d="m15 24 5 4" stroke="currentColor" stroke-width="5.8"/>' : ''}
-      <path class="gps-human-shoe" d="M9 35h4" transform="translate(14 0)" stroke="${winter ? '#b18b64' : '#e0d9cb'}" stroke-width="${winter ? 4 : 3}"/>
+      <path class="gps-human-shoe" d="M9 35h4" transform="translate(14 0)" stroke="${winter ? 'currentColor' : '#e0d9cb'}" stroke-width="${winter ? 4 : 3}"/>
     </g>
     <path d="m15 13-6 3-3 5" fill="none" stroke="url(#${id}-coat)" stroke-width="4.5" stroke-linecap="round"/>
     <path d="${bodyPath}" fill="url(#${id}-coat)" stroke="#17141e" stroke-width="1"/>
@@ -955,7 +989,7 @@ function initGpsWalkPicker() {
     _gpsWalkStyle = walkStyleValue(base, season);
     try { localStorage.setItem('travel_gps_walker', _gpsWalkStyle); } catch {}
     const day = DAYS_DATA[currentDay];
-    if (day?.walkMode && day.gpsWalkStyle !== _gpsWalkStyle) {day.gpsWalkStyle = _gpsWalkStyle; if(typeof saveData === 'function') saveData();}
+    _rememberWalkStyle();
     initGpsWalkPicker(); refreshGpsMarkerIcon();
     if(typeof renderAllDays === 'function') renderAllDays();
     if(typeof renderTabs === 'function') renderTabs();
@@ -1044,7 +1078,15 @@ function _updateGpsMarker(lat, lng, accuracy, isRemote, heading, vehicleStyle, b
   }
   _gpsWalkCourse = walking && speed !== 0 ? _gpsCourse : null;
   _gpsWalkCadence = walking && Number.isFinite(speed) ? Math.min(3, Math.max(0, Math.round(speed))) : 0;
-  _gpsRemoteWalkStyle = isRemote ? (Object.hasOwn(GPS_WALK_LABELS, walkStyle) ? walkStyle : 'person') : null;
+  const previousWalkStyle = _gpsRemoteWalkStyle;
+  const remoteStyle = Object.hasOwn(GPS_WALK_LABELS, walkStyle) ? walkStyle : DAYS_DATA[currentDay]?.gpsWalkStyle;
+  _gpsRemoteWalkStyle = isRemote ? (Object.hasOwn(GPS_WALK_LABELS, remoteStyle) ? remoteStyle : 'person') : null;
+  if (walking && isRemote && previousWalkStyle !== _gpsRemoteWalkStyle) {
+    DAYS_DATA[currentDay].gpsWalkStyle = _gpsRemoteWalkStyle;
+    document.querySelectorAll('.walk-action-glyph, .start-walker-glyph').forEach(icon => {
+      icon.innerHTML = gpsWalkerGlyph(_gpsRemoteWalkStyle);
+    });
+  }
   _gpsBraking = braking === true;
   const previousStyle = _gpsRemoteVehicleStyle;
   _gpsRemoteVehicleStyle = isRemote

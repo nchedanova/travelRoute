@@ -472,3 +472,63 @@ test('changing walking companion refreshes the header Drive button without an ex
  assert.match(button.innerHTML,/data-season="winter"/);
  assert.doesNotMatch(button.innerHTML,/54 40/);
 });
+
+test('recorded walk retains seasonal companion choice in reader and spectator day payloads',()=>{
+ const owner=setup(false);owner.ctx.CLOUD_CONFIG.binId='route';
+ owner.ctx.DAYS_DATA[1]={...owner.ctx.DAYS_DATA[1],walkMode:true,gpsWalkStyle:'dog-winter',start:{lat:55,lng:37,icon:'graphic:hotelBuilding',name:'Start'},walkReview:{id:'walk',phase:'recording',lastAt:200},stops:[]};
+ const payload=owner.ctx.walkBroadcastPayload(1);
+ assert.equal(payload.day.gpsWalkStyle,'dog-winter');
+ for(const spectator of [false,true]){
+  const remote=setup(spectator);remote.ctx.CLOUD_CONFIG.canWrite=false;remote.ctx.CLOUD_CONFIG.binId='route';remote.ctx.isAdmin=()=>false;remote.ctx.dayKeys=()=>[1];
+  remote.ctx.DAYS_DATA[1]={...remote.ctx.DAYS_DATA[1],walkMode:true,gpsWalkStyle:'person-summer',start:payload.day.start,walkReview:{id:'walk',phase:'recording',lastAt:100},stops:[]};
+  if(spectator) assert.equal(remote.ctx.mergeSpectatorWalk({publicationId:'p',walk:payload}),1);
+  else assert.equal(remote.ctx.mergeReaderWalk(payload),true);
+  assert.equal(remote.ctx.DAYS_DATA[1].gpsWalkStyle,'dog-winter');
+  assert.equal(remote.ctx.walkIconStyle(),'dog-winter');
+ }
+});
+
+for(const spectator of [false,true])test('owner GPS delivers all eight outfits and companions to '+(spectator?'spectator':'reader')+' and retains choice after GPS stops',()=>{
+ for(const base of ['person','dog'])for(const season of ['summer','autumn','winter','spring']){
+  const style=season==='autumn'?base:base+'-'+season;
+  const owner=setup(false);owner.ctx.DAYS_DATA[1].walkMode=true;owner.ctx.CLOUD_CONFIG.binId='route';
+  let saves=0;owner.ctx.saveData=()=>saves++;
+  owner.run('_gpsWalkStyle='+JSON.stringify(style));owner.ctx._rememberWalkStyle();owner.ctx._rememberWalkStyle();assert.equal(saves,1);
+  owner.ctx._writePosition(55,37,3,5,270);
+  const point=JSON.parse(JSON.stringify(owner.writes[0].value));assert.equal(point.walkStyle,style);assert.equal(point.spectator.walkStyle,style);assert.equal(owner.writes.length,1);
+  const remote=setup(spectator);remote.ctx.CLOUD_CONFIG.canWrite=false;remote.ctx.CLOUD_CONFIG.binId='route';remote.ctx.isAdmin=()=>false;remote.ctx.DAYS_DATA[1].walkMode=true;remote.ctx.map=null;remote.ctx._updateGpsMarker=remote.ctx.realUpdateGpsMarker;
+  if(spectator){remote.ctx.point=point.spectator;remote.run('_lastSpectatorPosition=point');remote.ctx.refreshSpectatorGpsVisibility()}
+  else{remote.ctx._listenRemotePosition();remote.subscriptions[0].callback({val:()=>point})}
+  const icon=remote.ctx._makeCarIcon().html;
+  assert.match(icon,new RegExp('data-season="'+season+'"'));assert.match(icon,new RegExp('viewBox="0 0 '+(base==='dog'?54:32)+' 40"'));
+  assert.equal(remote.ctx.walkIconStyle(),style);remote.run('_clearGpsMarker()');assert.equal(remote.ctx.walkIconStyle(),style);
+  assert.equal(remote.writes.length,0);
+ }
+});
+
+test('shared author car is used on completed days without GPS and overrides stale per-day caches',()=>{
+ for(const spectator of [false,true]) {
+  const env=setup(spectator);prepareDriveProgress(env);env.ctx.isAdmin=()=>false;env.ctx.CLOUD_CONFIG.canWrite=false;
+  env.ctx.DAYS_DATA[1].gpsVehicleStyle='compact';env.run('_storeDriveProgress(1,1,"compact");routeAppearance={vehicleStyle:"ix35",walkStyle:"dog-winter"};_gpsVehicleStyle="sport"');
+  assert.match(env.ctx.progressVehicleGlyph(1),/viewBox="0 0 84 40"/);
+  env.run('routeAppearance.vehicleStyle="arrow"');assert.match(env.ctx.progressVehicleGlyph(1),/m6 3 22 7/);
+  assert.equal(env.ctx.routeDriveFraction(1),1);
+ }
+});
+test('choosing a car while viewing a walking day publishes the shared choice once',()=>{
+ const env=setup(false);env.ctx.DAYS_DATA[1].walkMode=true;env.ctx.DAYS_DATA[2].walkMode=false;
+ let saves=0;env.ctx.saveData=()=>saves++;env.run('_gpsVehicleStyle="ix35";_rememberDriveVehicleStyle();_rememberDriveVehicleStyle()');
+ assert.equal(saves,1);assert.equal(env.run('routeAppearance.vehicleStyle'),'ix35');
+ assert.match(env.ctx.progressVehicleGlyph(2),/viewBox="0 0 84 40"/);
+});
+test('admin migrates existing local appearance once after cloud data has loaded',()=>{
+ const env=setup(false);env.ctx.isAdmin=()=>true;let saves=0;env.ctx.saveData=()=>saves++;
+ env.run('_gpsVehicleStyle="ix35";_gpsWalkStyle="dog-winter";initSharedAppearance();initSharedAppearance()');
+ assert.equal(saves,1);assert.equal(env.run('routeAppearance.vehicleStyle'),'ix35');assert.equal(env.run('routeAppearance.walkStyle'),'dog-winter');
+});
+
+test('an expired driving GPS packet cannot keep the old car after the shared model changes',()=>{
+ const env=setup(false);env.ctx.CLOUD_CONFIG.canWrite=false;env.ctx.isAdmin=()=>false;env.run('routeAppearance={vehicleStyle:"ix35"};_gpsRemoteVehicleStyle="compact"');
+ env.ctx._listenRemotePosition();env.subscriptions[0].callback({val:()=>({lat:55,lng:37,vehicleStyle:'compact',ts:Date.now()-180000})});
+ assert.equal(env.run('_gpsRemoteVehicleStyle'),null);assert.match(env.ctx.progressVehicleGlyph(1),/data-vehicle-style="ix35"/);
+});

@@ -75,7 +75,10 @@ function spectatorPayload(payload) {
     (day.stops || []).forEach(function(stop, i) { stop.id = 'pub' + (index + 1) + 's' + (i + 1); });
     days[index + 1] = day;
   });
-  return { daysData: days, actuals: {}, spectatorPublications: {} };
+  return { daysData: days, actuals: {}, spectatorPublications: {}, appearance: {
+    vehicleStyle: payload.appearance?.vehicleStyle,
+    walkStyle: payload.appearance?.walkStyle
+  } };
 }
 
 function routeStorageKey() {

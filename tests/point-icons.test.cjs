@@ -114,3 +114,8 @@ test('non-park legacy graphics and category defaults remain schematic alongside 
  }
  for(const type of ['Заправка','Кафе','Магазин','Отель','Жильё','Другое'])assert.doesNotMatch(ctx.stopTypeIcon(type),/scale\(\.5\)/,type);
 });
+
+test('day movement selector retains the flat walking symbol even when the custom avatar exists',()=>{
+ const {ctx}=setup();ctx.gpsWalkerGlyph=()=>'<svg class="gps-walker"></svg>';
+ assert.match(ctx.dayActionIcon('walk'),/gps-walker/);assert.doesNotMatch(ctx.dayActionIcon('walk2d'),/gps-walker/);assert.match(ctx.dayActionIcon('walk2d'),/<circle/);
+});

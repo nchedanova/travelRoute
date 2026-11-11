@@ -208,3 +208,8 @@ test('active published changes are visible even when hidden from ordinary reader
   assert.equal(projected.daysData[1].hidden,undefined);
   assert.equal(projected.daysData[1].stops[0].arrA,'11:22');
 });
+
+test('shared author appearance reaches spectator without exposing extra fields',()=>{
+ const {ctx}=setup(true);const result=ctx.spectatorPayload({daysData:{},spectatorPublications:{},appearance:{vehicleStyle:'ix35',walkStyle:'dog-winter',privateField:'not-public'}});
+ assert.equal(result.appearance.vehicleStyle,'ix35');assert.equal(result.appearance.walkStyle,'dog-winter');assert.equal(result.appearance.privateField,undefined);
+});

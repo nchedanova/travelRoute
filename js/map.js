@@ -482,6 +482,14 @@ function drawWalkTrack(group, tracks, dayColor) {
   }
 }
 
+function mapStartIconValue(data) {
+  const chosen = data.start?.icon;
+  if (data.walkMode && (!chosen || /^🚶(?:\u200d[♂♀]\ufe0f?)?$/u.test(chosen))) {
+    return 'walker:' + (typeof walkIconStyle === 'function' ? walkIconStyle(data) : 'person');
+  }
+  return chosen || '🚗';
+}
+
 function drawDay(d) {
   const data = DAYS_DATA[d];
   if (!data) return;
@@ -491,7 +499,7 @@ function drawDay(d) {
   const reviewTrack = data.walkReview;
 
   // Стартовый маркер — иконка зависит от режима дня (авто/пешком)
-  const startEmoji = data.walkMode ? ('walker:' + (typeof walkIconStyle === 'function' ? walkIconStyle(data) : 'person')) : (data.start.icon || '🚗');
+  const startEmoji = mapStartIconValue(data);
   const startM = L.marker([data.start.lat, data.start.lng], { icon: makeStartIcon(startEmoji, color, !!reviewTrack) });
   if (!reviewTrack || data.start.lat || data.start.lng) group.addLayer(startM);
 

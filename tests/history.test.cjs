@@ -96,3 +96,10 @@ test('cleared modern facts stay cleared; legacy missing fields still migrate',()
   assert.equal(ctx.DAYS_DATA[1].departA,'03:21');
   assert.equal(ctx.DAYS_DATA[1].stops[0].arrA,'04:32');
 });
+
+test('shared appearance survives save/load without changing dates and historical facts',()=>{
+ const env=setup();Object.assign(env.ctx.DAYS_DATA,fixtures());env.ctx.routeAppearance={vehicleStyle:'ix35',walkStyle:'dog-winter'};
+ const before=timesByDate(env.ctx.DAYS_DATA);env.ctx.saveData(true);const payload=env.saved();
+ assert.equal(payload.appearance.vehicleStyle,'ix35');assert.equal(payload.appearance.walkStyle,'dog-winter');
+ env.ctx.applyPayload(payload,true);assert.equal(env.ctx.routeAppearance.vehicleStyle,'ix35');assert.deepEqual(timesByDate(env.ctx.DAYS_DATA),before);
+});

@@ -66,3 +66,17 @@ test('auto overview includes road detours without overriding a manually moved ma
   assert.equal(fits[2].options.maxZoom, 17);
   assert.equal(fits[2].points.some(point => point[1] === detour[1]), true);
 });
+
+test('walking start keeps its explicitly selected point icon instead of replacing it with the GPS avatar',()=>{
+ const ctx=vm.createContext({window:{addEventListener(){}},localStorage:{getItem:()=>null},walkIconStyle:()=> 'dog-winter'});
+ vm.runInContext(fs.readFileSync(path.join(__dirname,'../js/map.js'),'utf8'),ctx);
+ for(const icon of ['🏢','graphic:hotelBuilding','type:Жильё','emoji:🏠'])assert.equal(ctx.mapStartIconValue({walkMode:true,start:{icon},walkReview:{}}),icon);
+ assert.equal(ctx.mapStartIconValue({walkMode:true,start:{icon:'🚶'}}),'walker:dog-winter');
+ assert.equal(ctx.mapStartIconValue({walkMode:false,start:{icon:'🏠'}}),'🏠');
+});
+
+test('appearance changes repaint readers but do not change route geometry or trigger rerouting',()=>{
+ const ctx=vm.createContext({routeAppearance:{vehicleStyle:'compact'},dayKeys:()=>[1],DAYS_DATA:{1:{start:{lat:55,lng:37},stops:[]}}});
+ const storage=fs.readFileSync(path.join(__dirname,'../js/storage.js'),'utf8');vm.runInContext(storage.slice(storage.indexOf('function _buildGeoHash()'),storage.indexOf('// Выбрать currentDay')),ctx);
+ const geo=ctx._buildGeoHash(),view=ctx._buildViewerHash();ctx.routeAppearance.vehicleStyle='ix35';assert.equal(ctx._buildGeoHash(),geo);assert.notEqual(ctx._buildViewerHash(),view);
+});
