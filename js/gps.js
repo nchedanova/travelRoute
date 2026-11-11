@@ -621,20 +621,28 @@ const GPS_CAR_SHAPES = {
 
 const GPS_CAR_PROFILES = {
   compact: {
-    body: 'M1.5 13v-2.5l5-1.5 4-4h8l5 4 5 1.5 2 2V16H1.5Z',
-    glass: 'm8.5 9 3-3h6.5l4 3Z',
+    body:'M3 24v-7l6-3 10-8h17l12 8 10 3 3 5-1 7H4Z',
+    glass:'m11 14 9-6h15l10 6Z',
+    roof:'m19 6 4-2h14l11 8-3 2-10-6H20Z',
+    hood:'m45 14 4-2 11 5-2 3-12-3Z',
   },
   sport: {
-    body: 'M1.5 14v-3L7 10l5-3.5h6l5 3.5 5.5 1 2 2V16H1.5Z',
-    glass: 'm9 10 3.5-2.5H18l3.7 2.5Z',
+    body:'M3 25v-5l12-4 11-9h12l11 8 10 3 3 5-2 6H4Z',
+    glass:'m17 16 10-7h10l9 7Z',
+    roof:'m26 7 3-2h10l10 8-3 3-9-7H27Z',
+    hood:'m46 16 4-3 10 5-2 3Z',
   },
   suv: {
-    body: 'M2 15V6l2-2h15l5 4 5 1.5 1 2V16H2Z',
-    glass: 'M4 6h14.5l4 3H4Z',
+    body:'M3 26V9l4-4h30l11 9 11 3 3 6-2 6H4Z',
+    glass:'M7 9h28l10 7H7Z',
+    roof:'m7 5 4-2h28l9 9-3 4-10-7H7Z',
+    hood:'m45 16 4-3 11 4-2 4Z',
   },
   ix35: {
-    body: 'M1.5 14V9l3-3 6-2h7l6 4 5 1.5 2 2V16H2Z',
-    glass: 'm5 9 5.7-3.6h6.5l4.5 3.6Z',
+    body:'M3 25V14l4-4 14-6h15l11 10 11 3 4 6-2 6H4Z',
+    glass:'m8 15 14-9h13l9 9Z',
+    roof:'m21 4 4-2h12l10 10-3 3-9-9H22Z',
+    hood:'m44 15 4-3 11 5-2 4Z',
   },
 };
 
@@ -648,17 +656,59 @@ function progressVehicleGlyph() {
   if (style === 'arrow') {
     return '<svg viewBox="0 0 32 20" aria-hidden="true"><path d="m6 3 22 7-22 7 4-7Z" fill="currentColor"/><path d="m10 10 18 0-22 7Z" fill="#000" opacity=".28"/></svg>';
   }
-  const profile = GPS_CAR_PROFILES[style];
-  const paint = GPS_CAR_SHAPES[style].color || 'var(--gps-theme-paint, var(--accent))';
-  return `<svg viewBox="0 0 32 20" aria-hidden="true">
-    <path d="${profile.body}" fill="${paint}" stroke="color-mix(in srgb,${paint},white 40%)" stroke-linejoin="round"/>
-    <path d="${profile.glass}" fill="#233744" stroke="#91a8b5" stroke-width=".6"/>
-    <path d="M15 6v3m-3 4h9" stroke="#151d24" stroke-width=".8"/>
-    <path d="M2 11h2m23 0 2 1" stroke="#fff3d9" stroke-width="1.2" stroke-linecap="round"/>
-    <path d="M2 11h2" stroke="#ff7770" stroke-width="1.3" stroke-linecap="round"/>
-    <circle cx="7" cy="15.5" r="3.2" fill="#171a21" stroke="#9ca5ad"/>
-    <circle cx="25" cy="15.5" r="3.2" fill="#171a21" stroke="#9ca5ad"/>
-    <path d="M7 15.5h.01m18 0h.01" stroke="#d5dce1" stroke-width="2" stroke-linecap="round"/>
+  const profile = GPS_CAR_PROFILES[style] || GPS_CAR_PROFILES.ix35;
+  const paint = GPS_CAR_SHAPES[style]?.color || 'var(--gps-theme-paint, var(--accent))';
+  const uid = 'progress-car-' + (progressVehicleGlyph._serial = (progressVehicleGlyph._serial || 0) + 1);
+  if (style === 'ix35') {
+    return `<svg viewBox="0 0 84 40" aria-hidden="true">
+      <defs>
+        <linearGradient id="${uid}-ixbody" x2=".15" y2="1"><stop stop-color="#b7a59c"/><stop offset=".22" stop-color="#80665b"/><stop offset=".5" stop-color="#5a4038"/><stop offset=".72" stop-color="#362720"/><stop offset="1" stop-color="#76564a"/></linearGradient>
+        <linearGradient id="${uid}-ixglass" x2=".8" y2="1"><stop stop-color="#9aafb1"/><stop offset=".18" stop-color="#31434a"/><stop offset=".7" stop-color="#101d26"/><stop offset="1" stop-color="#55666b"/></linearGradient>
+        <radialGradient id="${uid}-ixrim" cx=".35" cy=".25" r=".8"><stop stop-color="#f6f3ed"/><stop offset=".55" stop-color="#a6adb0"/><stop offset="1" stop-color="#3b464f"/></radialGradient>
+      </defs>
+      <ellipse cx="43" cy="35" rx="39" ry="2.5" fill="#000" opacity=".42"/>
+      <path d="M4 29 3 21l3-8 6-3q9-5 22-5h13q7 1 16 11l13 3q5 1 6 8l-1 5-8 2H11Z" fill="url(#${uid}-ixbody)" stroke="#baa69a" stroke-width=".7"/>
+      <path d="m8 15 9-5q7-3 17-3h12q6 1 14 10l-29 .5Z" fill="url(#${uid}-ixglass)" stroke="#b3b4af" stroke-width=".8"/>
+      <path d="m8 15 12 2 2-7-5 1ZM25 9l-2 8.5 12-.2-.2-9.5ZM38 8l.2 9.2 19-.3-11-9Z" fill="#15232c" opacity=".7"/>
+      <path d="m13 13 16-4M39 9l10 5" stroke="#c4d9da" stroke-width="1.2" opacity=".4"/>
+      <path d="M22 18.5 21 29M37 18l.5 12M58 18l-3 12" stroke="#291d19" stroke-width=".9"/>
+      <path d="m8 20 24-.5 28-1M26 26l24 3 10-5" fill="none" stroke="#c8aca0" stroke-width=".8" opacity=".75"/>
+      <path d="M7 28q10 3 15 2h36l19-3-2 6H11Z" fill="#151b20"/>
+      <path d="M8 31q0-11 10-11t10 12M56 32q0-12 10-12t10 11" fill="#11171e"/>
+      <path d="m60 17 4-1 14 4-3 2-14-2Z" fill="#c8b0a0" opacity=".35"/>
+      <path d="m76 23 6 1-1 8-7 2Z" fill="#161c22"/><path d="m77 25 4 .5m-4 2 4 .5" stroke="#999ea0" stroke-width=".8"/>
+      <path d="m64 18 13 2 2 2-12-1Z" fill="#e3eff0" stroke="#7b909a" stroke-width=".6"/>
+      <path d="m5 17 5-1-1 6-5 1Z" fill="#d23e37" stroke="#ffa18c" stroke-width=".6"/>
+      <path d="m55 15 5 1 1.2 2.7-6-.5Z" fill="#71544a" stroke="#c3b3a8" stroke-width=".7"/>
+      <path d="M25 20h4M42 20h4M18 6l12-2h16l7 5" fill="none" stroke="#e0d7cd" stroke-width="1" stroke-linecap="round"/>
+      ${[18,66].map(x=>`<g transform="translate(${x} 30)"><circle r="6.8" fill="#11171d" stroke="#30373e" stroke-width=".7"/><circle r="4.9" fill="url(#${uid}-ixrim)"/><path d="M0-4.4V4.4M-3.8-2.2l7.6 4.4M-3.8 2.2l7.6-4.4" stroke="#e6e6df" stroke-width="1.15"/><circle r="1.5" fill="#67727b"/></g>`).join('')}
+    </svg>`;
+  }
+  const wheel = x => `<g transform="translate(${x} 27)"><ellipse rx="6.2" ry="6.5" fill="#0b1016"/><ellipse rx="4.5" ry="5" fill="url(#${uid}-rim)" stroke="#171f29" stroke-width=".7"/><path d="M0-4V4M-3.4-2l6.8 4M-3.4 2l6.8-4" stroke="#d8dfe5" stroke-width=".85"/><ellipse rx="1.3" ry="1.5" fill="#525c68"/><path d="M-3.8-3.8q4-3 7.4 0" fill="none" stroke="#6c737c" stroke-width=".7"/></g>`;
+  return `<svg viewBox="0 0 64 36" aria-hidden="true">
+    <defs>
+      <linearGradient id="${uid}-body" x1="0" y1="0" x2=".15" y2="1"><stop stop-color="#fff" stop-opacity=".48"/><stop offset=".28" stop-color="#fff" stop-opacity=".09"/><stop offset=".52" stop-color="#000" stop-opacity=".08"/><stop offset=".74" stop-color="#000" stop-opacity=".44"/><stop offset="1" stop-color="#fff" stop-opacity=".16"/></linearGradient>
+      <linearGradient id="${uid}-glass" x2=".8" y2="1"><stop stop-color="#10202d"/><stop offset=".5" stop-color="#536f7c"/><stop offset=".56" stop-color="#263d4b"/><stop offset="1" stop-color="#0c1720"/></linearGradient>
+      <radialGradient id="${uid}-rim" cx=".35" cy=".25" r=".8"><stop stop-color="#f0f3f5"/><stop offset=".45" stop-color="#8895a2"/><stop offset="1" stop-color="#26313d"/></radialGradient>
+    </defs>
+    <ellipse cx="32" cy="31.7" rx="29" ry="2.2" fill="#000" opacity=".38"/>
+    <path d="${profile.body}" fill="${paint}" stroke="#111c27" stroke-width="1" stroke-linejoin="round"/>
+    <path d="${profile.body}" fill="url(#${uid}-body)"/>
+    <path d="${profile.roof}" fill="#fff" opacity=".18"/>
+    <path d="${profile.hood}" fill="#fff" opacity=".19"/>
+    <path d="${profile.glass}" fill="url(#${uid}-glass)" stroke="#c5d0d7" stroke-width=".65"/>
+    <path d="M28 7v8M12 16l28-.3M28 16v10M43 17l-2 8" stroke="#111e29" stroke-width="1" opacity=".8"/>
+    <path d="m14 15 11-6M31 9l7 5" stroke="#d6eff4" stroke-width="1.1" opacity=".45"/>
+    <path d="m6 19 35-1 15 4M9 26h32" stroke="#fff" stroke-width=".8" opacity=".32"/>
+    <path d="M5 26h53l1 3H5Z" fill="#101b25" opacity=".78"/>
+    <path d="M55 20l6 2-1 7-5 1Z" fill="#13202a" opacity=".48"/>
+    <path d="m56 24 4 1M56 26l4 1" stroke="#b1bbc4" stroke-width=".75"/>
+    <path d="m3 17 4-.8-.6 4-3 .6Z" fill="#e4524c" stroke="#ffaba1" stroke-width=".5"/>
+    <path d="m52 18 7 2-1 2-6-1Z" fill="#eef4e5" stroke="#c1d6db" stroke-width=".5"/>
+    <path d="m40 14 4 .3 1.3 2.2-4.3-.4Z" fill="${paint}" stroke="#cad3d9" stroke-width=".6"/>
+    <path d="M20 18h3M34 18h3" stroke="#e8e7e0" stroke-width="1" stroke-linecap="round"/>
+    ${style === 'suv' || style === 'ix35' ? '<path d="M16 4 24 2h13l5 5" fill="none" stroke="#a9b2b9" stroke-width=".9"/>' : ''}
+    ${wheel(13)}${wheel(49)}
   </svg>`;
 }
 

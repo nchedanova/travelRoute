@@ -6,7 +6,7 @@ const path=require('node:path');
 function setup(){
   const render=fs.readFileSync(path.join(__dirname,'../js/render.js'),'utf8');
   const map=fs.readFileSync(path.join(__dirname,'../js/map.js'),'utf8');
-  const types={'Заправка':'⛽','Кафе':'🍜','Магазин':'🛒','Отель':'🛎️','Жильё':'🏠','Другое':'📍'};
+  const types={'Заправка':'⛽','Кафе':'🍜','Магазин':'🛒','Отель':'🛎️','Жильё':'🏠','Парк':'🌳','Другое':'📍'};
   const config=fs.readFileSync(path.join(__dirname,'../js/config.js'),'utf8');
   const ctx=vm.createContext({TYPE_ICONS:types,L:{divIcon:args=>args}});
   vm.runInContext(config.slice(config.indexOf('const ICON_SETS'),config.indexOf('// Минуты стоянки')),ctx);
@@ -23,13 +23,13 @@ test('type defaults use distinct graphic icons; explicitly chosen emoji remain e
     assert.equal(ctx.pointIconText('type:'+type),emoji);
     assert.match(ctx.pointIconMarkup('type:'+type),/<svg/);
   }
-  assert.equal(colors.size,5); // Fuel and the default pin share a muted red.
+  assert.equal(colors.size,6); // Fuel and the default pin share a muted red.
 });
 test('category palettes keep matching graphics and quick emoji, with an expanded walking palette',()=>{
   const {ctx,types}=setup();
   for(const type of Object.keys(types)){
     const choices=ctx.pointIconChoices(type);
-    assert.equal(choices.filter(ic=>ic.startsWith('emoji:')).length,type === 'Другое' ? 18 : 6);
+    assert.equal(choices.filter(ic=>ic.startsWith('emoji:')).length,type === 'Другое' || type === 'Парк' ? 18 : 6);
     assert.equal(choices.filter(ic=>ic.startsWith('type:')).length,1);
     assert.equal(choices[0],'type:'+type);
     for(const icon of choices.filter(ic=>ic.startsWith('graphic:'))){
@@ -39,8 +39,9 @@ test('category palettes keep matching graphics and quick emoji, with an expanded
     }
   }
   const other=ctx.pointIconChoices('Другое');
+  const park=ctx.pointIconChoices('Парк');
   for(const key of ['park','tree','leaves','promenade','museum','pool','beach','mountains','concert']){
-    assert.ok(other.includes('graphic:'+key));
+    assert.ok((['museum','pool','beach','mountains','concert'].includes(key) ? other : park).includes('graphic:'+key));
     assert.match(ctx.makeIcon('graphic:'+key,'#f5a623').html,/stop-type-glyph/);
   }
   for(const emoji of ['📍','🌳','🌲','🍃','🌿','🍀','🌊']) assert.ok(other.includes('emoji:'+emoji));
@@ -54,4 +55,21 @@ test('map markers render icon tokens as graphics without exposing storage tokens
   assert.match(ctx.makeIcon('⛽','#f5a623',34,false,1,'Заправка').html,/stop-type-glyph/);
   assert.match(ctx.makeIcon('emoji:⛽','#f5a623').html,/⛽/);
   assert.match(ctx.makeStartIcon('type:Жильё','#f5a623').html,/stop-type-glyph/);
+});
+
+test('park category is available in production config and preserves saved graphic tokens',()=>{
+  const {ctx}=setup();
+  const config=fs.readFileSync(path.join(__dirname,'../js/config.js'),'utf8');
+  const configCtx=vm.createContext({});
+  vm.runInContext(config.slice(config.indexOf('const TYPE_ICONS'),config.indexOf('// Минуты стоянки')),configCtx);
+  assert.equal(vm.runInContext("TYPE_ICONS['Парк']",configCtx),'🌳');
+  const park=ctx.pointIconChoices('Парк');
+  for(const key of ['park','tree','leaves','promenade','bench','benchTree','benchArms','gazebo','gazeboArch','picnic','playground','bridge','parkLantern','parkLanternDouble','parkLanternGlobe','parkPath','parkAlley','parkSignpost']) {
+    assert.ok(park.includes('graphic:'+key));
+    assert.match(ctx.pointIconMarkup('graphic:'+key,'Другое'),/<svg/);
+    assert.equal(ctx.pointIconMarkup('graphic:'+key,'Другое'),ctx.pointIconMarkup('graphic:'+key,'Парк'));
+    assert.doesNotMatch(ctx.makeIcon('graphic:'+key,'#f5a623',34,false,1,'Парк').html,/graphic:/);
+  }
+  assert.equal(ctx.pointIconText('type:Парк'),'🌳');
+  assert.match(ctx.pointIconMarkup('type:Парк'),/#83d18b/);
 });

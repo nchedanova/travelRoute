@@ -337,7 +337,7 @@ header {
 }
 .progress-drive .day-action-icon, .progress-marker .day-action-icon {width:15px; height:15px;}
 .progress-drive-vehicle {display:flex; flex:none;}
-.progress-drive-vehicle svg {width:27px; height:17px;}
+.progress-drive-vehicle svg {width:38px; height:22px;}
 .progress-drive-stop, .driving-active .progress-drive-start {display:none;}
 .driving-active .progress-drive-stop {display:inline;}
 .progress-drive:hover {border-color:var(--accent);}
@@ -3969,8 +3969,10 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 .stop-note-close-btn:hover {background:var(--border);}
 .day-tab-add {border-radius:10px;}
 .stop-icon .stop-type-icon,.pill-name .stop-type-icon {vertical-align:middle;}
-.leaflet-marker-icon .stop-type-glyph {width:18px;height:18px;filter:drop-shadow(0 1px 1px rgba(0,0,0,.75));}
+.leaflet-marker-icon .stop-type-glyph {width:20px;height:20px;filter:drop-shadow(0 1px 1px rgba(0,0,0,.75));}
 .leaflet-marker-icon .stop-type-icon {display:flex;}
+.leaflet-marker-icon .map-point-glyph {display:flex;align-items:center;justify-content:center;font-size:20px;line-height:1;}
+.leaflet-marker-icon .map-point-glyph > svg {width:20px;height:20px;}
 .point-icon-input-field {position:relative;}
 .point-icon-input-value {color:transparent !important;text-shadow:none;caret-color:transparent;}
 .point-icon-input-preview {position:absolute;display:flex;align-items:center;justify-content:center;pointer-events:none;font-size:18px;}

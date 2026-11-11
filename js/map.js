@@ -290,7 +290,7 @@ function makeIcon(emoji, color, size = 34, active = false, num = 0, type = null)
       background:${bg};border:2px solid rgba(255,255,255,0.18);
       display:flex;align-items:center;justify-content:center;
       box-shadow:0 2px 12px rgba(0,0,0,0.8), 0 0 0 1px rgba(0,0,0,0.4);">
-      <span style="transform:rotate(45deg);font-size:${Math.round(size*0.44)}px;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.9));">${pointIconMarkup(emoji, type)}</span>
+      <span class="map-point-glyph" style="transform:rotate(45deg);font-size:20px;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.9));">${pointIconMarkup(emoji, type)}</span>
     </div>
     ${badge}
   </div>`;
@@ -304,8 +304,8 @@ function makeStartIcon(emoji, color, recorded = false) {
     width:38px;height:38px;border-radius:50%;
     background:${bg};border:2px solid rgba(255,255,255,0.18);
     display:flex;align-items:center;justify-content:center;
-    font-size:17px;box-shadow:0 2px 12px rgba(0,0,0,0.8), 0 0 0 1px rgba(0,0,0,0.4);
-    filter:drop-shadow(0 1px 3px rgba(0,0,0,0.9));">${recorded ? startPointIconMarkup(emoji, true) : pointIconMarkup(emoji)}</div>`;
+    font-size:20px;box-shadow:0 2px 12px rgba(0,0,0,0.8), 0 0 0 1px rgba(0,0,0,0.4);
+    filter:drop-shadow(0 1px 3px rgba(0,0,0,0.9));"><span class="map-point-glyph">${recorded ? startPointIconMarkup(emoji, true) : pointIconMarkup(emoji)}</span></div>`;
   return L.divIcon({ html, className:'', iconSize:[38,38], iconAnchor:[19,19] });
 }
 
