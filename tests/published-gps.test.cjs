@@ -448,3 +448,27 @@ test('saved admin car is used before GPS and changing it does not keep a previou
   assert.match(env.ctx.progressVehicleGlyph(1),/viewBox="0 0 84 40"/);
   env.ctx._rememberDriveVehicleStyle();assert.equal(saves,2);
 });
+
+test('all seasonal walkers keep companion choice and render for remote readers',()=>{
+ const {ctx,run}=setup(true);ctx.DAYS_DATA[1].walkMode=true;ctx.map=null;
+ for(const base of ['person','dog'])for(const season of ['summer','autumn','winter','spring']){
+   const style=season==='autumn'?base:base+'-'+season;
+   ctx.realUpdateGpsMarker(55,37,8,true,90,undefined,false,0,style);
+   const html=ctx._makeCarIcon().html;
+   assert.match(html,new RegExp('data-season="'+season+'"'));
+   assert.match(html,new RegExp('viewBox="0 0 '+(base==='dog'?54:32)+' 40"'));
+   assert.doesNotMatch(html,/is-walking/);
+ }
+});
+
+test('changing walking companion refreshes the header Drive button without an existing GPS fix',()=>{
+ const {ctx,run,elements}=setup(false);ctx.DAYS_DATA[1].walkMode=true;
+ const button={innerHTML:''};elements.set('drivingBtn',button);
+ ctx.dayActionIcon=name=>name==='walk'?ctx.gpsWalkerGlyph(run('_gpsWalkStyle')):name;
+ run('_gpsMarker=null;_drivingMode=false;_gpsWalkStyle="dog-summer";refreshGpsMarkerIcon()');
+ assert.match(button.innerHTML,/viewBox="0 0 54 40"/);
+ run('_gpsWalkStyle="person-winter";refreshGpsMarkerIcon()');
+ assert.match(button.innerHTML,/viewBox="0 0 32 40"/);
+ assert.match(button.innerHTML,/data-season="winter"/);
+ assert.doesNotMatch(button.innerHTML,/54 40/);
+});

@@ -22,6 +22,27 @@ let _gpsCourseAnchor = null;
 let _gpsVehicleStyle = 'compact';
 let _gpsRemoteVehicleStyle = null;
 const GPS_WALK_LABELS = {person: 'Городской пешеход', dog: 'С собакой'};
+const GPS_WALK_SEASONS = {summer:'Лето', autumn:'Осень', winter:'Зима', spring:'Весна'};
+for (const base of ['person','dog']) for (const season of ['summer','winter','spring']) {
+  GPS_WALK_LABELS[base + '-' + season] = GPS_WALK_LABELS[base] + ' · ' + GPS_WALK_SEASONS[season];
+}
+function walkStyleParts(style) {
+  const [base, season = 'autumn'] = String(style || 'person').split('-');
+  return {base:base === 'dog' ? 'dog' : 'person', season:Object.hasOwn(GPS_WALK_SEASONS, season) ? season : 'autumn'};
+}
+function walkStyleValue(base, season) { return base + (season === 'autumn' ? '' : '-' + season); }
+function walkIconStyle(day) {
+  const remote = typeof isAdmin === 'function' && !isAdmin();
+  const target = day || DAYS_DATA[currentDay];
+  const style = remote ? ((target === DAYS_DATA[currentDay] ? _gpsRemoteWalkStyle : null) || target?.gpsWalkStyle || 'person') : _gpsWalkStyle;
+  return Object.hasOwn(GPS_WALK_LABELS, style) ? style : 'person';
+}
+function _rememberWalkStyle() {
+  const day = DAYS_DATA[currentDay];
+  if (!day?.walkMode || day.gpsWalkStyle === _gpsWalkStyle) return;
+  day.gpsWalkStyle = _gpsWalkStyle;
+  if (typeof saveData === 'function') saveData();
+}
 let _gpsWalkStyle = 'person';
 let _gpsRemoteWalkStyle = null;
 let _gpsWalkCourse = null;
@@ -847,15 +868,22 @@ function initGpsVehiclePicker() {
 
 let _gpsWalkerPaintId = 0;
 function gpsWalkerGlyph(style) {
-  const withDog = style === 'dog';
+  const {base, season} = walkStyleParts(style);
+  const withDog = base === 'dog';
+  const summer = season === 'summer', winter = season === 'winter';
+  const backLeg = summer ? '#c18d70' : winter ? '#7c8799' : season === 'spring' ? 'color-mix(in srgb,currentColor,#263139 38%)' : '#46536b';
+  const frontLeg = summer ? '#e5b28e' : winter ? '#a7b3c4' : season === 'spring' ? 'currentColor' : '#72829c';
+  const coat = summer ? ['#fff4dc','#ded4b9','#9c927b'] : winter ? ['#e2eaf0','#acbecd','#71889c'] : season === 'spring' ? ['#ced4a4','#929b72','#525d45'] : ['color-mix(in srgb,currentColor,white 44%)','currentColor','color-mix(in srgb,currentColor,#15121b 62%)'];
+  const bodyPath = winter ? 'M10 12q6-4 13 1l-1 12q-8 3-14-1l1-9Z' : 'M12 12q4-3 9 1l-2 11q-5 2-10-1l1-8Z';
   const id = 'walker-paint-' + ++_gpsWalkerPaintId;
-  return `<svg class="gps-walker" viewBox="0 0 ${withDog ? 54 : 32} 40" aria-hidden="true">
+  return `<svg class="gps-walker" data-season="${season}" viewBox="0 0 ${withDog ? 54 : 32} 40" aria-hidden="true">
     <defs>
       <linearGradient id="${id}-coat" x2="1" y2=".75" gradientUnits="objectBoundingBox">
-        <stop stop-color="color-mix(in srgb,currentColor,white 44%)"/>
-        <stop offset=".55" stop-color="currentColor"/>
-        <stop offset="1" stop-color="color-mix(in srgb,currentColor,#15121b 62%)"/>
+        <stop stop-color="${coat[0]}"/>
+        <stop offset=".55" stop-color="${coat[1]}"/>
+        <stop offset="1" stop-color="${coat[2]}"/>
       </linearGradient>
+      <linearGradient id="${id}-accent" x2="1" y2="1"><stop stop-color="color-mix(in srgb,currentColor,white 28%)"/><stop offset="1" stop-color="currentColor"/></linearGradient>
       <radialGradient id="${id}-skin" cx=".34" cy=".26" r=".76">
         <stop stop-color="#ffe1bd"/><stop offset="1" stop-color="#a96346"/>
       </radialGradient>
@@ -866,23 +894,29 @@ function gpsWalkerGlyph(style) {
     <ellipse cx="15" cy="36" rx="13" ry="2.5" fill="#08090e" opacity=".55"/>
     <g class="gps-human-step gps-human-step-back" transform="translate(-2 0)" fill="none" stroke-linecap="round" stroke-linejoin="round">
       <path class="gps-human-leg" d="M15 24L13 30L10 34" stroke="#11151f" stroke-width="7"/>
-      <path class="gps-human-leg" d="M15 24L13 30L10 34" stroke="#46536b" stroke-width="4.8"/>
-      <path class="gps-human-shoe" d="M9 35h3" stroke="#e0d9cb" stroke-width="3"/>
+      <path class="gps-human-leg" d="M15 24L13 30L10 34" stroke="${backLeg}" stroke-width="4.8"/>
+      ${summer ? '<path d="M15 24l-2 5" stroke="color-mix(in srgb,currentColor,#263139 38%)" stroke-width="5.8"/>' : ''}
+      <path class="gps-human-shoe" d="M9 35h3" stroke="${winter ? '#795642' : '#e0d9cb'}" stroke-width="${winter ? 4 : 3}"/>
     </g>
     <g class="gps-human-step" fill="none" stroke-linecap="round" stroke-linejoin="round">
       <path class="gps-human-leg" d="M15 24L20 28L24 34" stroke="#11151f" stroke-width="7"/>
-      <path class="gps-human-leg" d="M15 24L20 28L24 34" stroke="#72829c" stroke-width="4.8"/>
-      <path class="gps-human-shoe" d="M9 35h4" transform="translate(14 0)" stroke="#e0d9cb" stroke-width="3"/>
+      <path class="gps-human-leg" d="M15 24L20 28L24 34" stroke="${frontLeg}" stroke-width="4.8"/>
+      ${summer ? '<path d="m15 24 5 4" stroke="currentColor" stroke-width="5.8"/>' : ''}
+      <path class="gps-human-shoe" d="M9 35h4" transform="translate(14 0)" stroke="${winter ? '#b18b64' : '#e0d9cb'}" stroke-width="${winter ? 4 : 3}"/>
     </g>
     <path d="m15 13-6 3-3 5" fill="none" stroke="url(#${id}-coat)" stroke-width="4.5" stroke-linecap="round"/>
-    <path d="M12 12q4-3 9 1l-2 11q-5 2-10-1l1-8Z" fill="url(#${id}-coat)" stroke="#17141e" stroke-width="1"/>
+    <path d="${bodyPath}" fill="url(#${id}-coat)" stroke="#17141e" stroke-width="1"/>
+    ${winter ? '<path d="M10 16h12m-13 4h13m-11 4h10" fill="none" stroke="#101824" stroke-opacity=".4" stroke-width=".8"/>' : ''}
+    ${season === 'spring' ? '<path d="m17 12-2 12m-3-11 4 3 3-3" fill="none" stroke="#edf5ec" stroke-width=".7" opacity=".7"/>' : ''}
     <path d="M13 14q-2 3-2 6" stroke="#fff" opacity=".42" fill="none" stroke-linecap="round"/>
     <path d="m19 14 3 5 4 1" fill="none" stroke="#261d29" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="m19 14 3 5 4 1" fill="none" stroke="url(#${id}-coat)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="m19 14 3 5 4 1" fill="none" stroke="${summer ? `url(#${id}-skin)` : `url(#${id}-coat)`}" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    ${summer ? `<path d="m19 14 2 3" fill="none" stroke="url(#${id}-coat)" stroke-width="4.8" stroke-linecap="round"/>` : ''}
     <circle cx="27" cy="20" r="1.6" fill="url(#${id}-skin)"/>
     <path d="M14 7q-1-5 4-5 5 0 5 5l1 2-2 1q-1 3-5 2l-2-2Z" fill="url(#${id}-skin)" stroke="#332226" stroke-width="1"/>
     <path d="M14 8q-2-5 3-6 5-2 6 3l-4 1-2 3Z" fill="#45332e"/>
     <path d="m16 4 4-1" stroke="#927061" stroke-linecap="round"/>
+    ${winter ? `<path d="M14 11q4 2 8 0l1 3q-5 2-10-1Z" fill="url(#${id}-accent)"/><path d="m17 14 4 .3-2 7-3-1Z" fill="currentColor"/><path d="m17 19 2 1" stroke="color-mix(in srgb,currentColor,white 32%)" stroke-width=".6"/>` : ''}
     ${withDog ? `
       <path d="M28 20q6 6 16.5 5.7" fill="none" stroke="#ebdbc8" stroke-width="1"/>
       <g transform="translate(5.8 5.3) scale(.9 .85)">
@@ -910,25 +944,36 @@ function gpsWalkerGlyph(style) {
 
 function initGpsWalkPicker() {
   const options = document.getElementById('gpsWalkOptions');
-  if (!options || options.childElementCount || !isAdmin()) return;
+  const seasons = document.getElementById('gpsWalkSeasonOptions');
+  if (!options || !seasons || !isAdmin()) return;
+  const selected = walkStyleParts(_gpsWalkStyle);
   const value = document.getElementById('appearanceWalkValue');
-  value.textContent = GPS_WALK_LABELS[_gpsWalkStyle];
-  for (const [style, label] of Object.entries(GPS_WALK_LABELS)) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'theme-option gps-vehicle-option';
-    button.setAttribute('aria-pressed', String(style === _gpsWalkStyle));
-    button.innerHTML = gpsWalkerGlyph(style) + '<span>' + label + '</span>';
-    button.onclick = () => {
-      _gpsWalkStyle = style;
-      value.textContent = label;
-      try { localStorage.setItem('travel_gps_walker', style); } catch {}
-      for (const option of options.children) {
-        option.setAttribute('aria-pressed', String(option === button));
-      }
-      refreshGpsMarkerIcon();
-    };
-    options.append(button);
+  if (value) value.textContent = (selected.base === 'dog' ? 'С корги' : 'Без собаки') + ' · ' + GPS_WALK_SEASONS[selected.season];
+  const seasonValue = document.getElementById('gpsWalkSeasonValue');
+  if (seasonValue) seasonValue.textContent = GPS_WALK_SEASONS[selected.season];
+  function choose(base, season) {
+    _gpsWalkStyle = walkStyleValue(base, season);
+    try { localStorage.setItem('travel_gps_walker', _gpsWalkStyle); } catch {}
+    const day = DAYS_DATA[currentDay];
+    if (day?.walkMode && day.gpsWalkStyle !== _gpsWalkStyle) {day.gpsWalkStyle = _gpsWalkStyle; if(typeof saveData === 'function') saveData();}
+    initGpsWalkPicker(); refreshGpsMarkerIcon();
+    if(typeof renderAllDays === 'function') renderAllDays();
+    if(typeof renderTabs === 'function') renderTabs();
+    if(typeof redrawDay === 'function' && day?.walkMode) redrawDay(currentDay);
+  }
+  options.replaceChildren();
+  for (const [base,label] of [['person','Без собаки'],['dog','С корги']]) {
+    const button = document.createElement('button');button.type='button';button.className='theme-option gps-vehicle-option';
+    button.setAttribute('aria-pressed',String(base === selected.base));
+    button.innerHTML = gpsWalkerGlyph(walkStyleValue(base, selected.season)) + '<span>'+label+'</span>';
+    button.onclick=()=>choose(base, selected.season);options.append(button);
+  }
+  seasons.replaceChildren();
+  for(const [season,label] of Object.entries(GPS_WALK_SEASONS)) {
+    const button=document.createElement('button');button.type='button';button.className='walk-season-option';
+    button.setAttribute('aria-pressed',String(season === selected.season));
+    button.innerHTML=gpsWalkerGlyph(walkStyleValue(selected.base,season))+'<span>'+label+'</span>';
+    button.onclick=()=>choose(selected.base,season);seasons.append(button);
   }
 }
 
@@ -1099,6 +1144,7 @@ function _clearGpsMarker() {
 }
 
 function setWalkGpsActive(active) {
+  if (active) _rememberWalkStyle();
   _walkGpsActive = active;
   _followCamera = active;
   _userPanned = false;
@@ -1149,6 +1195,7 @@ function toggleDrivingMode() {
   // Keep-alive: держим WebSocket живым для уведомлений
   if (_drivingMode) {
     _rememberDriveVehicleStyle();
+    _rememberWalkStyle();
     startKeepAlive();
     if (!routeHintsPreviewEnabled()) {
       _refreshHintsFromOwnerFix();
@@ -1295,6 +1342,11 @@ function _showEl(id) {
 // Вызывается из switchDay() в app.js когда пользователь переключает вкладку дня.
 // Без этого иконка залипает до следующего Firebase-события.
 function refreshGpsMarkerIcon() {
+  const drivingButton = document.getElementById('drivingBtn');
+  if (drivingButton && typeof dayActionIcon === 'function') {
+    const walking = DAYS_DATA[currentDay]?.walkMode;
+    drivingButton.innerHTML = dayActionIcon(_drivingMode ? 'stop' : walking ? 'walk' : 'car') + (_drivingMode ? ' Стоп' : walking ? ' Иду' : ' Еду');
+  }
   _syncMapBearing();
   if (!_gpsMarker) return; // демо-режим или GPS ещё не запущен — ничего не делаем
   var isRemote = !_walkGpsActive && typeof CLOUD_CONFIG !== 'undefined' && !CLOUD_CONFIG.canWrite;

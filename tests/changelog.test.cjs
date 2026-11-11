@@ -31,7 +31,7 @@ test('latest changes are visible and full compact history is expandable', () => 
   const { run, body, shown } = load();
   run('showChangelog()');
   assert.equal(shown(), true);
-  assert.match(body.innerHTML, /v3\.0\.0 build 24/);
+  assert.match(body.innerHTML, /v3\.0\.0 build 25/);
   assert.match(body.innerHTML, /карта будет поворачиваться по ходу движения/);
   assert.match(body.innerHTML, /Unbounded \+ Onest/);
   assert.match(body.innerHTML, /цветные значки остановок с поиском/);
@@ -54,14 +54,14 @@ test('app and service worker use the same release and build', () => {
 
 test('release notes are available to admin, demo and spectator but never the reader',()=>{
   for(const [role, headline] of [
-    ['admin', /У остановок появились объёмные значки/],
-    ['demo', /Загляните в выбор значка остановки/],
-    ['spectator', /На опубликованных маршрутах появились новые объёмные значки/]
+    ['admin', /Значки остановок стали контрастнее/],
+    ['demo', /Попробуйте обновлённые значки остановок/],
+    ['spectator', /Обновлённые значки помогают узнавать остановки/]
   ]){
     const page = load(role);
     page.run('showChangelog()');
     assert.equal(page.shown(),true);
-    assert.match(page.body.innerHTML,/v3\.0\.0 build 24/);
+    assert.match(page.body.innerHTML,/v3\.0\.0 build 25/);
     assert.match(page.body.innerHTML.split('<details')[0], headline);
   }
   const reader=load('reader');

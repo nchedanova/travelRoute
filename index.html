@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-font="onest">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -14,14 +14,15 @@
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&family=Onest:wght@400;500;600;700&family=Unbounded:wght@400;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=3.0.0-24">
+<link rel="stylesheet" href="css/style.css?v=3.0.0-25">
 <script>
 (function(){
   var t=localStorage.getItem('travel_theme');
   if(t&&['default','emerald','violet'].indexOf(t)!==-1)
     document.documentElement.setAttribute('data-theme',t);
+  if(localStorage.getItem('travel_font_default_v2') !== '1'){localStorage.setItem('travel_font','onest');localStorage.setItem('travel_font_default_v2','1');}
   var f=localStorage.getItem('travel_font');
-  document.documentElement.setAttribute('data-font',['onest','golos','mix'].includes(f)?'onest':'default');
+  document.documentElement.setAttribute('data-font',f === 'default' ? 'default' : 'onest');
 })();
 </script>
 <!-- Firebase SDK -->
@@ -607,21 +608,21 @@
 
 <!-- Scripts: порядок важен — config и data первыми -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="js/vendor/leaflet-rotate.js?v=3.0.0-24"></script>
-<script src="js/config.js?v=3.0.0-24"></script>
-<script src="js/data.js?v=3.0.0-24"></script>
-<script src="js/publishing.js?v=3.0.0-24"></script>
-<script src="js/storage.js?v=3.0.0-24"></script>
-<script src="js/offline.js?v=3.0.0-24"></script>
-<script src="js/map.js?v=3.0.0-24"></script>
-<script src="js/render.js?v=3.0.0-24"></script>
-<script src="js/app.js?v=3.0.0-24"></script>
-<script src="js/gps.js?v=3.0.0-24"></script>
-<script src="js/chat.js?v=3.0.0-24"></script>
-<script src="js/notes.js?v=3.0.0-24"></script>
-<script src="js/import.js?v=3.0.0-24"></script>
-<script src="js/gpx.js?v=3.0.0-24"></script>
-<script src="js/local-preview.js?v=3.0.0-24"></script>
+<script src="js/vendor/leaflet-rotate.js?v=3.0.0-25"></script>
+<script src="js/config.js?v=3.0.0-25"></script>
+<script src="js/data.js?v=3.0.0-25"></script>
+<script src="js/publishing.js?v=3.0.0-25"></script>
+<script src="js/storage.js?v=3.0.0-25"></script>
+<script src="js/offline.js?v=3.0.0-25"></script>
+<script src="js/map.js?v=3.0.0-25"></script>
+<script src="js/render.js?v=3.0.0-25"></script>
+<script src="js/app.js?v=3.0.0-25"></script>
+<script src="js/gps.js?v=3.0.0-25"></script>
+<script src="js/chat.js?v=3.0.0-25"></script>
+<script src="js/notes.js?v=3.0.0-25"></script>
+<script src="js/import.js?v=3.0.0-25"></script>
+<script src="js/gpx.js?v=3.0.0-25"></script>
+<script src="js/local-preview.js?v=3.0.0-25"></script>
 <script>
   window._swReg         = null;
   window._swReg = null;
@@ -762,17 +763,18 @@
   <details class="appearance-section" name="appearance-sections" id="appearanceWalkSection" hidden>
     <summary><span>Значок прогулки</span><span class="appearance-value" id="appearanceWalkValue"></span></summary>
     <div class="gps-vehicle-options" id="gpsWalkOptions"></div>
+    <details class="walk-season-disclosure"><summary><span>Время года</span><span id="gpsWalkSeasonValue">Осень</span></summary><div id="gpsWalkSeasonOptions" class="walk-season-options"></div></details>
   </details>
   <details class="appearance-section" name="appearance-sections">
     <summary><span>Шрифт</span><span class="appearance-value" id="appearanceFontValue"></span></summary>
     <button type="button" class="theme-option font-option" id="fopt-default" onclick="setAppFont('default')" aria-pressed="true">
       <span class="font-sample font-sample-default" aria-hidden="true">Аа</span>
-      <span class="font-option-text"><span class="theme-name">По умолчанию</span><span class="theme-desc">JetBrains Mono + Unbounded</span></span>
+      <span class="font-option-text"><span class="theme-name">Терминал</span><span class="theme-desc">JetBrains Mono + Unbounded</span></span>
       <span class="theme-check" aria-hidden="true">✓</span>
     </button>
     <button type="button" class="theme-option font-option" id="fopt-onest" onclick="setAppFont('onest')" aria-pressed="false">
       <span class="font-sample font-sample-onest" aria-hidden="true">Аа</span>
-      <span class="font-option-text"><span class="theme-name">Unbounded + Onest</span><span class="theme-desc">Unbounded — заголовки · Onest — текст</span></span>
+      <span class="font-option-text"><span class="theme-name">Современный</span><span class="theme-desc">Unbounded + Onest · по умолчанию</span></span>
       <span class="theme-check" aria-hidden="true">✓</span>
     </button>
   </details>
@@ -783,7 +785,7 @@
   if (typeof initGpsVehiclePicker === 'function') initGpsVehiclePicker();
 
   function applyAppFont(font) {
-    font = ['onest', 'golos', 'mix'].includes(font) ? 'onest' : 'default';
+    font = font === 'default' ? 'default' : 'onest';
     document.documentElement.setAttribute('data-font', font);
     ['default', 'onest'].forEach(function(name) {
       var option = document.getElementById('fopt-' + name);
@@ -816,6 +818,17 @@
     applyTheme(t);
   };
 
+  function positionThemePicker() {
+    var dd=document.getElementById('themePickerDropdown');
+    if (!dd || dd.style.display === 'none') return;
+      var rect = document.getElementById('themeBtn').getBoundingClientRect();
+      dd.style.setProperty('--appearance-top', Math.max(12, Math.min(rect.bottom + 8, window.innerHeight - dd.offsetHeight - 12)) + 'px');
+      dd.style.setProperty('--appearance-right', Math.max(12, Math.min(window.innerWidth - rect.right, window.innerWidth - dd.offsetWidth - 12)) + 'px');
+
+  }
+  window.addEventListener('resize', positionThemePicker);
+  document.getElementById('themePickerDropdown').addEventListener('toggle', positionThemePicker, true);
+
   window.toggleThemePicker = function() {
     var dd = document.getElementById('themePickerDropdown');
     var ov = document.getElementById('themePickerOverlay');
@@ -830,9 +843,7 @@
       if (typeof initGpsWalkPicker === 'function') initGpsWalkPicker();
       dd.querySelectorAll('details[open]').forEach(function(section) { section.open = false; });
       dd.scrollTop = 0;
-      var rect = document.getElementById('themeBtn').getBoundingClientRect();
-      dd.style.setProperty('--appearance-top', Math.max(12, Math.min(rect.bottom + 8, window.innerHeight - dd.offsetHeight - 12)) + 'px');
-      dd.style.setProperty('--appearance-right', Math.max(12, Math.min(window.innerWidth - rect.right, window.innerWidth - dd.offsetWidth - 12)) + 'px');
+      positionThemePicker();
       dd.querySelector('.appearance-close').focus({preventScroll:true});
     }
   };

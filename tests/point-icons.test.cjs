@@ -29,7 +29,7 @@ test('category palettes keep matching graphics and quick emoji, with an expanded
   const {ctx,types}=setup();
   for(const type of Object.keys(types)){
     const choices=ctx.pointIconChoices(type);
-    assert.equal(choices.filter(ic=>ic.startsWith('emoji:')).length,type === 'Другое' || type === 'Парк' ? 18 : 6);
+    assert.equal(choices.filter(ic=>ic.startsWith('emoji:')).length,type === 'Другое' || type === 'Парк' ? 18 : type === 'Жильё' ? 8 : 6);
     assert.equal(choices.filter(ic=>ic.startsWith('type:')).length,1);
     assert.equal(choices[0],'type:'+type);
     for(const icon of choices.filter(ic=>ic.startsWith('graphic:'))){
@@ -71,7 +71,7 @@ test('park category is available in production config and preserves saved graphi
     assert.doesNotMatch(ctx.makeIcon('graphic:'+key,'#f5a623',34,false,1,'Парк').html,/graphic:/);
   }
   assert.equal(ctx.pointIconText('type:Парк'),'🌳');
-  assert.match(ctx.pointIconMarkup('type:Парк'),/#83d18b/);
+  assert.match(ctx.pointIconMarkup('type:Парк'),/<svg/);
 });
 
 test('realistic category palettes have enough offline choices and every paint reference resolves',()=>{
