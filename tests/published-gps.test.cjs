@@ -381,3 +381,70 @@ test('a saved correction replaces a reader’s finished track even if its finish
   assert.deepEqual(ctx.DAYS_DATA[1].walkReview.segments, corrected.walkReview.segments);
   assert.deepEqual(ctx.DAYS_DATA[1].stops, corrected.stops);
 });
+
+function prepareDriveProgress(env) {
+  const {ctx, elements}=env;
+  ctx.CLOUD_CONFIG={canWrite:false,binId:'route'};
+  ctx.isAdmin=()=>false;
+  ctx.DAYS_DATA[1]={start:{lat:55,lng:37},stops:[{lat:55,lng:37.02,arrA:''},{lat:55,lng:37,arrA:''}],publicationId:'p',spectatorPublicationId:'p',spectatorLive:true};
+  ctx.reachedRouteStopCount=stops=>stops.findLastIndex(s=>s.arrA)+1;
+  ctx.getDayRouteKm=(_,count=2)=>count;
+  const properties={};
+  elements.set('d1-fill',{style:{},parentElement:{style:{setProperty:(k,v)=>properties[k]=v}}});
+  elements.set('d1-pct',{});
+  const icon={dataset:{progressDay:'1'},innerHTML:''};
+  ctx.document.querySelectorAll=selector=>selector==='.progress-drive-vehicle'?[icon]:[];
+  ctx.fetch=()=>{throw Error('GPS progress must not fetch a route or a Gist')};
+  const render=fs.readFileSync(path.join(__dirname,'../js/render.js'),'utf8');
+  vm.runInContext(render.slice(render.indexOf('function updateRouteProgress('),render.indexOf('function updateProgress()')),ctx);
+  return {properties,icon};
+}
+for(const spectator of [false,true]) test((spectator?'spectator':'reader')+' receives smooth owner progress and car without marking a stop; rerender and Stop preserve them',()=>{
+  const owner=setup(false);
+  prepareDriveProgress(owner);
+  owner.ctx.CLOUD_CONFIG.canWrite=true;
+  owner.ctx.isAdmin=()=>true;
+  owner.ctx._haversineKmPts=(lat,lng,toLat,toLng)=>Math.hypot(toLat-lat,toLng-lng)*100;
+  owner.ctx._routeCache={'driving|55,37|55,37.02':[[55,37],[55,37.02]]};
+  owner.run('_gpsVehicleStyle="ix35"');
+  const remote=setup(spectator);
+  const {properties,icon}=prepareDriveProgress(remote);
+  if(!spectator)remote.ctx._listenRemotePosition();
+  const send=longitude=>{
+    owner.ctx._updateDriveProgress({latitude:55,longitude,accuracy:10,heading:90,speed:8});
+    owner.ctx._writePosition(55,longitude,29,10,90);
+    const point=owner.writes.at(-1).value;
+    if(spectator){remote.ctx.point=point.spectator;remote.run('_lastSpectatorPosition=point');remote.ctx.refreshSpectatorGpsVisibility()}
+    else remote.subscriptions[0].callback({val:()=>point});
+  };
+  send(37.005);
+  assert.ok(Math.abs(parseFloat(properties['--route-progress'])-12.5)<.001);
+  assert.match(icon.innerHTML,/viewBox="0 0 84 40"/); // Chosen ix35, not the reader's default sedan.
+  send(37.01);
+  assert.ok(Math.abs(parseFloat(properties['--route-progress'])-25)<.001);
+  assert.ok(remote.ctx.DAYS_DATA[1].stops.every(s=>s.arrA===''));
+  remote.ctx.updateRouteProgress(1); // Gist poll / geometry completion / DOM rerender.
+  assert.ok(Math.abs(parseFloat(properties['--route-progress'])-25)<.001);
+  remote.ctx._clearGpsMarker();
+  remote.ctx.refreshProgressVehicleIcons();
+  assert.match(icon.innerHTML,/viewBox="0 0 84 40"/);
+  const before=properties['--route-progress'];
+  remote.ctx._applyRemoteDriveState({routeId:'route',dayId:2,publicationId:'other',lat:55,lng:37,accuracy:10,vehicleStyle:'sport',driveProgress:{fraction:1,routeKey:remote.ctx.driveRouteKey(remote.ctx.DAYS_DATA[1])}});
+  assert.equal(properties['--route-progress'],before);
+  assert.match(icon.innerHTML,/viewBox="0 0 84 40"/);
+  assert.equal(remote.writes.length,0);
+  if(!spectator)assert.equal(remote.subscriptions.length,1);
+});
+
+test('saved admin car is used before GPS and changing it does not keep a previous cached car',()=>{
+  const env=setup(false);prepareDriveProgress(env);
+  env.ctx.DAYS_DATA[1].gpsVehicleStyle='ix35';
+  assert.match(env.ctx.progressVehicleGlyph(1),/viewBox="0 0 84 40"/);
+  let saves=0;env.ctx.saveData=()=>saves++;
+  env.run('_gpsVehicleStyle="arrow"');env.ctx._rememberDriveVehicleStyle();
+  assert.equal(env.ctx.DAYS_DATA[1].gpsVehicleStyle,'arrow');
+  assert.match(env.ctx.progressVehicleGlyph(1),/m6 3 22 7/);
+  env.run('_gpsVehicleStyle="ix35"');env.ctx._rememberDriveVehicleStyle();
+  assert.match(env.ctx.progressVehicleGlyph(1),/viewBox="0 0 84 40"/);
+  env.ctx._rememberDriveVehicleStyle();assert.equal(saves,2);
+});

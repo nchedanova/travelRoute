@@ -953,10 +953,10 @@ input.day-date-input {
 .route-hint-icon {color:var(--accent); font:24px/1 system-ui; flex:none;}
 .route-hint-icon .day-action-icon {display:block; width:24px; height:24px; stroke-width:3;}
 .route-hint-detail {display:block; color:var(--muted); margin-top:2px; overflow-wrap:anywhere;}
-#routeManeuver {display:grid; justify-items:center; gap:3px; padding:7px 10px; text-align:center;}
+#routeManeuver {display:grid; justify-items:center; gap:3px; padding:9px 12px; text-align:center; font-size:14px; line-height:1.2;}
 #routeManeuver[hidden], .route-hint-detail[hidden] {display:none;}
-#routeManeuver .route-hint-icon .day-action-icon {width:28px; height:28px;}
-#routeManeuver .route-hint-detail {margin-top:0; font-variant-numeric:tabular-nums;}
+#routeManeuver .route-hint-icon .day-action-icon {width:34px; height:34px;}
+#routeManeuver .route-hint-detail {margin-top:0; font-size:15px; font-variant-numeric:tabular-nums;}
 
 /* ── MOBILE ──────────────────────────────────────────── */
 @media (max-width:700px) {
@@ -3969,10 +3969,10 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 .stop-note-close-btn:hover {background:var(--border);}
 .day-tab-add {border-radius:10px;}
 .stop-icon .stop-type-icon,.pill-name .stop-type-icon {vertical-align:middle;}
-.leaflet-marker-icon .stop-type-glyph {width:20px;height:20px;filter:drop-shadow(0 1px 1px rgba(0,0,0,.75));}
+.leaflet-marker-icon .stop-type-glyph {width:22px;height:22px;filter:drop-shadow(0 1px 1px rgba(0,0,0,.75));}
 .leaflet-marker-icon .stop-type-icon {display:flex;}
-.leaflet-marker-icon .map-point-glyph {display:flex;align-items:center;justify-content:center;font-size:20px;line-height:1;}
-.leaflet-marker-icon .map-point-glyph > svg {width:20px;height:20px;}
+.leaflet-marker-icon .map-point-glyph {display:flex;align-items:center;justify-content:center;font-size:22px;line-height:1;}
+.leaflet-marker-icon .map-point-glyph > svg {width:22px;height:22px;}
 .point-icon-input-field {position:relative;}
 .point-icon-input-value {color:transparent !important;text-shadow:none;caret-color:transparent;}
 .point-icon-input-preview {position:absolute;display:flex;align-items:center;justify-content:center;pointer-events:none;font-size:18px;}
@@ -3989,3 +3989,9 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
   .archive-dropdown {width:auto;max-height:min(440px,calc(100dvh - 24px));}
   .archive-close,.archive-restore-btn {min-width:34px;min-height:34px;width:34px;height:34px;}
 }
+/* Local navigation compass: controls stay upright while the map turns. */
+.gps-bearing-btn {position:absolute;right:12px;top:88px;z-index:500;width:42px;height:46px;flex-direction:column;align-items:center;justify-content:center;gap:0;padding:3px;border:1px solid var(--border);border-radius:12px;background:var(--surface,#20222c);color:var(--text);cursor:pointer;pointer-events:auto;box-shadow:0 2px 10px #0005;}
+.gps-bearing-btn svg {width:23px;height:23px;fill:var(--accent);stroke:var(--text);stroke-width:1;}
+.gps-bearing-btn span {font:600 9px inherit;line-height:11px;}
+.gps-bearing-btn.course-up {border-color:var(--accent);}
+@media(max-width:599px){.map-gps-controls .gps-bearing-btn{position:fixed;top:auto;bottom:calc(74px + env(safe-area-inset-bottom,0px));right:14px;}}

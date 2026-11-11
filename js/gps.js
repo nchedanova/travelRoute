@@ -53,6 +53,44 @@ let _broadcastWalkDay = null;
 let _readerWalk = null;
 let _readerCloudSavedAt = 0;
 
+// Camera orientation is local to the administrator; it never writes route data.
+let _courseUp = false;
+try { _courseUp = localStorage.getItem('travel_course_up') === '1'; } catch {}
+function _canRotateCamera() {
+  return typeof isAdmin === 'function' && isAdmin() && _drivingMode && !DAYS_DATA[currentDay]?.walkMode;
+}
+function _renderBearingButton() {
+  const btn = document.getElementById('gpsBearingBtn');
+  if (!btn) return;
+  btn.style.display = _canRotateCamera() ? 'flex' : 'none';
+  btn.setAttribute('aria-pressed', String(_courseUp));
+  btn.title = btn.ariaLabel = _courseUp ? 'Север сверху' : 'По ходу движения';
+  btn.classList.toggle('course-up', _courseUp);
+  const needle = btn.querySelector('svg');
+  if (needle) needle.style.transform = `rotate(${map.getBearing?.() || 0}deg)`;
+}
+function toggleMapBearing() {
+  if (!_canRotateCamera()) return;
+  _courseUp = !_courseUp;
+  try { localStorage.setItem('travel_course_up', _courseUp ? '1' : '0'); } catch {}
+  resumeGpsFollow();
+  _syncMapBearing();
+}
+function _syncMapBearing() {
+  if (typeof map === 'undefined' || !map.setBearing) return;
+  _renderBearingButton();
+  if (!_canRotateCamera() || !_courseUp) {
+    if (Math.abs(map.getBearing()) > .01) map.setBearing(0, {animate:true, duration:.6});
+    return;
+  }
+  // Keep the last orientation while standing or inspecting the map manually.
+  const fix = _lastOwnerHintFix?.coords;
+  if (_userPanned || !_followCamera || !fix || !Number.isFinite(fix.speed) || fix.speed < .5 || !Number.isFinite(_gpsCourse)) return;
+  const target = -_gpsCourse;
+  const delta = ((target - map.getBearing() + 540) % 360 + 360) % 360 - 180;
+  if (Math.abs(delta) >= 2) map.setBearing(map.getBearing() + delta, {animate:true, duration:.7});
+}
+
 // ── INIT ───────────────────────────────────────────────────────────────────────
 function initGps() {
   _initFollowPause();
@@ -193,10 +231,15 @@ function initGps() {
 }
 
 function _initFollowPause() {
+  map.on('rotate', () => {
+    if (_gpsMarker) _gpsMarker.setIcon(_makeCarIcon());
+    _renderBearingButton();
+  });
   let _followPauseTimer = null;
   map.on('dragstart', () => {
     if (!_followCamera) return;
     _userPanned = true;
+    if (map.setBearing) map.setBearing(map.getBearing());
     clearTimeout(_followPauseTimer);
     document.getElementById('gpsFollowBtn')?.classList.add('paused');
   });
@@ -320,6 +363,7 @@ function _listenRemotePosition() {
     document.body.classList.add('driving-active');
     _setGpsControls(true, true);
     _updateGpsMarker(d.lat, d.lng, d.accuracy, true, d.heading, d.vehicleStyle, d.braking ?? d.speed === 0, d.speed, d.walkStyle);
+    _applyRemoteDriveState(d);
     _highlightNearest(d.lat, d.lng);
     _updateSpeedDisplay(d.speed);
     if (_followCamera && !_userPanned) _panTo(d.lat, d.lng);
@@ -487,7 +531,9 @@ function stopWalkBroadcast(id = _broadcastWalkDay) {
 // ── FIREBASE WRITE — владелец едет ────────────────────────────────────────────
 function _writePosition(lat, lng, speed, accuracy, heading, braking = false) {
   if (!_db) return;
-  _lastOwnerPosition = { lat, lng, speed, accuracy, ts: Date.now() };
+  _lastOwnerPosition = { lat, lng, speed, accuracy, ts: Date.now(), dayId: currentDay, routeId: CLOUD_CONFIG.binId || null };
+  const liveProgress = routeDriveState(currentDay);
+  if (liveProgress) _lastOwnerPosition.driveProgress = {routeKey: liveProgress.routeKey, fraction: liveProgress.fraction};
   if (Number.isFinite(heading)) _lastOwnerPosition.heading = heading;
   if (!DAYS_DATA[currentDay]?.walkMode) {
     _lastOwnerPosition.vehicleStyle = _gpsVehicleStyle;
@@ -527,6 +573,7 @@ function refreshSpectatorGpsVisibility() {
   _setGpsControls(true, true);
   document.body.classList.add('driving-active');
   _updateGpsMarker(point.lat, point.lng, point.accuracy, true, point.heading, point.vehicleStyle, point.braking ?? point.speed === 0, point.speed, point.walkStyle);
+  _applyRemoteDriveState(point);
   _highlightNearest(point.lat, point.lng);
   _updateSpeedDisplay(point.speed);
   if (_followCamera && !_userPanned) _panTo(point.lat, point.lng);
@@ -646,8 +693,55 @@ const GPS_CAR_PROFILES = {
   },
 };
 
-function progressVehicleGlyph() {
-  let style = _gpsRemoteVehicleStyle ?? _gpsVehicleStyle;
+// Shared progress is carried by the existing GPS message, never by Gist polling.
+var _routeDriveStates = new Map();
+function driveRouteKey(day) {
+  if (!day) return '';
+  return [day.walkMode ? 'foot' : 'driving', ...[day.start, ...(day.stops || [])].map(p => p ? p.lat + ',' + p.lng : '')].join('|');
+}
+function routeDriveState(dayId) {
+  const saved = _routeDriveStates.get(Number(dayId));
+  return saved?.routeKey === driveRouteKey(DAYS_DATA[dayId]) ? saved : null;
+}
+function routeDriveFraction(dayId) {
+  return routeDriveState(dayId)?.fraction || 0;
+}
+function _storeDriveProgress(dayId, fraction, vehicleStyle) {
+  const previous = routeDriveState(dayId);
+  const next = {routeKey: driveRouteKey(DAYS_DATA[dayId]), fraction: Number.isFinite(fraction) ? Math.max(0, Math.min(1, fraction)) : (previous?.fraction || 0),
+    vehicleStyle: Object.hasOwn(GPS_CAR_SHAPES, vehicleStyle) ? vehicleStyle : previous?.vehicleStyle};
+  _routeDriveStates.set(Number(dayId), next);
+  return next;
+}
+function _rememberDriveVehicleStyle() {
+  const day = DAYS_DATA[currentDay];
+  if (!day || day.walkMode || day.gpsVehicleStyle === _gpsVehicleStyle) return;
+  day.gpsVehicleStyle = _gpsVehicleStyle;
+  _storeDriveProgress(currentDay, undefined, _gpsVehicleStyle);
+  if (typeof saveData === 'function') saveData();
+}
+function _applyRemoteDriveState(point) {
+  const day = DAYS_DATA[currentDay];
+  if (!day || day.walkReview) return;
+  const isSpectator = typeof SPECTATOR_MODE !== 'undefined' && SPECTATOR_MODE;
+  if (point.routeId && point.routeId !== CLOUD_CONFIG.binId) return;
+  if (isSpectator ? point.publicationId !== day.spectatorPublicationId : point.dayId != null && Number(point.dayId) !== Number(currentDay)) return;
+  const progress = point.driveProgress;
+  const sameRoute = progress?.routeKey === driveRouteKey(day);
+  if (progress && !sameRoute) return;
+  _storeDriveProgress(currentDay, sameRoute ? progress.fraction : undefined, point.vehicleStyle);
+  refreshProgressVehicleIcons();
+  if (sameRoute && Number.isFinite(progress.fraction)) {
+    if (typeof updateRouteProgress === 'function') updateRouteProgress(currentDay);
+  } else {
+    // Older owners send coordinates only. Match cached geometry without fetching.
+    _updateDriveProgress({latitude:point.lat, longitude:point.lng, accuracy:point.accuracy,
+      heading:point.heading, speed:Number.isFinite(point.speed) ? point.speed / 3.6 : undefined});
+  }
+}
+
+function progressVehicleGlyph(dayId = currentDay) {
+  let style = routeDriveState(dayId)?.vehicleStyle || DAYS_DATA[dayId]?.gpsVehicleStyle || _gpsRemoteVehicleStyle || _gpsVehicleStyle;
   if (typeof LOCAL_PREVIEW !== 'undefined' && LOCAL_PREVIEW &&
       new URLSearchParams(location.search).get('sample') === 'route-progress') {
     const selected = localStorage.getItem('travel_gps_vehicle');
@@ -713,8 +807,7 @@ function progressVehicleGlyph() {
 }
 
 function refreshProgressVehicleIcons() {
-  const glyph = progressVehicleGlyph();
-  document.querySelectorAll('.progress-drive-vehicle').forEach(icon => { icon.innerHTML = glyph; });
+  document.querySelectorAll('.progress-drive-vehicle').forEach(icon => { icon.innerHTML = progressVehicleGlyph(Number(icon.dataset?.progressDay) || currentDay); });
 }
 
 document.addEventListener('DOMContentLoaded', refreshProgressVehicleIcons);
@@ -737,6 +830,7 @@ function initGpsVehiclePicker() {
     button.innerHTML = _gpsCarGlyph(style) + '<span>' + label + '</span>';
     button.onclick = () => {
       _gpsVehicleStyle = style;
+      _rememberDriveVehicleStyle();
       if (currentLabel) currentLabel.textContent = label;
       try { localStorage.setItem('travel_gps_vehicle', style); } catch {}
       for (const option of options.children) {
@@ -885,7 +979,7 @@ function _makeCarIcon() {
       className: '', iconSize: [44, 44], iconAnchor: [22, 22]
     });
   }
-  const glyph = _gpsCarGlyph(_gpsRemoteVehicleStyle ?? _gpsVehicleStyle, _gpsCourse ?? 0, headlightsOn, headlightsOn && _gpsBraking);
+  const glyph = _gpsCarGlyph(_gpsRemoteVehicleStyle ?? _gpsVehicleStyle, (_gpsCourse ?? 0) + (map.getBearing?.() || 0), headlightsOn, headlightsOn && _gpsBraking);
   const html = `
     <div style="position:relative;width:44px;height:44px;">
       <div class="gps-ring" style="--gps-color:${ringColor};position:absolute;inset:0;border-radius:50%;background:${ringColor};opacity:0.25;"></div>
@@ -900,7 +994,7 @@ function _updateGpsMarker(lat, lng, accuracy, isRemote, heading, vehicleStyle, b
   if (walking && speed === 0) {
     _gpsCourse = null;
     _gpsCourseAnchor = null;
-  } else {
+  } else if (!(speed === 0 && !walking && Number.isFinite(_gpsCourse))) {
     _updateGpsCourse(lat, lng, accuracy, heading);
   }
   _gpsWalkCourse = walking && speed !== 0 ? _gpsCourse : null;
@@ -953,6 +1047,7 @@ function _updateGpsMarker(lat, lng, accuracy, isRemote, heading, vehicleStyle, b
 
 // ── КАМЕРА ─────────────────────────────────────────────────────────────────────
 function _panTo(lat, lng) {
+  _syncMapBearing();
   map.panTo([lat, lng], { animate: true, duration: 0.8, easeLinearity: 0.5 });
 }
 
@@ -1053,6 +1148,7 @@ function toggleDrivingMode() {
 
   // Keep-alive: держим WebSocket живым для уведомлений
   if (_drivingMode) {
+    _rememberDriveVehicleStyle();
     startKeepAlive();
     if (!routeHintsPreviewEnabled()) {
       _refreshHintsFromOwnerFix();
@@ -1199,6 +1295,7 @@ function _showEl(id) {
 // Вызывается из switchDay() в app.js когда пользователь переключает вкладку дня.
 // Без этого иконка залипает до следующего Firebase-события.
 function refreshGpsMarkerIcon() {
+  _syncMapBearing();
   if (!_gpsMarker) return; // демо-режим или GPS ещё не запущен — ничего не делаем
   var isRemote = !_walkGpsActive && typeof CLOUD_CONFIG !== 'undefined' && !CLOUD_CONFIG.canWrite;
   var newIcon = _makeCarIcon();
@@ -1418,6 +1515,7 @@ function _updateDriveProgress(fix) {
   const markedKm = getDayRouteKm(currentDay, reached);
   const nextKm = getDayRouteKm(currentDay, reached + 1);
   const distanceKm = markedKm + (nextKm - markedKm) * (_driveProgressMatch.meters / measured.length);
+  _storeDriveProgress(currentDay, distanceKm / totalKm, typeof isAdmin === 'function' && isAdmin() ? _gpsVehicleStyle : undefined);
   updateRouteProgress(currentDay, distanceKm / totalKm);
 }
 

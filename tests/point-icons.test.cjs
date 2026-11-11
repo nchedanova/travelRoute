@@ -45,8 +45,8 @@ test('category palettes keep matching graphics and quick emoji, with an expanded
     assert.match(ctx.makeIcon('graphic:'+key,'#f5a623').html,/stop-type-glyph/);
   }
   for(const emoji of ['📍','🌳','🌲','🍃','🌿','🍀','🌊']) assert.ok(other.includes('emoji:'+emoji));
-  assert.doesNotMatch(ctx.pointIconMarkup('type:Жильё'),/stroke="#/);
-  assert.doesNotMatch(ctx.pointIconMarkup('graphic:cottage'),/stroke="#/);
+  assert.doesNotMatch(ctx.pointIconMarkup('type:Жильё'),/<image|<script|https?:/);
+  assert.doesNotMatch(ctx.pointIconMarkup('graphic:cottage'),/<image|<script|https?:/);
 });
 test('map markers render icon tokens as graphics without exposing storage tokens',()=>{
   const {ctx}=setup();
@@ -72,4 +72,45 @@ test('park category is available in production config and preserves saved graphi
   }
   assert.equal(ctx.pointIconText('type:Парк'),'🌳');
   assert.match(ctx.pointIconMarkup('type:Парк'),/#83d18b/);
+});
+
+test('realistic category palettes have enough offline choices and every paint reference resolves',()=>{
+  const {ctx}=setup();
+  for(const type of ['Заправка','Кафе','Магазин','Отель','Жильё','Парк','Другое']) {
+    const choices=ctx.pointIconChoices(type).filter(ic=>ic.startsWith('graphic:'));
+    assert.ok(choices.length>=7,type+' needs at least seven choices');
+    for(const icon of ['type:'+type,...choices]){
+      const markup=ctx.pointIconMarkup(icon);
+      assert.doesNotMatch(markup,/<script|<image|https?:/);
+      for(const [,ref] of markup.matchAll(/url\(#([^)]*)\)/g))assert.ok(markup.includes('id="'+ref+'"'),icon+': missing paint '+ref);
+    }
+  }
+});
+
+test('every schematic icon token from build 23 still resolves; rendering leaves route history intact',()=>{
+  const {ctx}=setup();
+  const legacyKeys=["parkLantern","parkLanternDouble","parkLanternGlobe","parkPath","parkAlley","parkSignpost","lukoil","rosneft","gazpromneft","tatneft","neftmagistral","shell","teboil","charging","service","parking","dining","bakery","takeaway","bag","groceries","pharmacy","magnit","pyaterochka","globus","dixy","metro","chizhik","perekrestok","bed","key","bellhop","apartment","cottage","camping","park","tree","leaves","promenade","bench","benchTree","benchArms","gazebo","gazeboArch","picnic","playground","bridge","museum","pool","beach","mountains","concert"];
+  const route={dateISO:'27.07.2026',start:{icon:'type:Жильё',lat:55,lng:37},stops:legacyKeys.map((key,i)=>({id:'historic-'+i,type:'Другое',icon:'graphic:'+key,arrA:'09:20',depA:'09:40',notes:[{text:'existing',images:['fb:photo']}]}))};
+  const before=JSON.stringify(route);
+  for(const stop of route.stops){
+    assert.equal(vm.runInContext('Object.hasOwn(POINT_GRAPHICS,'+JSON.stringify(stop.icon.slice(8))+')',ctx),true,stop.icon);
+    assert.match(ctx.makeIcon(stop.icon,'#f5a623',34,false,1,stop.type).html,/<svg/);
+  }
+  assert.equal(JSON.stringify(route),before);
+  assert.match(ctx.pointIconMarkup('graphic:bench','Другое'),/scale\(\.5\)/);
+  assert.equal(ctx.pointIconMarkup('emoji:🌳','Парк'),'🌳');
+  assert.equal(ctx.pointIconMarkup('emoji:🏠','Жильё'),'🏠');
+});
+
+test('non-park legacy graphics and category defaults remain schematic alongside explicit volumetric choices',()=>{
+ const {ctx}=setup();
+ for(const key of ['dining','bakery','takeaway','bed','key','bellhop','apartment','cottage','camping','museum','pool','beach','mountains','concert']){
+   const legacy=ctx.pointIconMarkup('graphic:'+key),modern=ctx.pointIconMarkup('graphic:realistic_'+key);
+   assert.doesNotMatch(legacy,/scale\(\.5\)/,key);
+   assert.match(modern,/scale\(\.5\)/,key);
+   const type=vm.runInContext('POINT_GRAPHICS['+JSON.stringify(key)+'][0]',ctx);
+   assert.ok(ctx.pointIconChoices(type).includes('graphic:'+key));
+   assert.ok(ctx.pointIconChoices(type).includes('graphic:realistic_'+key));
+ }
+ for(const type of ['Заправка','Кафе','Магазин','Отель','Жильё','Другое'])assert.doesNotMatch(ctx.stopTypeIcon(type),/scale\(\.5\)/,type);
 });
