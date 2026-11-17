@@ -869,6 +869,10 @@ function doEditStart() {
   const icon = document.getElementById('edit-start-icon').value.trim() || '🚗';
   const day  = editStartDay;
   const oldDepartP = DAYS_DATA[day].departP || '';
+  if (DAYS_DATA[day].walkReview) {
+    moveRecordedWalkPoint(DAYS_DATA[day], DAYS_DATA[day].start, {lat, lng}, true);
+    DAYS_DATA[day].walkReview.startEdited = true;
+  }
   DAYS_DATA[day].start   = { lat, lng, name, icon };
   DAYS_DATA[day].departP = document.getElementById('edit-start-departP').value.trim();
   closeEditStart();
@@ -2556,6 +2560,7 @@ function saveStopEdit(id, day) {
   s.depP = document.getElementById('ei-depP-' + id)?.value.trim() || '';
 
   // Update coordinates: prefer search result, fall back to manual lat/lng fields
+  const oldPoint = {lat:s.lat, lng:s.lng};
   const coords = _editStopCoords[id];
   if (coords && coords.lat && coords.lng) {
     s.lat = coords.lat;
@@ -2569,6 +2574,9 @@ function saveStopEdit(id, day) {
       s.lng = manLng;
     }
   }
+
+  moveRecordedWalkPoint(DAYS_DATA[day], oldPoint, s, false,
+    DAYS_DATA[day].stops.at(-1) === s && DAYS_DATA[day].walkReview?.phase === 'finished');
 
   // Update display in-place without full re-render (keeps actual time inputs intact)
   const iconEl  = document.getElementById('stop-icon-disp-' + id);
@@ -3111,7 +3119,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '3.0.0';
-var APP_BUILD   = 26;
+var APP_BUILD   = 27;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 1;
 

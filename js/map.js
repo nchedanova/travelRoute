@@ -410,6 +410,48 @@ function refreshPill() {
 
 // ── DRAW DAY ──────────────────────────────────────────────────────────────────
 const walkTrackLines = {};
+
+// Editing a recorded waypoint must edit its saved polyline too. Preserve the
+// rest of the GPS samples and manual pause boundaries; never ask OSRM to reroute.
+function moveRecordedWalkPoint(day, before, after, start = false, finish = false) {
+  const recording = day.walkReview;
+  const segments = recording?.segments;
+  if (!segments?.some(segment => segment.length) ||
+      ![before.lat, before.lng, after.lat, after.lng].every(Number.isFinite) ||
+      (before.lat === after.lat && before.lng === after.lng)) return;
+  const length = () => segments.reduce((total, segment) => total + segment.slice(1).reduce(
+    (sum, point, index) => sum + _haversineKmPts(...segment[index], ...point) * 1000, 0), 0);
+  const oldLength = length();
+  let selected;
+  const nonempty = segments.filter(segment => segment.length);
+  if (start) selected = {segment:nonempty[0], index:0, replace:true};
+  else if (finish) selected = {segment:nonempty.at(-1), index:nonempty.at(-1).length - 1, replace:true};
+  else {
+    let best = Infinity;
+    const scale = Math.cos(before.lat * Math.PI / 180);
+    for (const segment of nonempty) {
+      for (let i = 0; i < segment.length; i++) {
+        const a = segment[i], b = segment[i + 1] || a;
+        const dx = (b[1] - a[1]) * scale, dy = b[0] - a[0];
+        const t = dx || dy ? Math.max(0, Math.min(1,
+          (((before.lng - a[1]) * scale * dx) + (before.lat - a[0]) * dy) / (dx * dx + dy * dy))) : 0;
+        const point = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+        const distance = _haversineKmPts(before.lat, before.lng, ...point);
+        if (distance < best) {
+          best = distance;
+          selected = {segment, index: t >= 1 ? i + 1 : t <= 0 ? i : i + 1,
+            replace: t <= 0 || t >= 1};
+        }
+      }
+    }
+  }
+  selected.segment.splice(selected.index, selected.replace ? 1 : 0, [after.lat, after.lng]);
+  recording.meters = Math.max(0, (Number.isFinite(recording.meters) ? recording.meters : oldLength) + length() - oldLength);
+  if (typeof document !== 'undefined' && typeof CustomEvent !== 'undefined') {
+    document.dispatchEvent(new CustomEvent('walk-route-edited', {detail:day}));
+  }
+}
+
 const WALK_DASH_STYLE = {weight:3, lineCap:'round', lineJoin:'round', dashArray:'8 5'};
 const WALK_TRACK_PALETTES = {
   '#f5a623': ['#ffba91', '#f5a623', '#ff7066'],

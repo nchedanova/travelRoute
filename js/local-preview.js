@@ -154,6 +154,39 @@ if (LOCAL_PREVIEW) {
 
 installWalkReview();
 
+// Reacquire a stable foreground fix before adding anything to the saved track.
+// This is local filtering: no extra geolocation watches or network requests.
+function acceptWalkGpsFix(active, position, hidden, now = Date.now()) {
+  const {latitude, longitude, accuracy} = position.coords;
+  const time = position.timestamp;
+  if (hidden) { active.recovering = true; active.recovery = null; return false; }
+  if (![latitude, longitude, accuracy, time].every(Number.isFinite) ||
+      Math.abs(latitude) > 90 || Math.abs(longitude) > 180 || accuracy < 0 || accuracy > 35 ||
+      now - time > 5000 || time > now + 1000 || time <= (active.lastSignalAt || 0) ||
+      time < (active.visibleAt || 0)) return false;
+  if (!active.last || time - active.last.time > 15000) active.recovering = true;
+  if (!active.recovering) return true;
+  if (accuracy > 20) return false;
+  const point = [latitude, longitude];
+  const candidate = active.recovery;
+  if (!candidate) { active.recovery = {point, time, accuracy, since: time}; return false; }
+  const elapsed = (time - candidate.time) / 1000;
+  if (elapsed <= 0) return false;
+  const distance = haversineKm(...candidate.point, ...point) * 1000;
+  const plausible = distance <= 4.5 * elapsed + Math.min(10, accuracy + candidate.accuracy);
+  if (!plausible) { active.recovery = {point, time, accuracy, since: time}; return false; }
+  active.recovery = {point, time, accuracy, since: candidate.since};
+  if (time - candidate.since < 3000) return false;
+  if (active.last) {
+    const gap = (time - active.last.time) / 1000;
+    const travel = haversineKm(...active.last.point, ...point) * 1000;
+    if (travel > 4.5 * gap + Math.min(10, accuracy + active.last.accuracy)) return false;
+  }
+  active.recovering = false;
+  active.recovery = null;
+  return true;
+}
+
 function installWalkReview() {
   const originalAdd = addNewDay;
   const originalSwitch = switchDay;
@@ -219,7 +252,14 @@ function installWalkReview() {
   function setRecordedStart(id, fix) {
     const day = DAYS_DATA[id];
     const [lat, lng] = fix.point;
-    day.start = {...day.start, lat, lng, name: 'Старт прогулки', icon: '🚶'};
+    const chosen = day.walkReview.startEdited;
+    day.start = {...day.start, ...(chosen ? {} : {lat, lng}),
+      name: chosen ? day.start.name : 'Старт прогулки', icon: day.start.icon || 'walker:person'};
+    // Keep an explicitly chosen start connected to the first accepted GPS fix.
+    if (chosen && (day.start.lat !== lat || day.start.lng !== lng)) {
+      day.walkReview.segments.at(-1).unshift([day.start.lat, day.start.lng]);
+      day.walkReview.meters += haversineKm(day.start.lat, day.start.lng, lat, lng) * 1000;
+    }
     day.departA = recordedTime(fix.time);
     day.departP ||= day.departA;
     document.getElementById('d' + id + '-departP-display').textContent = day.departP;
@@ -295,15 +335,14 @@ function installWalkReview() {
       return;
     }
     const {latitude, longitude, accuracy} = position.coords;
-    if (![latitude, longitude, accuracy, position.timestamp].every(Number.isFinite)
-        || accuracy > 35 || Date.now() - position.timestamp > 15000) return;
+    if (!acceptWalkGpsFix(active, position, document.hidden)) return;
     const fix = {point: [latitude, longitude], time: position.timestamp, accuracy};
     const previous = active.last;
     if (previous) {
       const seconds = (fix.time - previous.time) / 1000;
       const meters = haversineKm(...previous.point, ...fix.point) * 1000;
       if (fix.time <= active.lastSignalAt) return;
-      if (meters / seconds > 8) return;
+      if (meters / seconds > 4.5) return;
       active.lastSignalAt = fix.time;
       if (meters < Math.max(5, Math.min(15, (accuracy + previous.accuracy) / 2))) {
         if (currentDay === id) updateWalkGpsControls(position);
@@ -530,8 +569,21 @@ function installWalkReview() {
     renderRecording(currentDay);
   };
   window.addEventListener('pagehide', () => suspendRecording());
+  document.addEventListener('walk-route-edited', event => {
+    const day = event.detail;
+    const id = Object.keys(DAYS_DATA).find(id => DAYS_DATA[id] === day);
+    if (session?.recording === day.walkReview && session.last) {
+      session.last.point = [...day.walkReview.segments.at(-1).at(-1)];
+    }
+    if (id && currentDay == id) updateRecordingReadout(id, day.walkReview);
+  });
   document.addEventListener('visibilitychange', () => {
-    if (session && !document.hidden) acquireWalkWakeLock(session);
+    if (session) {
+      session.recovering = true;
+      session.recovery = null;
+      session.visibleAt = Date.now();
+      if (!document.hidden) acquireWalkWakeLock(session);
+    }
   });
   document.addEventListener('pointerdown', event => {
     if (!picker.contains(event.target) && !trigger?.contains(event.target)) closeChoice();
