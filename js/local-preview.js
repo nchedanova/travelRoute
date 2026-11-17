@@ -441,8 +441,8 @@ function installWalkReview() {
     const panel = document.querySelector('#day' + id + ' .walk-review-panel');
     if (!panel) return;
     const meters = recording.meters;
-    const end = recording.finishedAt || recording.lastAt;
-    const minutes = recording.startedAt && end ? Math.floor((end - recording.startedAt) / 60000) : 0;
+    const minutes = recordedWalkDurationMinutes(DAYS_DATA[id], (field, saved) =>
+      document.getElementById(field === 'depart' ? 'd' + id + '-depart' : field)?.value ?? saved);
     panel.querySelector('.walk-review-metrics').textContent =
       (meters / 1000).toLocaleString('ru-RU', {maximumFractionDigits: 2}) + ' км · ' + minutes + ' мин';
     if (recording.phase === 'recording') {
@@ -573,6 +573,9 @@ function installWalkReview() {
     renderRecording(currentDay);
   };
   window.addEventListener('pagehide', () => suspendRecording());
+  document.addEventListener('actual-times-updated', () => {
+    if (DAYS_DATA[currentDay]?.walkReview) updateRecordingReadout(currentDay, DAYS_DATA[currentDay].walkReview);
+  });
   document.addEventListener('walk-route-edited', event => {
     const day = event.detail;
     const id = Object.keys(DAYS_DATA).find(id => DAYS_DATA[id] === day);

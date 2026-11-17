@@ -36,6 +36,33 @@ function timeDelta(planned, actual) {
   return (ah * 60 + am) - (ph * 60 + pm);
 }
 
+function recordedWalkDurationMinutes(data, readActual = (_id, saved) => saved) {
+  const recording = data?.walkReview;
+  if (!recording) return null;
+  const parse = value => /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value || '')
+    ? Number(value.slice(0,2)) * 60 + Number(value.slice(3)) : null;
+  if (recording.phase === 'finished' && data.stops?.length) {
+    const start = parse(readActual('depart', data.departA));
+    let previous = start, elapsed = 0, complete = start !== null;
+    for (let i = 0; i < data.stops.length; i++) {
+      const stop = data.stops[i];
+      const arrival = parse(readActual('arr-' + stop.id, stop.arrA));
+      if (i === data.stops.length - 1 && arrival === null) complete = false;
+      const times = [arrival];
+      if (i < data.stops.length - 1) times.push(parse(readActual('dep-' + stop.id, stop.depA)));
+      for (const time of times) {
+        if (time === null || previous === null) continue;
+        elapsed += (time - previous + 1440) % 1440;
+        previous = time;
+      }
+    }
+    if (complete) return elapsed;
+  }
+  const end = recording.finishedAt || recording.lastAt;
+  return Number.isFinite(recording.startedAt) && Number.isFinite(end)
+    ? Math.max(0, Math.floor((end - recording.startedAt) / 60000)) : 0;
+}
+
 function fmtDelta(d) {
   if (d === null) return null;
   const abs  = Math.abs(d);
@@ -301,6 +328,7 @@ function updateProgress() {
   refreshSegments();
   // Update travel time + km for each day
   dayKeys().forEach(d => updateTravelStats(d));
+  document.dispatchEvent(new Event('actual-times-updated'));
 }
 
 // ── TRAVEL STATS (В ПУТИ) ─────────────────────────────────────────────────────
@@ -336,8 +364,10 @@ function updateTravelStats(d) {
     return isNaN(h) ? null : h * 60 + m;
   })();
 
-  if (depMins !== null && arrMins !== null) {
-    let diff = arrMins - depMins;
+  const walkMinutes = data.walkReview ? recordedWalkDurationMinutes(data, (id, saved) =>
+    document.getElementById(id === 'depart' ? 'd' + d + '-depart' : id)?.value ?? saved) : null;
+  if (walkMinutes !== null || (depMins !== null && arrMins !== null)) {
+    let diff = walkMinutes ?? arrMins - depMins;
     if (diff < 0) diff += 1440; // crosses midnight
     const h = Math.floor(diff / 60), m = diff % 60;
     timeEl.textContent = h > 0 ? (m > 0 ? h + 'ч ' + m + 'м' : h + 'ч') : m + 'м';
