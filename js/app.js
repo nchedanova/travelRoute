@@ -856,7 +856,7 @@ function startNominatimSearch(q) {
   }, 500);
 }
 
-function doEditStart() {
+async function doEditStart() {
   const name   = document.getElementById('edit-start-name').value.trim();
   if (!name) { document.getElementById('edit-start-name').focus(); return; }
   const manLat = parseFloat(document.getElementById('edit-start-lat').value);
@@ -870,7 +870,7 @@ function doEditStart() {
   const day  = editStartDay;
   const oldDepartP = DAYS_DATA[day].departP || '';
   if (DAYS_DATA[day].walkReview) {
-    moveRecordedWalkPoint(DAYS_DATA[day], DAYS_DATA[day].start, {lat, lng}, true);
+    if (!await moveRecordedWalkPoint(DAYS_DATA[day], DAYS_DATA[day].start, {lat, lng}, true)) return;
     DAYS_DATA[day].walkReview.startEdited = true;
   }
   DAYS_DATA[day].start   = { lat, lng, name, icon };
@@ -2546,37 +2546,44 @@ function _onMapPickClick(e) {
   }
 }
 
-function saveStopEdit(id, day) {
+async function saveStopEdit(id, day) {
   const s = DAYS_DATA[day].stops.find(x => x.id === id);
   if (!s) return;
   const newName = document.getElementById('ei-name-' + id)?.value.trim();
   if (!newName) { document.getElementById('ei-name-' + id)?.focus(); return; }
 
   snapshotForUndo('Редактирование точки');
+  // Update coordinates: prefer search result, fall back to manual lat/lng fields
+  const oldPoint = {lat:s.lat, lng:s.lng};
+  const newPoint = {...oldPoint};
+  const coords = _editStopCoords[id];
+  if (coords && coords.lat && coords.lng) {
+    newPoint.lat = coords.lat;
+    newPoint.lng = coords.lng;
+  } else {
+    const manLat = parseFloat(document.getElementById('ei-lat-' + id)?.value);
+    const manLng = parseFloat(document.getElementById('ei-lng-' + id)?.value);
+    if (!isNaN(manLat) && !isNaN(manLng)) {
+      newPoint.lat = manLat;
+      newPoint.lng = manLng;
+    }
+  }
+
+  const saveButton = document.querySelector('#edit-form-' + id + ' .edit-save-btn');
+  if (saveButton?.disabled) return;
+  if (saveButton) saveButton.disabled = true;
+  let routed;
+  try { routed = await moveRecordedWalkPoint(DAYS_DATA[day], oldPoint, newPoint, false,
+    DAYS_DATA[day].stops.at(-1) === s && DAYS_DATA[day].walkReview?.phase === 'finished'); }
+  finally { if (saveButton) saveButton.disabled = false; }
+  if (!routed) return;
+  Object.assign(s, newPoint);
+  delete _editStopCoords[id];
   s.icon = document.getElementById('ei-icon-' + id)?.value.trim() || s.icon;
   s.name = newName;
   s.type = document.getElementById('ei-type-' + id)?.value || s.type;
   s.arrP = document.getElementById('ei-arrP-' + id)?.value.trim() || '';
   s.depP = document.getElementById('ei-depP-' + id)?.value.trim() || '';
-
-  // Update coordinates: prefer search result, fall back to manual lat/lng fields
-  const oldPoint = {lat:s.lat, lng:s.lng};
-  const coords = _editStopCoords[id];
-  if (coords && coords.lat && coords.lng) {
-    s.lat = coords.lat;
-    s.lng = coords.lng;
-    delete _editStopCoords[id];
-  } else {
-    const manLat = parseFloat(document.getElementById('ei-lat-' + id)?.value);
-    const manLng = parseFloat(document.getElementById('ei-lng-' + id)?.value);
-    if (!isNaN(manLat) && !isNaN(manLng)) {
-      s.lat = manLat;
-      s.lng = manLng;
-    }
-  }
-
-  moveRecordedWalkPoint(DAYS_DATA[day], oldPoint, s, false,
-    DAYS_DATA[day].stops.at(-1) === s && DAYS_DATA[day].walkReview?.phase === 'finished');
 
   // Update display in-place without full re-render (keeps actual time inputs intact)
   const iconEl  = document.getElementById('stop-icon-disp-' + id);
@@ -3119,7 +3126,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '3.0.0';
-var APP_BUILD   = 27;
+var APP_BUILD = 28;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 1;
 

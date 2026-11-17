@@ -257,8 +257,12 @@ function installWalkReview() {
       name: chosen ? day.start.name : 'Старт прогулки', icon: day.start.icon || 'walker:person'};
     // Keep an explicitly chosen start connected to the first accepted GPS fix.
     if (chosen && (day.start.lat !== lat || day.start.lng !== lng)) {
-      day.walkReview.segments.at(-1).unshift([day.start.lat, day.start.lng]);
-      day.walkReview.meters += haversineKm(day.start.lat, day.start.lng, lat, lng) * 1000;
+      moveRecordedWalkPoint(day, {lat,lng}, day.start, true).then(connected => {
+        if (!connected || DAYS_DATA[id] !== day) return;
+        refreshWalkTrackLine(id);
+        updateRecordingReadout(id, day.walkReview);
+        saveData(day.walkReview.phase !== 'finished');
+      });
     }
     day.departA = recordedTime(fix.time);
     day.departP ||= day.departA;

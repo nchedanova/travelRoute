@@ -412,13 +412,22 @@ function refreshPill() {
 const walkTrackLines = {};
 
 // Editing a recorded waypoint must edit its saved polyline too. Preserve the
-// rest of the GPS samples and manual pause boundaries; never ask OSRM to reroute.
-function moveRecordedWalkPoint(day, before, after, start = false, finish = false) {
+// rest of the GPS samples and manual pause boundaries. Only the legs adjacent
+// to this explicit edit use the ordinary cached, queued pedestrian router.
+const walkEditsPending = new WeakSet();
+async function moveRecordedWalkPoint(day, before, after, start = false, finish = false) {
+  const recording = day.walkReview;
+  if (recording && walkEditsPending.has(recording)) return false;
+  if (recording) walkEditsPending.add(recording);
+  try { return await routeRecordedWalkPoint(day, before, after, start, finish); }
+  finally { if (recording) walkEditsPending.delete(recording); }
+}
+async function routeRecordedWalkPoint(day, before, after, start, finish) {
   const recording = day.walkReview;
   const segments = recording?.segments;
   if (!segments?.some(segment => segment.length) ||
       ![before.lat, before.lng, after.lat, after.lng].every(Number.isFinite) ||
-      (before.lat === after.lat && before.lng === after.lng)) return;
+      (before.lat === after.lat && before.lng === after.lng)) return true;
   const length = () => segments.reduce((total, segment) => total + segment.slice(1).reduce(
     (sum, point, index) => sum + _haversineKmPts(...segment[index], ...point) * 1000, 0), 0);
   const oldLength = length();
@@ -445,11 +454,50 @@ function moveRecordedWalkPoint(day, before, after, start = false, finish = false
       }
     }
   }
-  selected.segment.splice(selected.index, selected.replace ? 1 : 0, [after.lat, after.lng]);
-  recording.meters = Math.max(0, (Number.isFinite(recording.meters) ? recording.meters : oldLength) + length() - oldLength);
+  const segment = selected.segment;
+  const index = selected.index;
+  const count = selected.replace ? 1 : 0;
+  const left = segment[index - 1];
+  const right = segment[index + count] || (segment.length === 1 ? segment[0] : null);
+  const target = [after.lat, after.lng];
+  const snapshot = segment.slice(Math.max(0, index - 1), index + count + 1);
+  const oldSize = segment.length;
+  const same = (a, b) => a[0] === b[0] && a[1] === b[1];
+  const route = async (a, b) => {
+    if (same(a,b)) return [a];
+    const coords = await fetchRoadSegment({lat:a[0],lng:a[1]}, {lat:b[0],lng:b[1]}, 'foot');
+    if (!coords || coords.length < 2 || !coords.every(p => p.length === 2 && p.every(Number.isFinite))) throw Error('route unavailable');
+    return coords;
+  };
+  let replacement;
+  try {
+    const incoming = left ? await route(left,target) : [target];
+    const outgoing = right ? await route(target,right) : [target];
+    replacement = [...incoming, ...outgoing.slice(1)].map(p => [...p]);
+    // As in the normal pedestrian route, route geometry may snap to a nearby
+    // path. Keep exact neighbouring samples so the preserved GPS trace joins it.
+    replacement[0] = [...(left || target)];
+    replacement[replacement.length - 1] = [...(right || target)];
+  } catch {
+    if (typeof showToast === 'function') showToast('Не удалось построить участок по дорожкам. Изменение точки не сохранено — попробуйте ещё раз.');
+    return false;
+  }
+  const current = segment.slice(Math.max(0,index - 1),index + count + 1);
+  if (day.walkReview !== recording || !segments.includes(segment) ||
+      snapshot.length !== current.length || snapshot.some((p,i) => p !== current[i]) ||
+      (!right && oldSize !== segment.length)) {
+    if (typeof showToast === 'function') showToast('Трек изменился во время расчёта. Повторите сохранение точки.');
+    return false;
+  }
+  const removeFrom = Math.max(0,index - 1);
+  const removeCount = count + (left ? 1 : 0) + (right && index + count < segment.length ? 1 : 0);
+  const beforeLength = length();
+  segment.splice(removeFrom,removeCount,...replacement);
+  recording.meters = Math.max(0, (Number.isFinite(recording.meters) ? recording.meters : oldLength) + length() - beforeLength);
   if (typeof document !== 'undefined' && typeof CustomEvent !== 'undefined') {
     document.dispatchEvent(new CustomEvent('walk-route-edited', {detail:day}));
   }
+  return true;
 }
 
 const WALK_DASH_STYLE = {weight:3, lineCap:'round', lineJoin:'round', dashArray:'8 5'};
