@@ -393,7 +393,7 @@ function installWalkReview() {
     broadcastWalkPosition(id, position);
   }
 
-  function startWatch(id, recording) {
+  async function startWatch(id, recording, takeover = false) {
     if (session) { showToast('Запись уже идёт в другом дне.'); return; }
     if (document.hidden) return;
     if (!navigator.geolocation || !window.isSecureContext) {
@@ -404,6 +404,9 @@ function installWalkReview() {
       showToast('Сначала выключите режим «Еду» или «Иду».');
       return;
     }
+    if (typeof walkCollaboration !== 'undefined' &&
+        !await walkCollaboration.claim(id,takeover)) return;
+    if (session || document.hidden || DAYS_DATA[id]?.walkReview !== recording) return;
     const active = {id, recording, last: null, watchId: null, wakeLock: null};
     session = active;
     setWalkGpsActive(true);
@@ -445,9 +448,11 @@ function installWalkReview() {
       document.getElementById(field === 'depart' ? 'd' + id + '-depart' : field)?.value ?? saved);
     panel.querySelector('.walk-review-metrics').textContent =
       (meters / 1000).toLocaleString('ru-RU', {maximumFractionDigits: 2}) + ' км · ' + minutes + ' мин';
-    if (recording.phase === 'recording') {
+    if (recording.phase === 'recording' && !(typeof walkCollaboration !== 'undefined' && walkCollaboration.remoteDay(DAYS_DATA[id]))) {
       const remaining = Math.ceil((recording.checkpoints + 1) * checkpointMeters - meters);
-      panel.querySelector('p').textContent = 'До следующей точки: ' + remaining + ' м.';
+      panel.querySelector('p').textContent =
+        (typeof walkCollaboration !== 'undefined' && walkCollaboration.localOnly(DAYS_DATA[id]) ? 'Нет связи. Запись сохраняется на этом устройстве. ' : '')
+        + 'До следующей точки: ' + remaining + ' м.';
     }
   }
 
@@ -470,12 +475,32 @@ function installWalkReview() {
       panel.textContent = 'Демо-прогулка · без GPS-записи';
       return;
     }
-    if (recording.phase === 'recording' && session?.recording !== recording) {
+    const remote = typeof walkCollaboration !== 'undefined' && walkCollaboration.remoteDay(day);
+    section.classList.toggle('walk-collaborator',remote);
+    section.querySelectorAll('.time-inputs input,.depart-row input').forEach(input => {input.readOnly=remote;});
+    if (!remote && recording.phase === 'recording' && session?.recording !== recording) {
       recording.phase = 'paused';
       saveData(true);
     }
     const {phase} = recording;
     const finished = phase === 'finished';
+    if (remote) {
+      const remoteKey=walkCollaboration.lease?.epoch+':'+phase;
+      if (panel.dataset.remoteKey===remoteKey) {updateRecordingReadout(id,recording);return;}
+      panel.dataset.remoteKey=remoteKey;
+      panel.innerHTML = '<div class="walk-review-heading"><b>Запись прогулки</b><span>Другое устройство</span></div>'
+        + '<p>' + (phase === 'paused' ? 'Запись на другом устройстве приостановлена.' : 'Запись идёт на другом устройстве.') + ' Можно добавлять фото и заметки к точкам.</p>'
+        + '<div class="walk-review-metrics"></div><button type="button" class="walk-takeover">Продолжить запись здесь</button>'
+        + '<div class="walk-review-confirm" hidden><span>Передать запись на это устройство?</span><div class="walk-review-actions">'
+        + '<button data-transfer="no">Нет</button><button class="walk-review-primary" data-transfer="yes">Да, продолжить здесь</button></div></div>';
+      panel.querySelector('.walk-takeover').onclick = () => { const popup=panel.querySelector('.walk-review-confirm');popup.hidden=!popup.hidden; };
+      panel.querySelector('[data-transfer="no"]').onclick = () => { panel.querySelector('.walk-review-confirm').hidden=true; };
+      panel.querySelector('[data-transfer="yes"]').onclick = async () => { await startWatch(id,DAYS_DATA[id].walkReview,true); };
+      panel.onclick=null;
+      updateRecordingReadout(id,recording);
+      return;
+    }
+    delete panel.dataset.remoteKey;
     const waiting = session?.recording === recording && !session.last;
     const labels = {ready: 'Готово к записи', recording: 'Записываем', paused: 'На паузе', finished: 'Завершена'};
     const descriptions = {
@@ -573,6 +598,14 @@ function installWalkReview() {
     renderRecording(currentDay);
   };
   window.addEventListener('pagehide', () => suspendRecording());
+  document.addEventListener('walk-recorder-lost', () => {
+    if (session) {
+      stopWatch();
+      showToast('Запись продолжена на другом устройстве. Здесь можно добавлять фото и заметки.');
+    }
+    renderRecording(currentDay);
+  });
+  document.addEventListener('walk-collaboration-changed', () => renderRecording(currentDay));
   document.addEventListener('actual-times-updated', () => {
     if (DAYS_DATA[currentDay]?.walkReview) updateRecordingReadout(currentDay, DAYS_DATA[currentDay].walkReview);
   });

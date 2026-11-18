@@ -431,6 +431,7 @@ function captureActualTimeInputs() {
 
 function saveData(localOnly = false) {
   if (!isAdmin()) return;
+  if (typeof walkCollaboration !== 'undefined' && walkCollaboration.suppressCloudSave()) localOnly = true;
   try {
     captureActualTimeInputs();
     state.actuals = {};
@@ -560,6 +561,7 @@ document.addEventListener('focusout', e => {
 
 async function pollCloud() {
   if (!cloudEnabled()) return;
+  if (typeof walkCollaboration !== 'undefined' && walkCollaboration.blockCloudPoll()) return;
   if (CLOUD_CONFIG.canWrite && typeof _walkGpsActive !== 'undefined' && _walkGpsActive) return;
   // Блокируем поллинг если пользователь активно вводит данные или идёт сохранение
   if (_userIsTyping || _userHasFocus) return;

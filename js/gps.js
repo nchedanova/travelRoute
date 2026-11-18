@@ -33,7 +33,8 @@ function walkStyleParts(style) {
 }
 function walkStyleValue(base, season) { return base + (season === 'autumn' ? '' : '-' + season); }
 function walkIconStyle(day) {
-  const remote = typeof isAdmin === 'function' && !isAdmin();
+  const remote = (typeof isAdmin === 'function' && !isAdmin()) ||
+    (typeof walkCollaboration !== 'undefined' && walkCollaboration.remoteDay(day || DAYS_DATA[currentDay]));
   const target = day || DAYS_DATA[currentDay];
   const style = remote ? ((target === DAYS_DATA[currentDay] ? _gpsRemoteWalkStyle : null) || routeAppearance.walkStyle || target?.gpsWalkStyle || 'person') : _gpsWalkStyle;
   return Object.hasOwn(GPS_WALK_LABELS, style) ? style : 'person';
@@ -242,9 +243,13 @@ function initGps() {
       const unsubscribe = firebase.auth().onAuthStateChanged(user => {
         if (!user) return;
         unsubscribe();
+        if (typeof walkCollaboration !== 'undefined') walkCollaboration.bind(_db);
         publishRecoveredWalk();
       });
-    } else publishRecoveredWalk();
+    } else {
+      if (typeof walkCollaboration !== 'undefined') walkCollaboration.bind(_db);
+      publishRecoveredWalk();
+    }
   } else if (CLOUD_CONFIG.canRead) {
     // Зритель: слушаем Firebase, камера сразу следит
     _listenRemotePosition();
@@ -342,6 +347,7 @@ function _onPosition(pos) {
   const { latitude: lat, longitude: lng, accuracy, speed, heading } = pos.coords;
   _hasOwnerFix = true;
   if (_walkGpsActive) return;
+  if (typeof walkCollaboration !== 'undefined' && walkCollaboration.hasRemoteRecorder()) return;
   _lastOwnerHintFix = {coords: pos.coords, at: Date.now()};
   const kmh = gpsSpeedKmh(speed);
 
@@ -476,6 +482,7 @@ function mergeSpectatorWalk(point = _lastSpectatorWalk) {
 }
 
 function restoreReaderWalk(cloudSavedAt) {
+  if (typeof walkCollaboration !== 'undefined') walkCollaboration.restore(cloudSavedAt);
   _readerCloudSavedAt = Math.max(_readerCloudSavedAt, cloudSavedAt);
   const merged = mergeReaderWalk(_readerWalk, cloudSavedAt);
   if (!merged && _readerWalk && cloudSavedAt >= _readerWalk.updatedAt) _readerWalk = null;
@@ -500,6 +507,7 @@ function walkBroadcastPayload(id, spectator = false) {
 }
 
 function publishRecoveredWalk() {
+  if (typeof walkCollaboration !== 'undefined' && (!walkCollaboration.ready || walkCollaboration.hasRemoteRecorder())) return;
   if (!_db || !CLOUD_CONFIG.canWrite || _drivingMode || _walkGpsActive) return;
   const candidates = dayKeys().filter(id => {
     const day = DAYS_DATA[id];
@@ -527,13 +535,15 @@ function broadcastWalkPosition(id, position) {
   if (!_db || !CLOUD_CONFIG.canWrite || Date.now() - _lastWalkBroadcastAt < 5000) return;
   const walk = walkBroadcastPayload(id);
   const spectatorWalk = spectatorWalkPayload(id);
-  if (!walk && !spectatorWalk) { stopWalkBroadcast(); return; }
+  const sharedWalk = typeof walkCollaboration !== 'undefined' ? walkBroadcastPayload(id,true) : null;
+  if (!walk && !spectatorWalk && !sharedWalk) { stopWalkBroadcast(); return; }
   _lastWalkBroadcastAt = Date.now();
   _broadcastWalkDay = id;
   const {latitude: lat, longitude: lng, accuracy, speed, heading} = position.coords;
   const point = {lat, lng, accuracy, speed: gpsSpeedKmh(speed), ts: Date.now(), walkStyle: _gpsWalkStyle};
   if (Number.isFinite(heading) && heading >= 0 && heading < 360) point.heading = heading;
   const spectator = spectatorWalk && {...point, ...spectatorWalk};
+  if (sharedWalk && walkCollaboration.publish(id,sharedWalk,point,spectator)) return;
   _db.ref('gps').set(walk ? {...point, walk, spectator} : {spectator}).catch(error => console.warn('Walk GPS:', error));
 }
 
@@ -551,6 +561,10 @@ function stopWalkBroadcast(id = _broadcastWalkDay) {
   const spectator = spectatorWalkPayload(id);
   _broadcastWalkDay = null;
   _lastWalkBroadcastAt = 0;
+  if (typeof walkCollaboration !== 'undefined') {
+    const shared = walkBroadcastPayload(id,true);
+    if (shared && walkCollaboration.publish(id,shared,null,spectator)) return;
+  }
   _db.ref('gps').set(walk || spectator ? {walk, spectator} : null).catch(error => console.warn('Walk GPS:', error));
 }
 
@@ -1207,6 +1221,9 @@ function updateWalkGpsControls(position) {
 
 // ── РЕЖИМ "ЕДУ" — только владелец ─────────────────────────────────────────────
 function toggleDrivingMode() {
+  if (typeof walkCollaboration !== 'undefined' && walkCollaboration.hasRemoteRecorder()) {
+    showToast('Прогулку записывают на другом устройстве. Здесь можно добавлять фото и заметки.');return;
+  }
   if (_walkGpsActive || !isAdmin()) return;
   if (typeof isDemoMode === 'function' && isDemoMode() && !routeHintsPreviewEnabled()) {
     showToast && showToast('📱 Это демо-режим. Настройте Firebase в ⚙ для GPS-трекинга');

@@ -4022,3 +4022,6 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 .walk-season-disclosure > summary::after{content:'';width:6px;height:6px;border:solid var(--muted);border-width:0 1px 1px 0;transform:rotate(45deg);}
 .walk-season-disclosure[open] > summary::after{transform:rotate(225deg);}
 .walk-season-disclosure > summary span:last-of-type{text-align:right;white-space:nowrap;}
+.walk-collaborator .drag-handle,.walk-collaborator .stop-dropdown-item:not([onclick*="addStopNote"]){display:none;}
+.walk-collaborator .time-inputs input,.walk-collaborator .depart-row input{pointer-events:none;}
+.walk-takeover{width:100%;min-height:34px;margin-top:8px;font:inherit;color:var(--accent);background:var(--bg);border:1px solid var(--border);border-radius:9px;}

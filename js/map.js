@@ -416,6 +416,9 @@ const walkTrackLines = {};
 // to this explicit edit use the ordinary cached, queued pedestrian router.
 const walkEditsPending = new WeakSet();
 async function moveRecordedWalkPoint(day, before, after, start = false, finish = false) {
+  if (typeof walkCollaboration !== 'undefined' && walkCollaboration.remoteDay(day)) {
+    showToast('Маршрут сейчас изменяет записывающее устройство.');return false;
+  }
   const recording = day.walkReview;
   if (recording && walkEditsPending.has(recording)) return false;
   if (recording) walkEditsPending.add(recording);
