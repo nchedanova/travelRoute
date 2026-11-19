@@ -911,8 +911,7 @@ function pointIconMarkup(icon, type) {
   const value = String(icon || '📍');
   if (value.startsWith('graphic:')) return pointGraphicIcon(value.slice(8));
   if (value.startsWith('type:')) return stopTypeIcon(value.slice(5));
-  // Bare emoji are saved user choices in older journals, including archives.
-  // Category graphics require an explicit type: or graphic: token.
+  if (!value.startsWith('emoji:') && type && value === TYPE_ICONS[type]) return stopTypeIcon(type);
   return pointIconText(value).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 document.addEventListener('DOMContentLoaded', function() {
