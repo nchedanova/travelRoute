@@ -610,11 +610,9 @@ function cancelStopNoteEdit(stopId, day, idx) {
   delete _stopNoteImageDrafts[pk];
   var stop = _findStop(stopId), note = stop?.notes?.[idx];
   if (!note) return;
-  if (typeof walkCollaboration !== 'undefined') walkCollaboration.cancelNoteEdit(day,stopId,note.id);
   var hasContent = note.text || (note.images && note.images.length);
   if (!hasContent && idx === stop.notes.length - 1) stop.notes.pop();
   renderStops(day);
-  if (typeof walkCollaboration !== 'undefined') walkCollaboration.flush();
   var card = document.getElementById('card-' + stopId);
   if (card) card.draggable = true;
 }
@@ -644,8 +642,7 @@ function addStopNote(stopId, day) {
   if (!s) return;
   if (!s.notes) s.notes = [];
   var idx = s.notes.length;
-  s.notes.push({ id:crypto.randomUUID(), text: '', images: [], public: false });
-  if (typeof walkCollaboration !== 'undefined') walkCollaboration.beginNoteEdit(day,s,s.notes[idx]);
+  s.notes.push({ text: '', images: [], public: false });
   // Re-render the card to show new note in edit mode
   renderStops(day);
   // Focus the new textarea
@@ -654,19 +651,13 @@ function addStopNote(stopId, day) {
 }
 
 // ── TOGGLE PUBLIC ──
-async function toggleNotePublic(stopId, idx, day) {
+function toggleNotePublic(stopId, idx, day) {
   var s = _findStop(stopId);
   if (!s || !s.notes || !s.notes[idx]) return;
-  if (typeof walkCollaboration !== 'undefined') {
-    walkCollaboration.ensureNoteIds(s);
-    try { await walkCollaboration.saveNote(day,s,s.notes[idx].id,{...s.notes[idx],public:!s.notes[idx].public}); }
-    catch(error){showToast(error.message);return;}
-  }
   s.notes[idx].public = !s.notes[idx].public;
   saveData();
   renderStops(day);
   showToast(s.notes[idx].public ? '👁 Видна читателю' : '🔒 Скрыта от читателя');
-  if (typeof walkCollaboration !== 'undefined') {walkCollaboration.flush();walkCollaboration.notesCommitted(day);}
 }
 
 // ── DELETE NOTE (с подтверждением) ──
@@ -682,7 +673,7 @@ function closeDeleteStopNoteModal() {
   document.getElementById('deleteStopNoteModal')?.classList.remove('show');
 }
 
-async function doDeleteStopNote() {
+function doDeleteStopNote() {
   if (!_deleteStopNoteTarget) return;
   var stopId = _deleteStopNoteTarget.stopId;
   var day    = _deleteStopNoteTarget.day;
@@ -691,11 +682,6 @@ async function doDeleteStopNote() {
   var s = _findStop(stopId);
   if (!s || !s.notes || !s.notes[idx]) return;
   var note = s.notes[idx];
-  if (typeof walkCollaboration !== 'undefined') {
-    walkCollaboration.ensureNoteIds(s);
-    try { await walkCollaboration.saveNote(day,s,note.id,null); }
-    catch(error){showToast(error.message);return;}
-  }
   if (note.images) note.images.forEach(_deleteNoteImg);
   s.notes.splice(idx, 1);
   delete _pendingStopImages[_pendingKey(stopId, idx)];
@@ -704,7 +690,6 @@ async function doDeleteStopNote() {
   saveData();
   renderStops(day);
   showToast('🗑️ Заметка удалена');
-  if (typeof walkCollaboration !== 'undefined') {walkCollaboration.flush();walkCollaboration.notesCommitted(day);}
 }
 
 // ── COMMIT (save) ──
@@ -713,7 +698,6 @@ async function commitStopNote(stopId, day, idx) {
   if (!s || !s.notes) return;
   var note = s.notes[idx];
   if (!note) return;
-  if (typeof walkCollaboration !== 'undefined') walkCollaboration.ensureNoteIds(s);
   var inp = document.getElementById('stop-note-' + stopId + '-' + idx);
   var pk = _pendingKey(stopId, idx);
   if (_savingStopNotes[pk]) return;
@@ -760,9 +744,6 @@ async function commitStopNote(stopId, day, idx) {
   // Заметка с проваленной загрузкой фото — НЕ считается пустой, иначе
   // потеря связи на аплоаде стирала бы и текст, и саму заметку целиком.
   var hasContent = note.text || (note.images && note.images.length) || uploadFailedCount;
-  if (typeof walkCollaboration !== 'undefined') {
-    await walkCollaboration.saveNote(day,s,note.id,hasContent?note:null);
-  }
 
   // If empty — remove the note entirely
   if (!hasContent) {
@@ -778,15 +759,12 @@ async function commitStopNote(stopId, day, idx) {
   saveData();
   removedImages.forEach(_deleteNoteImg);
   renderStops(day);
-  if (typeof walkCollaboration !== 'undefined') {walkCollaboration.flush();walkCollaboration.notesCommitted(day);}
   if (uploadFailedCount) {
     if (typeof _renderStopNoteEditImages === 'function') _renderStopNoteEditImages(stopId, idx);
     showToast('⚠️ ' + uploadFailedCount + ' фото не сохранилось — заметка сохранена, нажмите ✓ ещё раз для повтора');
   } else {
     typeof showToast === 'function' && showToast('💾 Сохранено');
   }
-  } catch(error) {
-    showToast(error.message || 'Заметка не отправлена. Повторите сохранение.');
   } finally {
     delete _savingStopNotes[pk];
     if (editor) editor.querySelectorAll('button,input').forEach(function(el) { el.disabled = false; });
@@ -796,10 +774,6 @@ async function commitStopNote(stopId, day, idx) {
 
 // ── OPEN EDIT ──
 function openStopNoteEdit(stopId, idx) {
-  if (typeof walkCollaboration !== 'undefined') {
-    const stop=_findStop(stopId),day=dayKeys().find(id=>DAYS_DATA[id].stops.includes(stop));
-    if (stop?.notes[idx]) walkCollaboration.beginNoteEdit(day,stop,stop.notes[idx]);
-  }
   var edit = document.getElementById('stop-note-edit-' + stopId + '-' + idx);
   var preview = document.getElementById('stop-note-preview-' + stopId + '-' + idx);
   if (edit) edit.style.display = 'block';

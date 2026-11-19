@@ -567,10 +567,6 @@ function makeStopCard(s, day) {
   } else {
     div.draggable = false;
   }
-  if (typeof walkCollaboration !== 'undefined' && walkCollaboration.remoteDay(DAYS_DATA[day])) {
-    div.querySelectorAll('.time-inputs input').forEach(input=>{input.readOnly=true;});
-    div.draggable=false;
-  }
   return div;
 }
 

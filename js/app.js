@@ -151,7 +151,6 @@ function doReset() {
 let dragSrcId = null, dragSrcDay = null;
 
 function onDragStart(e) {
-  if (typeof walkCollaboration !== 'undefined' && walkCollaboration.blockRouteEdit(Number(this.dataset.day))) {e.preventDefault();return;}
   if (e.target.closest('textarea,input,.stop-note-display')) { e.preventDefault(); return; }
   dragSrcId  = this.dataset.id;
   dragSrcDay = parseInt(this.dataset.day);
@@ -191,7 +190,6 @@ function onDragEnd() {
 let deleteTargetDay = null, deleteTargetId = null;
 
 function deleteStop(day, id, e) {
-  if (typeof walkCollaboration !== 'undefined' && walkCollaboration.blockRouteEdit(day)) return;
   e && e.stopPropagation();
   deleteTargetDay = day;
   deleteTargetId  = id;
@@ -778,7 +776,6 @@ let editStartDay = null, editStartLat = null, editStartLng = null;
 let startSearchTimer = null;
 
 function openEditStart(day) {
-  if (typeof walkCollaboration !== 'undefined' && walkCollaboration.blockRouteEdit(day)) return;
   editStartDay = day;
   const s = DAYS_DATA[day].start;
   editStartLat = s.lat; editStartLng = s.lng;
@@ -1148,9 +1145,6 @@ var _tabDragSource = null;
 
 function swapDays(fromDay, toDay) {
   if (!isAdmin()) return;
-  if (typeof walkCollaboration !== 'undefined' && walkCollaboration.suppressCloudSave()) {
-    showToast('Перестановка дней доступна после завершения записи прогулки.');return;
-  }
   var keys = dayKeys();
   var fromIdx = keys.indexOf(fromDay);
   var toIdx   = keys.indexOf(toDay);
@@ -1207,7 +1201,6 @@ function swapDays(fromDay, toDay) {
 
 // ── ARCHIVE ────────────────────────────────────────────────────────────────────
 function archiveDay(d) {
-  if (typeof walkCollaboration !== 'undefined' && walkCollaboration.blockRouteEdit(d)) return;
   if (!isAdmin()) return;
   captureActualTimeInputs();
   var keys = dayKeys().filter(function(k) { return !DAYS_DATA[k].archived; });
@@ -1414,7 +1407,6 @@ function doReverseDay() {
 // ── ADD / DELETE DAY ──────────────────────────────────────────────────────────
 // ── DAY TRANSPORT MODE ───────────────────────────────────────────────────────
 function setDayMode(day, mode) {
-  if (typeof walkCollaboration !== 'undefined' && walkCollaboration.blockRouteEdit(day)) return;
   var data = DAYS_DATA[day];
   if (!data) return;
 
@@ -1452,7 +1444,6 @@ function setDayMode(day, mode) {
 }
 
 function setDayVisibility(day, visible) {
-  if (typeof walkCollaboration !== 'undefined' && walkCollaboration.blockRouteEdit(day)) return;
   var data = DAYS_DATA[day];
   if (!data) return;
   data.hidden = !visible;
@@ -1524,7 +1515,6 @@ function closeDeleteDayModal() {
   deleteDayTarget = null;
 }
 function doDeleteDay() {
-  if (typeof walkCollaboration !== 'undefined' && walkCollaboration.blockRouteEdit(deleteDayTarget)) return;
   const d = deleteDayTarget;
   closeDeleteDayModal();
   if (!d || !DAYS_DATA[d]) return;
@@ -1566,9 +1556,6 @@ function snapshotForUndo(label, timeField, previousTime) {
 }
 
 function undoAction() {
-  if (typeof walkCollaboration !== 'undefined' && walkCollaboration.hasRemoteRecorder()) {
-    showToast('Во время записи на другом устройстве доступны фото и заметки.');return;
-  }
   if (!undoStack.length) return;
   const snapshot = undoStack.pop();
   dayKeys().forEach(d => {
@@ -1615,7 +1602,6 @@ document.addEventListener('click', e => {
 // ── EDIT STOP TIME (plan only) ─────────────────────────────────────────────────
 const _inlinePlanEdits = new Map();
 function editStopTime(id, day) {
-  if (typeof walkCollaboration !== 'undefined' && walkCollaboration.blockRouteEdit(day)) return;
   if (!isAdmin()) return;
   const stop = DAYS_DATA[day]?.stops.find(s => s.id === id);
   const card = document.getElementById('card-' + id);
@@ -1867,7 +1853,6 @@ async function _reverseGeoForEditMarker(id, lat, lng) {
 }
 
 function editStop(id, day) {
-  if (typeof walkCollaboration !== 'undefined' && walkCollaboration.blockRouteEdit(day)) return;
   const s    = DAYS_DATA[day].stops.find(x => x.id === id);
   if (!s) return;
   const main = document.getElementById('stop-main-' + id);
@@ -2038,7 +2023,6 @@ var _inlineAddCoords = {};
 var _inlineAddSearchTimer = null;
 
 function openInlineAddStop(afterId, day) {
-  if (typeof walkCollaboration !== 'undefined' && walkCollaboration.blockRouteEdit(day)) return;
   _inlineAddOpen = true;
   // Close any other open add/edit forms first
   document.querySelectorAll('[id^="add-form-"]').forEach(function(f) {
@@ -2182,7 +2166,6 @@ function inlineAddSearch(q, afterId) {
 }
 
 function openInlineAddFirstStop(day) {
-  if (typeof walkCollaboration !== 'undefined' && walkCollaboration.blockRouteEdit(day)) return;
   _inlineAddOpen = true;
   var container = document.getElementById('d' + day + '-stops');
   if (!container) return;
@@ -3143,7 +3126,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '3.0.0';
-var APP_BUILD = 30;
+var APP_BUILD = 31;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 1;
 
