@@ -587,7 +587,8 @@ function openIconPicker(inputId, typeInputId) {
 
   var current = inputEl.value;
   var selected = current.startsWith('type:') || current.startsWith('graphic:') || current.startsWith('emoji:') ? current
-    : (type && current === TYPE_ICONS[type] ? 'type:' + type : 'emoji:' + current);
+    : 'emoji:' + current;
+  if(current && !icons.includes(selected)) icons.unshift(selected);
   var picker = document.createElement('div');
   picker.id = 'iconPickerInline';
   picker.className = 'icon-picker-stop';
@@ -3126,7 +3127,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '3.0.0';
-var APP_BUILD = 31;
+var APP_BUILD = 32;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 1;
 

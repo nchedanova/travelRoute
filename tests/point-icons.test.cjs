@@ -14,12 +14,13 @@ function setup(){
   vm.runInContext(map.slice(map.indexOf('function hexRgba('),map.indexOf('// ── PILL POPUP')),ctx);
   return {ctx,types};
 }
-test('type defaults use distinct graphic icons; explicitly chosen emoji remain emoji',()=>{
+test('only explicit type tokens use graphics; legacy and explicitly chosen emoji remain emoji',()=>{
   const {ctx,types}=setup();const colors=new Set();
   for(const [type,emoji] of Object.entries(types)){
-    const html=ctx.pointIconMarkup(emoji,type);assert.match(html,/<svg/);
+    const html=ctx.pointIconMarkup('type:'+type,type);assert.match(html,/<svg/);
     colors.add(html.match(/color:([^\"]+)/)[1]);
     assert.equal(ctx.pointIconMarkup('emoji:'+emoji,type),emoji);
+    assert.equal(ctx.pointIconMarkup(emoji,type),emoji);
     assert.equal(ctx.pointIconText('type:'+type),emoji);
     assert.match(ctx.pointIconMarkup('type:'+type),/<svg/);
   }
@@ -52,7 +53,8 @@ test('map markers render icon tokens as graphics without exposing storage tokens
   const {ctx}=setup();
   const graphic=ctx.makeIcon('type:Кафе','#f5a623');
   assert.match(graphic.html,/stop-type-glyph/);assert.doesNotMatch(graphic.html,/type:Кафе/);
-  assert.match(ctx.makeIcon('⛽','#f5a623',34,false,1,'Заправка').html,/stop-type-glyph/);
+  assert.match(ctx.makeIcon('⛽','#f5a623',34,false,1,'Заправка').html,/⛽/);
+  assert.doesNotMatch(ctx.makeIcon('⛽','#f5a623',34,false,1,'Заправка').html,/stop-type-glyph/);
   assert.match(ctx.makeIcon('emoji:⛽','#f5a623').html,/⛽/);
   assert.match(ctx.makeStartIcon('type:Жильё','#f5a623').html,/stop-type-glyph/);
 });
@@ -118,4 +120,19 @@ test('non-park legacy graphics and category defaults remain schematic alongside 
 test('day movement selector retains the flat walking symbol even when the custom avatar exists',()=>{
  const {ctx}=setup();ctx.gpsWalkerGlyph=()=>'<svg class="gps-walker"></svg>';
  assert.match(ctx.dayActionIcon('walk'),/gps-walker/);assert.doesNotMatch(ctx.dayActionIcon('walk2d'),/gps-walker/);assert.match(ctx.dayActionIcon('walk2d'),/<circle/);
+});
+
+test('archived stops retain all legacy emoji on the map and in cards without data migration',()=>{
+ const {ctx,types}=setup();
+ const archived={archived:true,start:{icon:'🏠'},stops:Object.entries(types).map(([type,icon],i)=>({id:'old-'+i,type,icon,arrA:'10:00',notes:[{public:true,images:['fb:photo']}]}))};
+ archived.stops.push({id:'custom',type:'Другое',icon:'🛼',notes:[]});
+ const saved=JSON.stringify(archived);
+ for(const stop of archived.stops){
+   assert.equal(ctx.pointIconMarkup(stop.icon,stop.type),stop.icon);
+   const html=ctx.makeIcon(stop.icon,'#f5a623',34,false,1,stop.type).html;
+   assert.ok(html.includes(stop.icon));assert.doesNotMatch(html,/stop-type-glyph/);
+ }
+ assert.equal(JSON.stringify(archived),saved);
+ assert.match(ctx.pointIconMarkup('type:Другое','Другое'),/stop-type-glyph/);
+ assert.match(ctx.pointIconMarkup('graphic:mapPin','Другое'),/stop-type-glyph/);
 });
