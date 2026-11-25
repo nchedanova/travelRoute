@@ -284,20 +284,38 @@ function updateActualTimeDate(id, dateISO, departure, actual) {
   label.hidden = false;
 }
 
+function updateStopTimeDetails(day) {
+  const data = DAYS_DATA[day];
+  const departure = document.getElementById('d' + day + '-depart')?.value ?? data.departA;
+  let lastDelta = null;
+  for (const stop of data.stops) {
+    for (const kind of ['arr', 'dep']) {
+      const id = kind + '-' + stop.id;
+      const input = document.getElementById(id);
+      const actual = input?.value ?? stop[kind + 'A'];
+      const delta = timeDelta(stop[kind + 'P'], actual, data.departP, departure);
+      if (delta !== null) lastDelta = delta;
+      if (!input) continue;
+
+      updateActualTimeDate(id, data.dateISO, departure, actual);
+      input.classList.remove('empty', 'ontime', 'late');
+      const timing = delta === null ? 'hidden' : delta <= 0 ? 'ontime' : 'late';
+      if (!actual) input.classList.add('empty');
+      else if (delta !== null) input.classList.add(timing);
+
+      const badge = document.getElementById('delta-' + id);
+      if (badge) {
+        badge.textContent = delta === null ? '→' : fmtDelta(delta);
+        badge.className = 'delta-badge ' + timing;
+      }
+    }
+  }
+  return lastDelta;
+}
+
 function updateProgress() {
   dayKeys().forEach(day => {
-    const data = DAYS_DATA[day];
-    const stops = data.stops;
-    const departure = document.getElementById('d' + day + '-depart')?.value ?? data.departA;
-    let lastDelta = null;
-    stops.forEach(s => {
-      const arr = document.getElementById('arr-' + s.id)?.value ?? s.arrA;
-      const dArr = timeDelta(s.arrP, arr, data.departP, departure);
-      if (dArr !== null) lastDelta = dArr;
-      const dep = document.getElementById('dep-' + s.id)?.value ?? s.depA;
-      const dDep = timeDelta(s.depP, dep, data.departP, departure);
-      if (dDep !== null) lastDelta = dDep;
-    });
+    const lastDelta = updateStopTimeDetails(day);
     updateRouteProgress(day);
 
     const dEl = document.getElementById('d' + day + '-delta-val');
@@ -311,47 +329,6 @@ function updateProgress() {
       }
     }
 
-    stops.forEach(s => {
-      const aEl  = document.getElementById('arr-' + s.id);
-      const dEl2 = document.getElementById('delta-arr-' + s.id);
-      if (aEl) {
-        const val   = aEl.value;
-        updateActualTimeDate(aEl.id, data.dateISO, departure, val);
-        const delta = timeDelta(s.arrP, val, data.departP, departure);
-        aEl.classList.remove('empty', 'ontime', 'late');
-        if (!val) aEl.classList.add('empty');
-        else if (delta !== null) aEl.classList.add(delta <= 0 ? 'ontime' : 'late');
-        if (dEl2) {
-          if (delta !== null) {
-            dEl2.textContent = fmtDelta(delta);
-            dEl2.className   = 'delta-badge ' + (delta <= 0 ? 'ontime' : 'late');
-          } else {
-            dEl2.textContent = '→';
-            dEl2.className   = 'delta-badge hidden';
-          }
-        }
-      }
-
-      const depEl = document.getElementById('dep-' + s.id);
-      const dEl3  = document.getElementById('delta-dep-' + s.id);
-      if (depEl) {
-        const val   = depEl.value;
-        updateActualTimeDate(depEl.id, data.dateISO, departure, val);
-        const delta = timeDelta(s.depP, val, data.departP, departure);
-        depEl.classList.remove('empty', 'ontime', 'late');
-        if (!val) depEl.classList.add('empty');
-        else if (delta !== null) depEl.classList.add(delta <= 0 ? 'ontime' : 'late');
-        if (dEl3) {
-          if (delta !== null) {
-            dEl3.textContent = fmtDelta(delta);
-            dEl3.className   = 'delta-badge ' + (delta <= 0 ? 'ontime' : 'late');
-          } else {
-            dEl3.textContent = '→';
-            dEl3.className   = 'delta-badge hidden';
-          }
-        }
-      }
-    });
   });
   refreshSegments();
   // Update travel time + km for each day
@@ -613,6 +590,7 @@ function renderStops(day) {
   } else {
     DAYS_DATA[day].stops.forEach(s => container.appendChild(makeStopCard(s, day)));
   }
+  updateStopTimeDetails(day);
   const cntEl = document.getElementById('d' + day + '-stop-count');
   if (cntEl) cntEl.textContent = DAYS_DATA[day].stops.length;
   if (typeof _reapplyDayWeather === 'function') _reapplyDayWeather(day);
