@@ -182,6 +182,6 @@ test('spectator subscribes only to published GPS, never private GPS, chat or pre
   ctx.map = { on() {} };
   vm.runInContext(source('js/gps.js'), ctx);
   run('_showEl = function() {}; initGps();');
-  assert.deepEqual(paths, ['gps/spectator']);
+  assert.deepEqual(paths, ['.info/serverTimeOffset', 'gps/spectator']);
   assert.equal(photoResolutions, 1);
 });

@@ -8,7 +8,8 @@ function setup(spectator) {
   const elements=new Map(['gpsFollowBtn','speedDisplay'].map(id=>[id,{style:{}}]));
   const days={1:{publicationId:'p',spectatorPublicationId:'p',spectatorLive:true,walkMode:false,stops:[]},2:{stops:[]}};
   const ctx=vm.createContext({
-    console,Date,Number,setInterval(){},clearTimeout(){},SPECTATOR_MODE:spectator,DAYS_DATA:days,currentDay:1,
+    console,Date,Number,setInterval(){},setTimeout(){},clearTimeout(){},SPECTATOR_MODE:spectator,DAYS_DATA:days,currentDay:1,
+    navigator:{onLine:true},
     CLOUD_CONFIG:{canWrite:!spectator},publicationEntry:d=>days[d]?.publicationId?{}:null,
     fakeDb:{ref:p=>({set:value=>{writes.push({path:p,value});return Promise.resolve();},on:(event,callback)=>subscriptions.push({path:p,callback})})},
     document:{addEventListener(){},body:{classList:{add(){},remove(){}}},getElementById:id=>elements.get(id)||null,querySelectorAll:()=>[]},
@@ -285,7 +286,7 @@ test('published track reaches an already open spectator even with no checkpoints
   ctx.firebase = {apps:[{}],database:() => ctx.fakeDb};
   spectator.run('renderRemoteWalk = id => calls.push(["track", id])');
   ctx.initSpectatorPhotos();
-  const listener = spectator.subscriptions[0].callback;
+  const listener = spectator.subscriptions.find(subscription => subscription.path === 'gps/spectator').callback;
   listener({val:() => live.spectator});
   assert.equal(JSON.stringify(ctx.DAYS_DATA[1].walkReview.segments), '[[[10,20],[10,21]]]');
   assert.ok(spectator.calls.some(c => c[0] === 'track'));

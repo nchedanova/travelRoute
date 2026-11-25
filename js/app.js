@@ -1275,16 +1275,11 @@ function toggleArchive(anchor) {
   renderArchiveBtn();
   // Position below button, clamped to screen
   var rect = btn.getBoundingClientRect();
-  var ddW = Math.min(340, window.innerWidth - 24);
   dd.style.top = (rect.bottom + 4) + 'px';
   dd.style.setProperty('--archive-top', dd.style.top);
-  dd.style.left = 'auto';
-  // Align right edge to button right, but don't go off left edge
-  var rightOffset = window.innerWidth - rect.right;
-  if (rightOffset < 0) rightOffset = 4;
-  if (window.innerWidth - rightOffset < ddW) rightOffset = Math.max(4, window.innerWidth - ddW - 4);
-  dd.style.right = rightOffset + 'px';
   dd.classList.add('show');
+  var maxRight = window.innerWidth - dd.offsetWidth - 8;
+  dd.style.right = Math.max(8, Math.min(window.innerWidth - rect.right, maxRight)) + 'px';
   setTimeout(function() {
     document.addEventListener('click', _archiveOutsideClick);
   }, 0);
@@ -3126,7 +3121,7 @@ document.addEventListener('click', e => {
 
 // ── CHANGELOG / WHAT'S NEW ───────────────────────────────────────────────────
 var APP_VERSION = '3.0.0';
-var APP_BUILD = 33;
+var APP_BUILD = 34;
 console.log('%c🧭 Дорожный журнал v' + APP_VERSION + ' (build ' + APP_BUILD + ')', 'color:#f5a623;font-weight:bold;font-size:13px;');
 var CHANGELOG_MAX_SHOW = 1;
 

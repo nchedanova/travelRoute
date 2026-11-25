@@ -1193,6 +1193,18 @@ input.day-date-input {
   font-size: 9px; color: rgba(255,255,255,.45);
   letter-spacing: .06em; margin-top: 2px;
 }
+.gps-share-status {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 6px);
+  width: max-content;
+  max-width: 180px;
+  padding: 5px 8px;
+  background: rgba(10,10,10,.9);
+  border-radius: 8px;
+  color: var(--amber);
+  font-size: 11px;
+}
 
 /* Кнопка "вернуться к позиции" */
 .gps-follow-btn {
@@ -1222,7 +1234,7 @@ input.day-date-input {
     pointer-events:none;
   }
   .map-gps-controls :is(.gps-follow-btn, .speed-display) {position:static;}
-  .map-gps-controls .speed-display {order:1;}
+  .map-gps-controls .speed-display {position:relative;order:1;}
   .map-gps-controls .gps-follow-btn {pointer-events:auto;}
   .sidebar.open {max-height:min(var(--sheet-h, 55vh), calc(100% - 72px));}
 }
@@ -3587,7 +3599,6 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
   .header-right {scrollbar-width:thin;scrollbar-color:var(--border) transparent;padding-bottom:6px;}
   .header-right::-webkit-scrollbar {display:block;height:4px;}
   .header-right::-webkit-scrollbar-thumb {background:var(--muted);border-radius:4px;}
-  .archive-dropdown {left:12px !important;right:12px !important;top:auto !important;bottom:calc(12px + env(safe-area-inset-bottom, 0px));width:auto;max-width:none;max-height:min(620px,calc(100dvh - 24px - env(safe-area-inset-bottom, 0px)));padding:0 12px 12px;}
   .archive-close {min-width:44px;min-height:44px;}
   .archive-restore-btn {width:44px;height:44px;}
 }
@@ -3988,7 +3999,7 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 .archive-item-title {font-size:11px;}
 .archive-restore-btn {width:30px;height:30px;font-size:15px;border-radius:8px;}
 @media(max-width:700px){
-  .archive-dropdown {width:auto;max-height:min(440px,calc(100dvh - 24px));}
+  .archive-dropdown {max-height:min(440px,calc(100dvh - var(--archive-top,48px) - 12px - env(safe-area-inset-bottom, 0px)));}
   .archive-close,.archive-restore-btn {min-width:34px;min-height:34px;width:34px;height:34px;}
 }
 /* Local navigation compass: controls stay upright while the map turns. */

@@ -75,6 +75,60 @@ let _lastWalkBroadcastAt = 0;
 let _broadcastWalkDay = null;
 let _readerWalk = null;
 let _readerCloudSavedAt = 0;
+const GPS_LIVE_MAX_AGE_MS = 120000;
+const GPS_SHARE_ACK_WAIT_MS = 8000;
+const GPS_FIX_MAX_AGE_MS = 15000;
+let _gpsServerOffset = null;
+let _gpsConnected = null;
+let _gpsTransportDb = null;
+let _readerPosition = null;
+let _readerPositionTimer = null;
+let _driveWrite = null;
+let _pendingDrivePosition = null;
+let _gpsShareTimer = null;
+
+function _monitorGpsTransport() {
+  if (!_db || _gpsTransportDb === _db) return;
+  _gpsTransportDb = _db;
+  _gpsConnected = false;
+  _db.ref('.info/serverTimeOffset').on('value', snap => {
+    const offset = snap.val();
+    if (!Number.isFinite(offset)) return;
+    _gpsServerOffset = offset;
+    if (_readerPosition) _renderReaderPosition(_readerPosition);
+    if (SPECTATOR_MODE && _lastSpectatorPosition) refreshSpectatorGpsVisibility();
+  });
+  if (!CLOUD_CONFIG.canWrite) return;
+  _db.ref('.info/connected').on('value', snap => {
+    _gpsConnected = snap.val() === true;
+    if (!_gpsConnected) {
+      _pendingDrivePosition = null;
+      if (_drivingMode && _hasOwnerFix) _setGpsShareStatus('Позиция пока не передаётся');
+    }
+  });
+}
+
+function _setGpsShareStatus(message) {
+  const status = document.getElementById('gpsShareStatus');
+  if (!status) return;
+  status.hidden = !message;
+  if (status.textContent !== message) status.textContent = message;
+}
+
+function _gpsPositionAge(point) {
+  if (!Number.isFinite(point.capturedAt)) {
+    return Number.isFinite(point.ts) ? Date.now() - point.ts : null;
+  }
+  if (_gpsServerOffset === null || !Number.isFinite(point.ts)) return Infinity;
+  // Firebase confirms when it receives the packet. Capture time also bounds
+  // freshness when the SDK sends a delayed write after reconnecting.
+  return Date.now() + _gpsServerOffset - Math.min(point.ts, point.capturedAt);
+}
+
+function _gpsUiStep(name, action) {
+  try { action(); }
+  catch (error) { console.warn('GPS ' + name + ':', error); }
+}
 
 // Camera orientation is local to the administrator; it never writes route data.
 let _courseUp = false;
@@ -229,6 +283,7 @@ function initGps() {
   }
 
   _db = firebase.database();
+  _monitorGpsTransport();
 
   // Запускаем чат и заметки
   initChat && initChat();
@@ -288,6 +343,7 @@ function initSpectatorPhotos() {
     if (typeof initNoteReactions === 'function') initNoteReactions();
     if (typeof _setupAllNoteReactListeners === 'function') _setupAllNoteReactListeners();
     _db = firebase.database();
+    _monitorGpsTransport();
     if (!_spectatorGpsListening) {
       _spectatorGpsListening = true;
       _followCamera = true;
@@ -346,25 +402,23 @@ function _onPosition(pos) {
   const kmh = gpsSpeedKmh(speed);
 
   const braking = _drivingMode && _drivingBrakeLights(kmh);
-  _updateGpsMarker(lat, lng, accuracy, false, heading, undefined, braking, kmh);
-  _showEl('gpsFollowBtn');
-  _highlightNearest(lat, lng);
+  _gpsUiStep('marker', () => _updateGpsMarker(lat, lng, accuracy, false, heading, undefined, braking, kmh));
 
   if (_drivingMode) {
-    _updateDriveProgress(pos.coords);
-    _checkRouteHints(pos.coords);
-    _updateSpeedDisplay(kmh);
+    _gpsUiStep('progress', () => _updateDriveProgress(pos.coords));
+    const capturedAt = Number.isFinite(pos.timestamp) ? pos.timestamp : Date.now();
     const point = { lat, lng, speed: kmh, accuracy, ts: Date.now() };
-    // Всегда пишем в IndexedDB (для GPX-экспорта и оффлайн)
-    if (typeof saveGpsPoint === 'function') saveGpsPoint(point);
-    // Пишем в Firebase (с оффлайн-буфером)
-    if (typeof bufferGpsForSync === 'function' && bufferGpsForSync(point)) {
-      // Буферизировано — нет сети
-    } else {
-      _writePosition(lat, lng, kmh, accuracy, _gpsCourse, braking);
-    }
+    _writePosition(lat, lng, kmh, accuracy, _gpsCourse ?? heading, braking, capturedAt);
+    _gpsUiStep('history', () => {
+      if (typeof saveGpsPoint === 'function') saveGpsPoint(point);
+      if (typeof bufferGpsForSync === 'function') bufferGpsForSync(point);
+    });
+    _gpsUiStep('hints', () => _checkRouteHints(pos.coords));
+    _updateSpeedDisplay(kmh);
     if (_followCamera && !_userPanned) _panTo(lat, lng);
   }
+  _showEl('gpsFollowBtn');
+  _highlightNearest(lat, lng);
 }
 
 // ── FIREBASE READ — зрители ────────────────────────────────────────────────────
@@ -373,25 +427,40 @@ function _listenRemotePosition() {
   _db.ref('gps').on('value', snap => {
     const d = snap.val();
     if (d?.walk && d.walk.routeId === CLOUD_CONFIG.binId) applyReaderWalk(d.walk);
-    if (!d || !Number.isFinite(d.lat) || !Number.isFinite(d.lng) ||
-        (Number.isFinite(d.ts) && Date.now() - d.ts > 120000) ||
-        (d.walk && currentDay !== d.walk.dayId)) {
-      // путешественник остановился — убираем подсветку и скорость
-      document.body.classList.remove('driving-active');
-      _updateSpeedDisplay(null);
-      _clearGpsMarker();
-      _setGpsControls(false, false);
-      return;
-    }
-    // есть позиция — включаем подсветку как в режиме "Еду"
-    document.body.classList.add('driving-active');
-    _setGpsControls(true, true);
-    _updateGpsMarker(d.lat, d.lng, d.accuracy, true, d.heading, d.vehicleStyle, d.braking ?? d.speed === 0, d.speed, d.walkStyle);
-    _applyRemoteDriveState(d);
-    _highlightNearest(d.lat, d.lng);
-    _updateSpeedDisplay(d.speed);
-    if (_followCamera && !_userPanned) _panTo(d.lat, d.lng);
+    _readerPosition = d;
+    _renderReaderPosition(d);
+  }, error => {
+    console.warn('GPS read:', error);
+    _readerPosition = null;
+    _renderReaderPosition(null);
   });
+}
+
+function _renderReaderPosition(d) {
+  clearTimeout(_readerPositionTimer);
+  const age = d && _gpsPositionAge(d);
+  if (!d || !Number.isFinite(d.lat) || !Number.isFinite(d.lng) ||
+      age >= GPS_LIVE_MAX_AGE_MS ||
+      (d.walk && currentDay !== d.walk.dayId)) {
+    // путешественник остановился — убираем подсветку и скорость
+    document.body.classList.remove('driving-active');
+    _updateSpeedDisplay(null);
+    _clearGpsMarker();
+    _setGpsControls(false, false);
+    return;
+  }
+  if (Number.isFinite(age)) {
+    _readerPositionTimer = setTimeout(() => _renderReaderPosition(_readerPosition),
+      GPS_LIVE_MAX_AGE_MS - Math.max(0, age));
+  }
+  // есть позиция — включаем подсветку как в режиме "Еду"
+  document.body.classList.add('driving-active');
+  _setGpsControls(true, true);
+  _updateGpsMarker(d.lat, d.lng, d.accuracy, true, d.heading, d.vehicleStyle, d.braking ?? d.speed === 0, d.speed, d.walkStyle);
+  _gpsUiStep('reader progress', () => _applyRemoteDriveState(d));
+  _highlightNearest(d.lat, d.lng);
+  _updateSpeedDisplay(d.speed);
+  if (_followCamera && !_userPanned) _panTo(d.lat, d.lng);
 }
 
 function sameRecordedWalk(a, b) {
@@ -555,19 +624,62 @@ function stopWalkBroadcast(id = _broadcastWalkDay) {
 }
 
 // ── FIREBASE WRITE — владелец едет ────────────────────────────────────────────
-function _writePosition(lat, lng, speed, accuracy, heading, braking = false) {
-  if (!_db) return;
-  _lastOwnerPosition = { lat, lng, speed, accuracy, ts: Date.now(), dayId: currentDay, routeId: CLOUD_CONFIG.binId || null };
-  const liveProgress = routeDriveState(currentDay);
-  if (liveProgress) _lastOwnerPosition.driveProgress = {routeKey: liveProgress.routeKey, fraction: liveProgress.fraction};
-  if (Number.isFinite(heading)) _lastOwnerPosition.heading = heading;
-  if (!DAYS_DATA[currentDay]?.walkMode) {
-    _lastOwnerPosition.vehicleStyle = _gpsVehicleStyle;
-    _lastOwnerPosition.braking = braking;
-  } else {
-    _lastOwnerPosition.walkStyle = _gpsWalkStyle;
+function _writePosition(lat, lng, speed, accuracy, heading, braking = false, capturedAt = Date.now()) {
+  if (!_db || _gpsConnected === false || navigator.onLine === false) {
+    if (CLOUD_CONFIG.canWrite) _setGpsShareStatus('Позиция пока не передаётся');
+    return;
   }
-  _db.ref('gps').set(Object.assign({}, _lastOwnerPosition, { spectator: spectatorGpsPayload(_lastOwnerPosition) }));
+  if (![lat, lng].every(Number.isFinite) || Date.now() - capturedAt > GPS_FIX_MAX_AGE_MS) return;
+  const point = { lat, lng, speed, accuracy: Number.isFinite(accuracy) ? accuracy : null,
+    ts: capturedAt, dayId: currentDay, routeId: CLOUD_CONFIG.binId || null };
+  _gpsUiStep('progress packet', () => {
+    const progress = routeDriveState(currentDay);
+    if (progress) point.driveProgress = {routeKey: progress.routeKey, fraction: progress.fraction};
+  });
+  if (Number.isFinite(heading)) point.heading = heading;
+  if (!DAYS_DATA[currentDay]?.walkMode) {
+    point.vehicleStyle = _gpsVehicleStyle;
+    point.braking = braking;
+  } else {
+    point.walkStyle = _gpsWalkStyle;
+  }
+  const serverTimestamp = typeof firebase !== 'undefined' && firebase.database?.ServerValue?.TIMESTAMP;
+  if (serverTimestamp && _gpsServerOffset !== null) {
+    point.capturedAt = capturedAt + _gpsServerOffset;
+    point.ts = point.capturedAt;
+  }
+  const packet = { ...point, ...(point.capturedAt === undefined ? {} : {ts: serverTimestamp}) };
+  const write = { point, packet, capturedAt };
+  // No unbounded SDK write queue during transport failures. Keep only the most
+  // recent unsent fix, and drop it when the Firebase connection closes.
+  if (_gpsTransportDb && _driveWrite) { _pendingDrivePosition = write; return; }
+  _sendDrivePosition(write);
+}
+
+function _sendDrivePosition(write) {
+  if (_gpsConnected === false || navigator.onLine === false || Date.now() - write.capturedAt > GPS_FIX_MAX_AGE_MS) return;
+  const {point, packet} = write;
+  _lastOwnerPosition = point;
+  _driveWrite = write;
+  clearTimeout(_gpsShareTimer);
+  if (_gpsTransportDb) _gpsShareTimer = setTimeout(() => {
+    if (_driveWrite === write && _drivingMode) _setGpsShareStatus('Позиция пока не передаётся');
+  }, GPS_SHARE_ACK_WAIT_MS);
+  function finish(error) {
+    if (_driveWrite !== write) return;
+    clearTimeout(_gpsShareTimer);
+    _driveWrite = null;
+    if (!_drivingMode) return;
+    if (error) console.warn('GPS write:', error);
+    const delayed = Date.now() - write.capturedAt > GPS_FIX_MAX_AGE_MS;
+    _setGpsShareStatus(error || _gpsConnected === false || delayed ? 'Позиция пока не передаётся' : '');
+    const pending = _pendingDrivePosition;
+    _pendingDrivePosition = null;
+    if (pending && pending.point.dayId === currentDay) _sendDrivePosition(pending);
+  }
+  const spectator = spectatorGpsPayload(packet);
+  try { _db.ref('gps').set({...packet, spectator}).then(() => finish(), finish); }
+  catch (error) { finish(error); }
 }
 
 function spectatorGpsPayload(point, dayId = currentDay) {
@@ -585,9 +697,11 @@ function refreshSpectatorGpsVisibility() {
   }
   var point = _lastSpectatorPosition;
   var day = DAYS_DATA[currentDay];
+  const age = point && _gpsPositionAge(point);
   var visible = !!point && !!day && day.spectatorLive &&
     day.spectatorPublicationId === point.publicationId &&
-    Number.isFinite(point.lat) && Number.isFinite(point.lng) && Date.now() - point.ts < 120000;
+    Number.isFinite(point.lat) && Number.isFinite(point.lng) &&
+    Number.isFinite(age) && age < GPS_LIVE_MAX_AGE_MS;
   if (!visible) {
     _clearGpsMarker();
     document.body.classList.remove('driving-active');
@@ -1219,7 +1333,7 @@ function toggleDrivingMode() {
   _lastOwnerPosition = null;
   _followCamera = _drivingMode;
   _userPanned   = false;
-  _resetRouteHints();
+  _gpsUiStep('reset hints', _resetRouteHints);
 
   const btn = document.getElementById('drivingBtn');
   if (btn) {
@@ -1228,7 +1342,7 @@ function toggleDrivingMode() {
     btn.innerHTML = dayActionIcon(_drivingMode ? 'stop' : (_isWalk ? 'walk' : 'car')) + (_drivingMode ? ' Стоп' : (_isWalk ? ' Иду' : ' Еду'));
   }
   document.body.classList.toggle('driving-active', _drivingMode);
-  refreshGpsMarkerIcon();
+  _gpsUiStep('refresh marker', refreshGpsMarkerIcon);
 
   _setGpsControls(_drivingMode || _hasOwnerFix, _drivingMode);
   const followBtn = document.getElementById('gpsFollowBtn');
@@ -1236,20 +1350,26 @@ function toggleDrivingMode() {
 
   // Keep-alive: держим WebSocket живым для уведомлений
   if (_drivingMode) {
-    _rememberDriveVehicleStyle();
-    _rememberWalkStyle();
-    startKeepAlive();
+    _gpsUiStep('appearance', () => {
+      _rememberDriveVehicleStyle();
+      _rememberWalkStyle();
+    });
+    _gpsUiStep('keep alive', startKeepAlive);
     if (!routeHintsPreviewEnabled()) {
-      _refreshHintsFromOwnerFix();
       // The startup watch may have failed while location was disabled.
       _startGpsWatch();
       _acquireWakeLock();
+      _gpsUiStep('initial hints', _refreshHintsFromOwnerFix);
     }
   } else {
+    _pendingDrivePosition = null;
+    _driveWrite = null;
+    clearTimeout(_gpsShareTimer);
+    _setGpsShareStatus('');
+    if (_db) _db.ref('gps').remove().catch(error => console.warn('GPS stop:', error));
     stopKeepAlive();
     _releaseWakeLock();
     _updateSpeedDisplay(null);
-    if (_db) _db.ref('gps').remove();
     // Снять подсветку ближайшей точки
     _nearestStopId = null;
     document.querySelectorAll('.stop-card.gps-nearest').forEach(function(el) {
@@ -1371,7 +1491,8 @@ function _updateSpeedDisplay(kmh) {
   const el = document.getElementById('speedDisplay');
   if (!el) return;
   const val = kmh != null ? kmh : '—';
-  el.innerHTML = `<span class="spd-val">${val}</span><span class="spd-unit">км/ч</span>`;
+  const speed = el.querySelector?.('.spd-val');
+  if (speed) speed.textContent = val;
 }
 
 // ── HELPERS ────────────────────────────────────────────────────────────────────

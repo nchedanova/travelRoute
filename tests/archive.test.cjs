@@ -11,13 +11,14 @@ const css = fs.readFileSync(path.join(root, 'css/style.css'), 'utf8');
 function load() {
   const classes = new Set();
   const dropdown = {
+    offsetWidth: 280,
     style: { setProperty(key, value) { this[key] = value; } },
     classList: { contains: key => classes.has(key), add: key => classes.add(key), remove: key => classes.delete(key) },
   };
   const ctx = vm.createContext({
     window: { innerWidth: 360 },
     document: {
-      getElementById: id => id === 'archiveDropdown' ? dropdown : { getBoundingClientRect: () => ({ bottom: 44, right: 350 }) },
+      getElementById: id => id === 'archiveDropdown' ? dropdown : { getBoundingClientRect: () => ({ bottom: 44, right: 315 }) },
       addEventListener() {}, removeEventListener() {},
     },
     closeDayMenus() {}, renderArchiveBtn() {}, setTimeout: callback => callback(),
@@ -31,11 +32,22 @@ test('archive scroll area is bounded by viewport and its actual top position', (
   run('toggleArchive()');
   assert.equal(dropdown.style.top, '48px');
   assert.equal(dropdown.style['--archive-top'], '48px');
+  assert.equal(dropdown.style.right, '45px');
   const rule = css.match(/\.archive-dropdown\s*\{([^}]+)\}/)[1];
   assert.match(rule, /max-height: min\(560px, calc\(100dvh - var\(--archive-top, 48px\) - 8px\)\)/);
   assert.match(rule, /overflow-y: auto/);
   assert.match(rule, /overscroll-behavior-y: contain/);
   assert.match(rule, /box-sizing: border-box/);
+});
+
+test('mobile archive keeps its anchor coordinates and fits under the button', () => {
+  const { dropdown, run } = load();
+  run('toggleArchive({ getBoundingClientRect: () => ({ bottom: 180, right: 190 }) })');
+  assert.equal(dropdown.style.top, '184px');
+  assert.equal(dropdown.style.right, '72px');
+  const rules = [...css.matchAll(/\.archive-dropdown\s*\{([^}]+)\}/g)].map(match => match[1]);
+  assert.doesNotMatch(rules.join('\n'), /(?:^|;)\s*(?:top|bottom|left|right)\s*:/m);
+  assert.match(rules.at(-1), /max-height:min\(440px,calc\(100dvh - var\(--archive-top,/);
 });
 
 test('archive stays open for interactions inside and closes outside or on toggle', () => {
