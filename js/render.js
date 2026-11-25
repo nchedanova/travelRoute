@@ -262,9 +262,27 @@ function updateRouteProgress(day, gpsFraction) {
   document.getElementById('d' + day + '-pct').textContent = km.toLocaleString('ru', {maximumFractionDigits: 1}) + ' км';
 }
 
+function updateActualTimeDate(id, dateISO, departure, actual) {
+  const label = document.getElementById('date-' + id);
+  if (!label) return;
+  label.hidden = true;
+
+  // Legacy times can identify one midnight relative to the actual start.
+  const clockTime = /^(?:[01]?\d|2[0-3]):[0-5]\d$/;
+  if (!dateISO || !clockTime.test(departure) || !clockTime.test(actual)) return;
+  if (_parseTime(actual) >= _parseTime(departure)) return;
+  const date = dateISO.includes('.') ? parseDateDMY(dateISO) : new Date(dateISO + 'T00:00:00');
+  if (!date || !Number.isFinite(date.getTime())) return;
+  date.setDate(date.getDate() + 1);
+  label.textContent = fmtDateShort(fmtDateDMY(date));
+  label.hidden = false;
+}
+
 function updateProgress() {
   dayKeys().forEach(day => {
-    const stops = DAYS_DATA[day].stops;
+    const data = DAYS_DATA[day];
+    const stops = data.stops;
+    const departure = document.getElementById('d' + day + '-depart')?.value ?? data.departA;
     let lastDelta = null;
     stops.forEach(s => {
       const dArr = timeDelta(s.arrP, s.arrA);
@@ -290,6 +308,7 @@ function updateProgress() {
       const dEl2 = document.getElementById('delta-arr-' + s.id);
       if (aEl) {
         const val   = aEl.value;
+        updateActualTimeDate(aEl.id, data.dateISO, departure, val);
         const delta = timeDelta(s.arrP, val);
         aEl.classList.remove('empty', 'ontime', 'late');
         if (!val) aEl.classList.add('empty');
@@ -309,6 +328,7 @@ function updateProgress() {
       const dEl3  = document.getElementById('delta-dep-' + s.id);
       if (depEl) {
         const val   = depEl.value;
+        updateActualTimeDate(depEl.id, data.dateISO, departure, val);
         const delta = timeDelta(s.depP, val);
         depEl.classList.remove('empty', 'ontime', 'late');
         if (!val) depEl.classList.add('empty');
@@ -419,6 +439,7 @@ function makeStopCard(s, day) {
             type="text" inputmode="numeric" maxlength="5" value="${s.depA || ''}" placeholder="${s.depP || '--:--'}"
             autocomplete="nope"
             ${isAdmin() ? `onfocus="this.dataset.prevVal=this.value" oninput="applyMask(this)" onblur="padTime(this)" ondblclick="fillOnTime(this)"` : `readonly style="pointer-events:none;border-style:solid;"`}>
+          <span class="actual-time-date" id="date-dep-${s.id}" hidden></span>
         </div>
       </div>
     </div>`;
@@ -476,6 +497,7 @@ function makeStopCard(s, day) {
               type="text" inputmode="numeric" maxlength="5" value="${s.arrA || ''}" placeholder="${s.arrP || '--:--'}"
               autocomplete="nope"
               ${isAdmin() ? `onfocus="this.dataset.prevVal=this.value" oninput="applyMask(this)" onblur="padTime(this)" ondblclick="fillOnTime(this)"` : `readonly style="pointer-events:none;border-style:solid;"`}>
+            <span class="actual-time-date" id="date-arr-${s.id}" hidden></span>
           </div>
         </div>
       </div>
