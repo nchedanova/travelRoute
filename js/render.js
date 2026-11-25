@@ -28,12 +28,21 @@ function _resolveAllNoteImgs() {
 }
 
 // ── TIME UTILS ────────────────────────────────────────────────────────────────
-function timeDelta(planned, actual) {
+function routeTimeDayOffset(departure, time) {
+  const clockTime = /^(?:[01]?\d|2[0-3]):[0-5]\d$/;
+  if (!clockTime.test(departure) || !clockTime.test(time)) return null;
+  return _parseTime(time) < _parseTime(departure) ? 1 : 0;
+}
+
+function timeDelta(planned, actual, plannedDeparture, actualDeparture) {
   if (!planned || !actual || planned.length < 4 || actual.length < 4) return null;
   const [ph, pm] = planned.split(':').map(Number);
   const [ah, am] = actual.split(':').map(Number);
   if (isNaN(ph) || isNaN(pm) || isNaN(ah) || isNaN(am)) return null;
-  return (ah * 60 + am) - (ph * 60 + pm);
+  const plannedDay = routeTimeDayOffset(plannedDeparture, planned);
+  const actualDay = routeTimeDayOffset(actualDeparture, actual);
+  const dayOffset = plannedDay === null || actualDay === null ? 0 : actualDay - plannedDay;
+  return (ah * 60 + am) - (ph * 60 + pm) + dayOffset * 1440;
 }
 
 function recordedWalkDurationMinutes(data, readActual = (_id, saved) => saved) {
@@ -166,7 +175,7 @@ function autoFillTimes(day) {
         prevDep = _parseTime(data.departP);
       } else {
         prev    = stops[i - 1];
-        prevDep = _parseTime(stops[i - 1].depP) || _parseTime(stops[i - 1].arrP);
+        prevDep = _parseTime(stops[i - 1].depP) ?? _parseTime(stops[i - 1].arrP);
       }
       if (prevDep != null) {
         var dur = getSegmentDuration(prev, s, profile);
@@ -267,10 +276,7 @@ function updateActualTimeDate(id, dateISO, departure, actual) {
   if (!label) return;
   label.hidden = true;
 
-  // Legacy times can identify one midnight relative to the actual start.
-  const clockTime = /^(?:[01]?\d|2[0-3]):[0-5]\d$/;
-  if (!dateISO || !clockTime.test(departure) || !clockTime.test(actual)) return;
-  if (_parseTime(actual) >= _parseTime(departure)) return;
+  if (!dateISO || routeTimeDayOffset(departure, actual) !== 1) return;
   const date = dateISO.includes('.') ? parseDateDMY(dateISO) : new Date(dateISO + 'T00:00:00');
   if (!date || !Number.isFinite(date.getTime())) return;
   date.setDate(date.getDate() + 1);
@@ -285,9 +291,11 @@ function updateProgress() {
     const departure = document.getElementById('d' + day + '-depart')?.value ?? data.departA;
     let lastDelta = null;
     stops.forEach(s => {
-      const dArr = timeDelta(s.arrP, s.arrA);
+      const arr = document.getElementById('arr-' + s.id)?.value ?? s.arrA;
+      const dArr = timeDelta(s.arrP, arr, data.departP, departure);
       if (dArr !== null) lastDelta = dArr;
-      const dDep = timeDelta(s.depP, s.depA);
+      const dep = document.getElementById('dep-' + s.id)?.value ?? s.depA;
+      const dDep = timeDelta(s.depP, dep, data.departP, departure);
       if (dDep !== null) lastDelta = dDep;
     });
     updateRouteProgress(day);
@@ -309,7 +317,7 @@ function updateProgress() {
       if (aEl) {
         const val   = aEl.value;
         updateActualTimeDate(aEl.id, data.dateISO, departure, val);
-        const delta = timeDelta(s.arrP, val);
+        const delta = timeDelta(s.arrP, val, data.departP, departure);
         aEl.classList.remove('empty', 'ontime', 'late');
         if (!val) aEl.classList.add('empty');
         else if (delta !== null) aEl.classList.add(delta <= 0 ? 'ontime' : 'late');
@@ -329,7 +337,7 @@ function updateProgress() {
       if (depEl) {
         const val   = depEl.value;
         updateActualTimeDate(depEl.id, data.dateISO, departure, val);
-        const delta = timeDelta(s.depP, val);
+        const delta = timeDelta(s.depP, val, data.departP, departure);
         depEl.classList.remove('empty', 'ontime', 'late');
         if (!val) depEl.classList.add('empty');
         else if (delta !== null) depEl.classList.add(delta <= 0 ? 'ontime' : 'late');
